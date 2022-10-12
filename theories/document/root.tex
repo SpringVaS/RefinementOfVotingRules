@@ -1,0 +1,48 @@
+\documentclass[11pt,a4paper,notitlepage]{report}
+\input{settings}
+\usepackage{isabelle,isabellesym}
+\usepackage{amssymb} % amsfonts, amssymb
+\usepackage{pdfsetup}
+
+\urlstyle{rm}
+\isabellestyle{it}
+
+% for uniform font size
+%\renewcommand{\isastyle}{\isastyleminor}
+
+% This is required due to some unusual behaviour by Isabelle.
+% It should be included in isabellesym.sty automatically, but it is not.
+\newcommand{\isasymcirclearrowleft}{\isamath{\circlearrowleft}}
+
+\begin{document}
+
+\title{Refinement of Fair Modular Voting Rules}
+\author{Valentin Springsklee}
+\institute{Karlsruhe Institute of Technology (KIT), Karlsruhe, Germany\\
+\email{valentin.springsklee@student.kit.edu}}
+\maketitle
+
+\begin{abstract}
+Voting rules aggregate multiple individual preferences in order to make a
+collective decision.
+Commonly, these mechanisms are expected to respect a multitude of different
+notions of fairness and reliability, which must be carefully balanced to avoid
+inconsistencies.
+
+In this article, the Isabelle Refinement Framework by Peter Lammich~\cite{Refine_Monadic-AFP} 
+is used to generate verified efficient code for voting rules that are specified 
+in a framework for the construction of such fair voting rules using composable modules~\cite{adt2019,lopstr2019}.
+
+\end{abstract}
+
+\tableofcontents
+
+\parindent 0pt\parskip 0.5ex
+
+\input{session}
+
+% optional bibliography
+\bibliographystyle{abbrv}
+\bibliography{root}
+
+\end{document}

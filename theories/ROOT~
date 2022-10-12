@@ -1,0 +1,37 @@
+chapter browser_info
+
+session Modular_Voting_Rule_Refinement = CAVA_Base +
+  description "
+    Refinement of Modular Voting Rules
+  "
+  
+options [browser_info, timeout = 300, document = pdf, document_output = "output"]
+
+sessions
+  "List-Index"
+
+directories
+  "Compositional_Structures"
+  "Compositional_Structures/Basic_Modules"
+  "Compositional_Structures/Basic_Modules/Component_Types"
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types"
+
+theories
+(* "Social-Choice Types" *)
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Preference_List"
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Profile_Array"
+  "Compositional_Structures/Basic_Modules/Component_Types/Electoral_Module_Ref"
+
+(* "Refined Component Types" *)
+(* "Basic Modules" *)
+  "Compositional_Structures/Basic_Modules/Plurality_Module_Ref"
+(* "Refined Basic Modules" *)
+(* "Compositional Structures" *)
+
+(* "Voting Rules" *)
+
+
+document_files
+    "root.tex"
+    "settings.tex"
+    "root.bib"
