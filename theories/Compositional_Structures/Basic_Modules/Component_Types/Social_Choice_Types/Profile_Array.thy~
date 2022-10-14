@@ -1,6 +1,6 @@
 theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
-  Preference_List 
+  Preference_List
   "List-Index.List_Index"
   CAVA_Base.CAVA_Base 
   "Collections.Diff_Array"
@@ -30,40 +30,66 @@ lemma wfa_imp_wfl[simp]: "well_formed_prefa pa \<longrightarrow> well_formed_pl 
   unfolding well_formed_prefa_def well_formed_pl_def
   by (simp add: array_length_list)
 
-definition "rank_array_invariant ballot a \<equiv> \<lambda> (i, found). 
-  i \<le> length ballot \<and> 
-    List.member ballot a \<longrightarrow>  List.member [ballot!(i)] a"
+text \<open> Monadic definition of ballot properties \<close>
 
-definition rank_array_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-  "rank_array_mon ballot a \<equiv> do {
-    (i, found) \<leftarrow> WHILET (\<lambda>(i, found). (i < (length ballot) \<and> \<not>found)) 
-      (\<lambda>(i, found). do {
-      ASSERT(i < (length ballot) \<and> \<not>found);
-      let found = (if (ballot!i = a) then True else False);
-      let i = i + 1;
-      RETURN (i, found)
-    })(0,False);
-    RETURN (if found then i else 0)
+value "[1::nat,2]!0"
+
+definition "index_mon_inv ballot a \<equiv> \<lambda> (i).
+    (i \<le> List_Index.index ballot a)"
+
+(* low level optimization for pref count *)
+definition index_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+  "index_mon ballot a \<equiv> do {
+    i \<leftarrow> WHILET (\<lambda>(i). (i < (length ballot) \<and> ballot!i \<noteq> a)) 
+      (\<lambda>(i). do {
+      RETURN (i + 1)
+    })(0);
+    RETURN (i)
   }"                          
 
-lemma above_refl:
-  assumes
-    "refl_on A r" and
-     "a \<in> A"
-  shows "a \<in> above r a"
-  using assms refl_onD
-  unfolding above_def
-  by simp
 
-lemma rank_array_mon_correct: 
-  shows "rank_array_mon ballot_l a \<le> SPEC (\<lambda> r. r = rank_l ballot_l a)"
-  unfolding rank_array_mon_def rank_l.simps
-  apply (intro WHILET_rule[where I="(rank_array_invariant ballot_l a)" and R="measure (\<lambda>(i,_). length ballot_l - i)"] refine_vcg)
-  unfolding rank_array_invariant_def
-  apply simp_all
-  apply auto
-  oops
-  
+lemma index_mon_correct:
+  shows "index_mon ballot_l a \<le> SPEC (\<lambda> r. r = List_Index.index ballot_l a)"
+  unfolding index_mon_def   
+  apply (intro WHILET_rule[where I="(index_mon_inv ballot_l a)" and R="measure (\<lambda>(i). length ballot_l - i)"] refine_vcg)
+  unfolding index_mon_inv_def 
+  apply (auto)
+proof -
+  fix i
+  assume notyet: "i \<le> List_Index.index ballot_l a"
+  assume ir: "i < length ballot_l"
+  assume notnow: "ballot_l ! i \<noteq> a"
+  from notnow have "i \<noteq> List_Index.index ballot_l a"
+    by (metis index_eq_iff ir)
+  from notyet this show "Suc i \<le> List_Index.index ballot_l a"
+    by fastforce
+next
+  fix i
+  assume a1: "i \<le> List_Index.index ballot_l a"
+  assume a2: "\<not> i < length ballot_l"
+  from a2 have "i \<ge> length ballot_l" by fastforce
+  from a1 this show "i = List_Index.index ballot_l a"
+    using index_le_size
+    by (metis le_trans verit_la_disequality)
+next
+  fix i
+  assume "i \<le> List_Index.index ballot_l (ballot_l ! i)"
+  from this show "i = List_Index.index ballot_l (ballot_l ! i)"
+    by (metis index_first order_le_imp_less_or_eq)
+qed
+
+schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a"
+  unfolding index_mon_def
+  by (refine_transfer)
+
+concrete_definition index_loop for xs a uses index_monadic_aux
+
+lemma index_loop_correct[simp]:
+  shows "index_loop xs a = List_Index.index xs a"
+  using order_trans[OF index_loop.refine index_mon_correct]
+  by (auto simp: refine_rel_defs)
+
+lemma index_member: "List_Index.index l a = length l \<longrightarrow> \<not>List.member l a"
 
 
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where

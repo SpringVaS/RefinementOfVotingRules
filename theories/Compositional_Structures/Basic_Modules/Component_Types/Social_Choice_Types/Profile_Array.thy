@@ -32,8 +32,6 @@ lemma wfa_imp_wfl[simp]: "well_formed_prefa pa \<longrightarrow> well_formed_pl 
 
 text \<open> Monadic definition of ballot properties \<close>
 
-value "[1::nat,2]!0"
-
 definition "index_mon_inv ballot a \<equiv> \<lambda> (i).
     (i \<le> List_Index.index ballot a)"
 
@@ -84,13 +82,31 @@ schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a
 
 concrete_definition index_loop for xs a uses index_monadic_aux
 
+thm index_loop_def
+
 lemma index_loop_correct[simp]:
   shows "index_loop xs a = List_Index.index xs a"
   using order_trans[OF index_loop.refine index_mon_correct]
   by (auto simp: refine_rel_defs)
 
 lemma index_member: "List_Index.index l a = length l \<longrightarrow> \<not>List.member l a"
+  by (simp add: in_set_member index_size_conv)
 
+fun rank_loop :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
+  "rank_loop ballot a = (let idx = (index_loop ballot a) in 
+      if idx = (length ballot) then 0 
+      else (idx + 1))" 
+
+lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
+proof (simp, safe)
+  assume a1: "List_Index.index ballot a = length ballot"
+  assume a2: "List.member ballot a"
+  from a1 a2 show "False" using index_member by metis
+next
+  assume "List_Index.index ballot a \<noteq> length ballot"
+  thus "List.member ballot a"
+    by (metis in_set_member size_index_conv)
+qed
 
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "is_less_pref_array x ballot y \<equiv> do {
