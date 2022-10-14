@@ -17,8 +17,12 @@ text \<open>
   rank 1 is top prefernce, rank 0 is not in list
 \<close>
 fun rank_l :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
-  "rank_l cs x = (if (List.member cs x) then index cs x + 1 else 0)"
+  "rank_l cs x = (if (List.member cs x) then (index cs x) + 1 else 0)"
 
+lemma rank0_imp_notpresent:
+  "rank_l ballot x = 0 \<longrightarrow> \<not>List.member ballot x"
+  by simp
+  
 fun is_less_preferred_than ::
   "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool" ("_ \<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
     "x \<lesssim>\<^sub>r y = ((List.member r x) \<and> (List.member r y) \<and> (rank_l r x \<ge> rank_l r y))"
@@ -34,10 +38,7 @@ lemma rank_gt_zero:
     wf : "well_formed_pl r" and
     refl: "x \<lesssim>\<^sub>r x"
   shows "rank_l r x \<ge> 1"
-proof auto
-  from refl show "List.member r x" by auto
-qed
-
+  using refl by simp
 
 definition total_on_l :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> bool" where
   "total_on_l A pl \<equiv> (\<forall> x \<in> A. (List.member pl x))"
@@ -85,6 +86,22 @@ lemma above_trans:
   shows "set (above_l r b) \<subseteq> set (above_l r a)"
   by (metis Preference_List.above_l_def Preference_List.is_less_preferred_than.elims(2) less set_take_subset_set_take)
 
+definition ballot_on :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> bool" where
+  "ballot_on A pl \<equiv> well_formed_pl pl \<and> linear_order_on_l A pl"
+
+lemma ballot_imp_altsnotempty:
+  "ballot_on A pl \<longrightarrow> A \<noteq> {}"
+  unfolding ballot_on_def well_formed_pl_def linear_order_on_l_def preorder_on_l_def 
+      refl_on_l_def total_on_l_def
+  apply (intro impI)
+  apply (erule conjE)+
+proof -
+  assume a1: "0 < length pl"
+  assume a2: "Preference_List.limited A pl"
+  from a1 a2 have "\<exists> x. x\<in> A" unfolding Preference_List.limited_def
+    by (metis in_set_member nth_mem)
+  from this show "A \<noteq> {}" by blast
+qed
 
 definition pl_\<alpha> :: "'a Preference_List \<Rightarrow> 'a Preference_Relation" where
   "pl_\<alpha> l = {(a, b). a \<lesssim>\<^sub>l b}"
