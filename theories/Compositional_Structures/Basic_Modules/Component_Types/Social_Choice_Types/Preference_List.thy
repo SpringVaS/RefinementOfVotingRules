@@ -2,6 +2,7 @@ theory Preference_List
   imports 
     "Verified_Voting_Rule_Construction.Preference_Relation"
     "List-Index.List_Index"
+    "HOL-Library.Sublist"
 begin
 
 text \<open>                          
@@ -22,7 +23,19 @@ fun rank_l :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
 lemma rank0_imp_notpresent:
   "rank_l ballot x = 0 \<longrightarrow> \<not>List.member ballot x"
   by simp
+
+lemma suffix_member: 
+  assumes "List.member sf x"
+  and "suffix sf xs" 
+  shows "List.member xs x"
+proof -
+  from assms(2) have "\<forall>e \<in> (set sf). e \<in> set xs"
+    using set_mono_suffix by blast
+  from assms(1) this show ?thesis 
+    by (metis List.member_def)
+qed
   
+
 fun is_less_preferred_than ::
   "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool" ("_ \<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
     "x \<lesssim>\<^sub>r y = ((List.member r x) \<and> (List.member r y) \<and> (rank_l r x \<ge> rank_l r y))"

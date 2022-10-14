@@ -62,11 +62,8 @@ lemma rank_array_mon_correct:
   unfolding rank_array_invariant_def
   apply simp_all
   apply auto
+  oops
   
-  
-
-
-
 
 
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where

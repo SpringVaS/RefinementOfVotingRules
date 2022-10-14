@@ -87,7 +87,21 @@ lemma above_trans:
   by (metis Preference_List.above_l_def Preference_List.is_less_preferred_than.elims(2) less set_take_subset_set_take)
 
 definition ballot_on :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> bool" where
-  "ballot_on A pl = well_formed_pl pl \<and> linear_order_on_l A pl"
+  "ballot_on A pl \<equiv> well_formed_pl pl \<and> linear_order_on_l A pl"
+
+lemma ballot_imp_altsnotempty:
+  "ballot_on A pl \<longrightarrow> A \<noteq> {}"
+  unfolding ballot_on_def well_formed_pl_def linear_order_on_l_def preorder_on_l_def 
+      refl_on_l_def total_on_l_def
+  apply (intro impI)
+  apply (erule conjE)+
+proof -
+  assume a1: "0 < length pl"
+  assume a2: "Preference_List.limited A pl"
+  from a1 a2 have "\<exists> x. x\<in> A" unfolding Preference_List.limited_def
+    by (metis in_set_member nth_mem)
+  from this show "A \<noteq> {}" by blast
+qed
 
 definition pl_\<alpha> :: "'a Preference_List \<Rightarrow> 'a Preference_Relation" where
   "pl_\<alpha> l = {(a, b). a \<lesssim>\<^sub>l b}"
