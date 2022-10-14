@@ -78,6 +78,20 @@ next
     by (metis index_first order_le_imp_less_or_eq)
 qed
 
+schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a"
+  unfolding index_mon_def
+  by (refine_transfer)
+
+concrete_definition index_loop for xs a uses index_monadic_aux
+
+lemma index_loop_correct[simp]:
+  shows "index_loop xs a = List_Index.index xs a"
+  using order_trans[OF index_loop.refine index_mon_correct]
+  by (auto simp: refine_rel_defs)
+
+lemma index_member: "List_Index.index l a = length l \<longrightarrow> \<not>List.member l a"
+
+
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "is_less_pref_array x ballot y \<equiv> do {
     (i, idxx, idxy) \<leftarrow> WHILET (\<lambda>(i, ret). (i < (array_length ballot))) 
