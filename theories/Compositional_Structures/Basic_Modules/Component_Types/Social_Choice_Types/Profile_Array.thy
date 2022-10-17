@@ -51,7 +51,7 @@ lemma index_mon_correct:
   unfolding index_mon_def   
   apply (intro WHILET_rule[where I="(index_mon_inv ballot_l a)" and R="measure (\<lambda>(i). length ballot_l - i)"] refine_vcg)
   unfolding index_mon_inv_def 
-  apply (auto)
+  apply (clarsimp_all, safe, simp_all)
 proof -
   fix i
   assume notyet: "i \<le> List_Index.index ballot_l a"
@@ -107,6 +107,72 @@ next
   thus "List.member ballot a"
     by (metis in_set_member size_index_conv)
 qed
+
+definition array_index_of_mon :: "'a Preference_Array \<Rightarrow> 'a \<Rightarrow> nat nres" where
+  "array_index_of_mon ballot a \<equiv> do {
+    i \<leftarrow> WHILET (\<lambda>(i). (i < (array_length ballot) \<and> ballot[[i]] \<noteq> a)) 
+      (\<lambda>(i). do {
+      RETURN (i + 1)
+    })(0);
+    RETURN (i)
+  }"         
+
+lemma array_length_idx[simp]: 
+  assumes  "(array, list) \<in> (br list_of_array (\<lambda>x. True))"
+  shows "\<forall>idx. idx < array_length array \<longleftrightarrow> idx < length list"
+proof (safe)
+  fix x1
+  assume ir: "x1 < array_length array"
+  from assms ir show "x1 < length list"
+    by (simp add: array_length_list in_br_conv)
+next
+  fix x1
+  assume ir: "x1 < length list"
+  from assms ir show "x1 < array_length array"
+    by (simp add: array_length_list in_br_conv)
+qed
+
+lemma array_access[simp]: 
+  assumes  "(array, list) \<in> (br list_of_array (\<lambda>x. True))"
+  shows "\<forall>i < array_length array. array[[i]] = list!i"
+proof safe
+  fix i
+  assume "i < array_length array"
+  from assms this show "array[[i]] = list!i"
+    by (simp add: a_idx_it.get_correct array_length_list in_br_conv)
+     
+qed
+
+lemma array_index_refine : 
+  assumes "(ballot_a, ballot_l) \<in> (br list_of_array (\<lambda>x. True))"
+  shows "array_index_of_mon ballot_a a \<le> \<Down>Id (index_mon ballot_l a)"
+  unfolding array_index_of_mon_def index_mon_def
+  apply (refine_rcg)
+  apply (refine_dref_type)
+proof (simp_all, safe)
+  fix i
+  assume "i < array_length ballot_a"
+  from this assms show "i < length ballot_l" 
+    by simp
+next
+  fix i
+  assume ir: "i < array_length ballot_a"
+  assume "ballot_a[[i]] \<noteq> ballot_l ! i"
+  from ir assms this show "False"
+    by simp
+next
+  fix i
+  assume "i < length ballot_l"
+  from this assms show "i < array_length ballot_a"
+    by simp
+next
+  fix i
+  assume ir: "i < length ballot_l"
+  assume "ballot_l ! i \<noteq> ballot_a[[i]]"
+  from ir assms this show "False"
+    by simp
+qed
+
 
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "is_less_pref_array x ballot y \<equiv> do {
@@ -395,8 +461,7 @@ lemma win_count_imp_refine:
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
   apply simp
-  apply (auto simp add: 
-     refine_hsimp refine_rel_defs)
+  apply (auto simp add: refine_rel_defs)
   using  winsr_imp_refine
     by (metis in_br_conv profile_l_def)
 
@@ -428,7 +493,7 @@ lemma win_count_imp'_refine: assumes "profile_l A pl"
     refinement goals\<close>
   apply simp_all
   apply (auto simp add: 
-     refine_hsimp refine_rel_defs)
+     refine_rel_defs)
 proof (unfold winsr_imp'_def, simp_all)
   fix x1
   assume range: "x1 < length pl"
@@ -464,8 +529,8 @@ theorem win_count_imp'_correct:
 
 text \<open> Moving from Lists to Arrays \<close>
 
-definition win_count_imp2 :: "'a Profile_Array \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_imp2 p a \<equiv> do {
+definition win_count_imp_array :: "'a Profile_Array \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_imp_array p a \<equiv> do {
   (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < array_length p) (\<lambda>(i, ac). do {
     ASSERT (i < array_length p);
     let ballot = (p[[i]]);
@@ -476,10 +541,11 @@ definition win_count_imp2 :: "'a Profile_Array \<Rightarrow> 'a \<Rightarrow> na
   RETURN ac
 }"
 
-lemma win_count_imp2_refine:
+
+lemma win_count_imp_array_refine:
   assumes "(pa, pl) \<in> br pa_to_pl (profile_a A)"
-  shows "win_count_imp2 pa a \<le> \<Down>Id (win_count_imp' pl a)"
-  unfolding win_count_imp2_def win_count_imp'_def winsr_imp'_def
+  shows "win_count_imp_array pa a \<le> \<Down>Id (win_count_imp' pl a)"
+  unfolding win_count_imp_array_def win_count_imp'_def winsr_imp'_def
   apply (refine_rcg)
   apply (refine_dref_type)
   apply (simp_all, safe)
@@ -519,26 +585,14 @@ qed
 lemma a_l_r_step: "(pr1_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
   by (simp add: fun_comp_eq_conv pa_to_pr_def)
   
-lemma win_count_imp2_correct:
+lemma win_count_imp_array_correct:
   assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)"
-  shows "win_count_imp2 pa a \<le> SPEC (\<lambda>ac. ac = win_count pr a)"
-  using ref_two_step[OF win_count_imp2_refine win_count_imp'_correct]
-proof -
-  assume td: "\<And>pa pl A pr Aa a.
-        (pa, pl) \<in> br pa_to_pl (profile_a A) \<Longrightarrow>
-        (pl, pr) \<in> br pr1_\<alpha> (profile_l Aa) \<Longrightarrow> 
- win_count_imp2 pa a \<le> \<Down> nat_rel (SPEC (\<lambda>wc. wc = win_count pr a))"
-  obtain pl where r1: "(pa, pl) \<in> br pa_to_pl (profile_a A)"
-    by (metis assms in_br_conv)
-  from r1 have r2: "(pl, pr) \<in> br pr1_\<alpha> (profile_l A)" using a_l_r_step assms profile_a_l
-    by (metis comp_def in_br_conv)
-  from r1 r2 td show ?thesis
-    using assms
-    by (metis conc_trans_additional(5) singleton_conv win_count_imp'_correct win_count_imp2_refine)
-qed
+  shows "win_count_imp_array pa a \<le> SPEC (\<lambda>ac. ac = win_count pr a)"
+  using assms ref_two_step[OF win_count_imp_array_refine win_count_imp'_correct]
+  by (metis in_br_conv pa_to_pr_def profile_a_l refine_IdD)
 
-schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp2 p a"
-  unfolding win_count_imp2_def
+schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp_array p a"
+  unfolding win_count_imp_array_def
   by (refine_transfer)
 
 concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
@@ -546,7 +600,7 @@ concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
 lemma win_count_array[simp]:
   assumes lg: "(profile_a A pa)"
   shows "win_count_imp_code pa a = win_count (pa_to_pr pa) a"
-  using lg order_trans[OF win_count_imp_code.refine win_count_imp2_correct,
+  using lg order_trans[OF win_count_imp_code.refine win_count_imp_array_correct,
     of pa "(pa_to_pr pa)"]
   by (auto simp: refine_rel_defs)
 

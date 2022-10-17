@@ -1,7 +1,7 @@
 theory Plurality_Module_Ref
-  imports "../Component_Types/Electoral_Module"
-        "../Component_Types/Refined/Electoral_Module_Ref"
-        "../Plurality_Module"
+  imports "Verified_Voting_Rule_Construction.Electoral_Module"
+        "Component_Types/Electoral_Module_Ref"
+        "Verified_Voting_Rule_Construction.Plurality_Module"
 begin
 
 

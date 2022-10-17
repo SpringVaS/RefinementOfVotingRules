@@ -12,7 +12,7 @@ fun plurality_r :: "'a Electoral_Module_Ref" where
      {})"
 
 lemma datarefplurality:
-  shows "\<forall> A. (plurality_r A, plurality A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> 
+  shows "(plurality_r A, plurality A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> 
     Id"
   apply (refine_rcg)
   apply (auto simp add: 
