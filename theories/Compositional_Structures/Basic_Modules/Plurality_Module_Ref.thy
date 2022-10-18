@@ -12,10 +12,11 @@ fun plurality_r :: "'a Electoral_Module_Ref" where
      {})"
 
 lemma datarefplurality:
+  assumes "A \<noteq>{}"
   shows "(plurality_r A, plurality A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> 
     Id"
   apply (refine_rcg)
-  apply (auto simp add: 
+  using assms apply (auto simp add: 
     refine_rel_defs) 
   done
 

@@ -1,6 +1,6 @@
 theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
-  Profile_List
+    "Verified_Voting_Rule_Construction.Profile_List"
   CAVA_Base.CAVA_Base 
   "Collections.Diff_Array"
 begin
