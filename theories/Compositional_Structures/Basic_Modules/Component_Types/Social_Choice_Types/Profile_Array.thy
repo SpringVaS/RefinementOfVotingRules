@@ -1,32 +1,15 @@
 theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
-  Preference_List
-  "List-Index.List_Index"
+  Profile_List
   CAVA_Base.CAVA_Base 
   "Collections.Diff_Array"
 begin
 
 notation array_get ("_[[_]]" [900,0] 1000)
 
-type_synonym 'a Profile_List = "('a Preference_List) list"
-
-fun pr1_\<alpha> :: "'a Profile_List \<Rightarrow> 'a Profile" where
-  "pr1_\<alpha> pr1 = map (Preference_List.pl_\<alpha>) pr1"
-
-lemma length_preserving:
-  fixes pr:: "'a Profile_List"
-  shows "length pl = length (pr1_\<alpha> pl)"
-  unfolding pr1_\<alpha>.simps
-  by simp
-    
-
 type_synonym 'a Preference_Array = "'a array"
 
 type_synonym 'a Profile_Array = "('a Preference_Array) array"
-
-definition profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> bool" where
-  "profile_l A pr1 \<equiv> (\<forall> i::nat. i < length pr1 \<longrightarrow> 
-    well_formed_pl (pr1!i) \<and> linear_order_on_l A (pr1!i))"
 
 definition well_formed_prefa :: "'a Preference_Array \<Rightarrow> bool" where
   "well_formed_prefa pa = ((array_length pa > 0) \<and> distinct (list_of_array pa))"
@@ -208,7 +191,7 @@ definition pa_to_pl :: "'a Profile_Array \<Rightarrow> 'a Profile_List" where
   "pa_to_pl pa = map (list_of_array) (list_of_array pa)"
 
 definition pa_to_pr :: "'a Profile_Array \<Rightarrow> 'a Profile" where
-  "pa_to_pr pa = pr1_\<alpha> (pa_to_pl pa)"
+  "pa_to_pr pa = pl_to_pr_\<alpha> (pa_to_pl pa)"
 
 definition pl_to_pa :: "'a Profile_List \<Rightarrow> 'a Profile_Array" where
   "pl_to_pa pa = array_of_list (map (array_of_list) (pa))"
@@ -222,20 +205,15 @@ abbreviation finite_profile_a :: "'a set \<Rightarrow> 'a Profile_Array \<Righta
   "finite_profile_a A pa \<equiv> finite A \<and> profile_a A pa"
 
 lemma profile_data_refine: 
-  assumes "(pl,pr)\<in>build_rel pr1_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
   shows "profile A pr"
-  unfolding profile_def
-  apply(intro allI impI)
-proof (-)
-  fix i
-  assume ir: "i < length pr"
-  from ir assms have "well_formed_pl (pl ! i)" unfolding profile_l_def
-    by (simp add: in_br_conv)
-  from ir assms have "linear_order_on_l A (pl ! i)" unfolding profile_l_def
-    by (simp add: in_br_conv) 
-  from assms this show "linear_order_on A (pr ! i)" unfolding profile_l_def
-    using linorder_l_imp_rel
-    by (metis (mono_tags, lifting) in_br_conv ir length_map nth_map pr1_\<alpha>.simps)
+proof -
+  from assms have prof: "profile_l A pl"
+    using in_br_conv by metis
+  from assms have "pr = pl_to_pr_\<alpha> pl"
+    using in_br_conv by metis
+  with prof show ?thesis 
+    using profile_prop_refine by metis
 qed
 
 lemma profile_a_l: assumes "profile_a A pa"
@@ -450,7 +428,7 @@ lemma top_l_above_r:
 proof -
   from ne have listeq: "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
     by (simp add: top_above)
-  from assms have above_abstract: "set (above_l pl a) = above (pl_\<alpha> pl) a" unfolding ballot_on_def 
+  from assms have above_abstract: "set (above_l pl a) = above (pl_\<alpha> pl) a" 
     by (auto simp add: aboveeq)
   have list_set: "above_l pl a = [a] \<longleftrightarrow> set (above_l pl a) = {a}"
     by (metis above_l_def append_self_conv2 gr0I hd_take id_take_nth_drop insert_not_empty list.sel(1) list.set(1) list.set_sel(1) list.simps(15) listeq ne singleton_iff take_eq_Nil)
@@ -460,12 +438,12 @@ qed
 
 
 lemma winsr_imp_refine:
-  assumes "linear_order_on_l A l"
-  assumes "(l,r)\<in>build_rel pl_\<alpha> well_formed_pl"
+  assumes "(l,r)\<in>build_rel pl_\<alpha> (ballot_on A)"
   shows "winsr_imp l a = (winsr r a)"
   unfolding winsr_imp_def winsr_def
   using rankeq
-  by (metis assms(1) assms(2) in_br_conv) 
+  by (metis assms in_br_conv)
+  
 
 lemma winsr_imp'_eq:
   assumes "well_formed_pl l" and "l \<noteq> []" (* necessary with current implementation*)
@@ -503,19 +481,18 @@ definition win_count_imp :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat 
   
 
 lemma win_count_imp_refine: 
-  assumes "(pl,pr)\<in>build_rel pr1_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)"
   shows "win_count_imp pl a \<le> \<Down>Id (win_count_mon_outer pr a)"
   using assms unfolding win_count_imp_def win_count_mon_outer_def
   apply (refine_rcg)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
-  apply simp
   apply (auto simp add: refine_rel_defs)
   using  winsr_imp_refine
-    by (metis in_br_conv profile_l_def)
-
+  by (metis (no_types, lifting) brI profile_l_def)
+    
 theorem win_count_imp_correct:
-  assumes "(pl,pr)\<in>build_rel pr1_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
   shows "win_count_imp pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using ref_two_step[OF win_count_imp_refine win_count_mon_outer_correct] assms
     profile_data_refine by fastforce
@@ -564,13 +541,15 @@ next
     by (metis in_set_member not_gr_zero nth_mem)
   from this have empty: "pl!x1 = []"
     by blast
-  from this assms show "False"
-    by (metis linear_order_on_l_def local.range member_rec(2) profile_l_def 
-          set_notEmptyE total_on_l_def)
+  from assms(1) range have "linear_order_on_l A (pl!x1)"
+    unfolding profile_l_def
+    by blast 
+  from empty this assms(1) nempty_cands show "False"
+    by (simp add: linear_order_on_l_def member_rec(2) total_on_l_def)  
 qed
 
 lemma win_count_fst_acc_refine_alt:
-  assumes "(pl,pr)\<in>build_rel pr1_\<alpha> (profile_l A)" 
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)" 
   shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   unfolding win_count_imp'_def win_count.simps
   apply (intro WHILET_rule[where I="(wc_invar pr a)" and R="measure (\<lambda>(r,_). 
@@ -596,10 +575,12 @@ next (* this fails, because we allow empty ballots and candidate sets*)
 
 
 theorem win_count_imp'_correct:
-  assumes "(pl,pr)\<in>build_rel pr1_\<alpha> (profile_l A)"
+  assumes nempty_cands: "A \<noteq> {}"
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
   shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
-  using ref_two_step[OF win_count_imp'_refine win_count_imp_correct] assms refine_IdD
-  oops
+  using ref_two_step[OF win_count_imp'_refine win_count_imp_correct] 
+      assms refine_IdD in_br_conv
+  by metis
 
 
 text \<open> Moving from Lists to Arrays \<close>
@@ -657,7 +638,7 @@ next
   from neq this show "False" by simp
 qed
 
-lemma a_l_r_step: "(pr1_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
+lemma a_l_r_step: "(pl_to_pr_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
   by (simp add: fun_comp_eq_conv pa_to_pr_def)
   
 lemma win_count_imp_array_correct:

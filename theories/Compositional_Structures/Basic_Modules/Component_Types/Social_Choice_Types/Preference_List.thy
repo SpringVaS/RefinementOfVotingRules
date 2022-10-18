@@ -86,7 +86,7 @@ lemma above_trans:
   shows "set (above_l r b) \<subseteq> set (above_l r a)"
   by (metis Preference_List.above_l_def Preference_List.is_less_preferred_than.elims(2) less set_take_subset_set_take)
 
-definition ballot_on :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> bool" where
+abbreviation ballot_on :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> bool" where
   "ballot_on A pl \<equiv> well_formed_pl pl \<and> linear_order_on_l A pl"
 
 definition pl_\<alpha> :: "'a Preference_List \<Rightarrow> 'a Preference_Relation" where
