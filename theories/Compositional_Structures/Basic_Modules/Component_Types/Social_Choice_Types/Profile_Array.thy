@@ -599,6 +599,7 @@ definition win_count_imp_array :: "'a Profile_Array \<Rightarrow> 'a \<Rightarro
 
 
 lemma win_count_imp_array_refine:
+  assumes nempty_cands: "A \<noteq> {}"
   assumes "(pa, pl) \<in> br pa_to_pl (profile_a A)"
   shows "win_count_imp_array pa a \<le> \<Down>Id (win_count_imp' pl a)"
   unfolding win_count_imp_array_def win_count_imp'_def winsr_imp'_def
@@ -642,6 +643,7 @@ lemma a_l_r_step: "(pl_to_pr_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
   by (simp add: fun_comp_eq_conv pa_to_pr_def)
   
 lemma win_count_imp_array_correct:
+  assumes "A \<noteq> {}"
   assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)"
   shows "win_count_imp_array pa a \<le> SPEC (\<lambda>ac. ac = win_count pr a)"
   using assms ref_two_step[OF win_count_imp_array_refine win_count_imp'_correct]
@@ -654,16 +656,19 @@ schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp_array p 
 concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
 
 lemma win_count_array[simp]:
+  assumes "A \<noteq> {}"
   assumes lg: "(profile_a A pa)"
   shows "win_count_imp_code pa a = win_count (pa_to_pr pa) a"
-  using lg order_trans[OF win_count_imp_code.refine win_count_imp_array_correct,
-    of pa "(pa_to_pr pa)"]
+  using assms order_trans[OF win_count_imp_code.refine win_count_imp_array_correct,
+      of A]
   by (auto simp: refine_rel_defs)
 
+
 lemma win_count_array_code_correct: 
+  assumes "A \<noteq> {}"
   assumes lg: "(profile_a A pa)"
   shows "win_count (pa_to_pr pa) a = win_count_imp_code pa a"
-  by (metis lg win_count_array)
+  using assms by (metis lg win_count_array)
 
 
 definition  "prefer_count_invariant p x y \<equiv> \<lambda>(r, ac).
