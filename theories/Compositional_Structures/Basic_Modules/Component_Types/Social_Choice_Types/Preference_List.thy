@@ -2,7 +2,6 @@ theory Preference_List
   imports 
     "Verified_Voting_Rule_Construction.Preference_Relation"
     "List-Index.List_Index"
-    "HOL-Library.Sublist"
 begin
 
 text \<open>                          
@@ -12,7 +11,7 @@ text \<open>
 type_synonym 'a Preference_List = "'a list"
 
 definition well_formed_pl :: "'a Preference_List \<Rightarrow> bool" where
-  "well_formed_pl pl \<equiv> length pl > 0 \<and> distinct pl"
+  "well_formed_pl pl \<equiv> distinct pl"
 
 text \<open>
   rank 1 is top prefernce, rank 0 is not in list
@@ -23,18 +22,6 @@ fun rank_l :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
 lemma rank0_imp_notpresent:
   "rank_l ballot x = 0 \<longrightarrow> \<not>List.member ballot x"
   by simp
-
-lemma suffix_member: 
-  assumes "List.member sf x"
-  and "suffix sf xs" 
-  shows "List.member xs x"
-proof -
-  from assms(2) have "\<forall>e \<in> (set sf). e \<in> set xs"
-    using set_mono_suffix by blast
-  from assms(1) this show ?thesis 
-    by (metis List.member_def)
-qed
-  
 
 fun is_less_preferred_than ::
   "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool" ("_ \<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
@@ -102,20 +89,6 @@ lemma above_trans:
 definition ballot_on :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> bool" where
   "ballot_on A pl \<equiv> well_formed_pl pl \<and> linear_order_on_l A pl"
 
-lemma ballot_imp_altsnotempty:
-  "ballot_on A pl \<longrightarrow> A \<noteq> {}"
-  unfolding ballot_on_def well_formed_pl_def linear_order_on_l_def preorder_on_l_def 
-      refl_on_l_def total_on_l_def
-  apply (intro impI)
-  apply (erule conjE)+
-proof -
-  assume a1: "0 < length pl"
-  assume a2: "Preference_List.limited A pl"
-  from a1 a2 have "\<exists> x. x\<in> A" unfolding Preference_List.limited_def
-    by (metis in_set_member nth_mem)
-  from this show "A \<noteq> {}" by blast
-qed
-
 definition pl_\<alpha> :: "'a Preference_List \<Rightarrow> 'a Preference_Relation" where
   "pl_\<alpha> l = {(a, b). a \<lesssim>\<^sub>l b}"
 
@@ -158,14 +131,13 @@ next
       by (metis Suc_eq_plus1 Suc_le_eq in_set_member index_less_size_conv set_take_if_index)
   qed
 qed
-  
+
 theorem rankeq: assumes wf: "well_formed_pl l" and lo: "linear_order_on_l A l"
   shows "rank_l l a = Preference_Relation.rank (pl_\<alpha> l) a"
 proof (simp, safe)
   assume air: "List.member l a"
   from assms have abe: "Order_Relation.above (pl_\<alpha> l) a = set (above_l l a)" 
-    using aboveeq
-    by metis 
+    by (simp add: aboveeq)
   from wf have dl: "distinct (above_l l a)" unfolding well_formed_pl_def above_l_def
     using distinct_take by blast
   from dl have ce: "card (set (above_l l a)) = length (above_l l a)" unfolding well_formed_pl_def
@@ -193,8 +165,6 @@ theorem linorder_l_imp_rel:
   shows "Order_Relation.linear_order_on A (pl_\<alpha> l)"
 proof (unfold Order_Relation.linear_order_on_def partial_order_on_def 
     Order_Relation.preorder_on_def, clarsimp, safe)
-  from wf have "l \<noteq> []" using well_formed_pl_def
-    by auto
   from lo have "refl_on_l A l" 
     by (unfold linear_order_on_l_def preorder_on_l_def, simp)
   from this show "refl_on A (pl_\<alpha> l)" 
@@ -266,5 +236,5 @@ lemma aconnex:
   using  Preference_List.connex_l_def Preference_List.is_less_preferred_than.simps 
     linear_order_on_l_def preorder_on_l_def refl_on_l_def lo
   by (metis nle_le)
-  
+
 end

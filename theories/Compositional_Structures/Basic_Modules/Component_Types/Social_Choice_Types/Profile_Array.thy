@@ -8,12 +8,17 @@ begin
 
 notation array_get ("_[[_]]" [900,0] 1000)
 
-value "List_Index.index [1::nat,2] 858"
-
 type_synonym 'a Profile_List = "('a Preference_List) list"
 
 fun pr1_\<alpha> :: "'a Profile_List \<Rightarrow> 'a Profile" where
   "pr1_\<alpha> pr1 = map (Preference_List.pl_\<alpha>) pr1"
+
+lemma length_preserving:
+  fixes pr:: "'a Profile_List"
+  shows "length pl = length (pr1_\<alpha> pl)"
+  unfolding pr1_\<alpha>.simps
+  by simp
+    
 
 type_synonym 'a Preference_Array = "'a array"
 
@@ -407,8 +412,52 @@ text \<open> Data refinement \<close>
 definition winsr_imp :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "winsr_imp l a \<equiv> (if (rank_l l a = 1) then 1 else 0)"
 
+(* This implementation requires the aasumption that ballots are not empty
+   For empty ballots, a guard must be added to avoid accessing the first element *)
 definition winsr_imp' :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "winsr_imp' l a \<equiv> (if (l!0 = a) then 1 else 0)"
+
+(* these auxiliary lemmas illustrate the equivalence of checking the the first
+  candidate on a non empty ballot. *)
+lemma top_above:
+  assumes ne: "length pl > 0"
+  shows "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
+  unfolding above_l_def
+proof (auto)
+  assume mem: "List.member pl (pl ! 0)"
+  assume "a = pl ! 0"
+  have "List_Index.index pl (pl ! 0) = 0"
+    by (simp add: index_eqI)
+  from mem this show "take (Suc (List_Index.index pl (pl ! 0))) pl = [pl ! 0]"
+    by (metis append_Nil in_set_member index_less_size_conv take0 take_Suc_conv_app_nth)
+next
+  (*assume mem: "List.member pl a"*)
+  assume "take (Suc (List_Index.index pl a)) pl = [a]"
+  from this show "pl ! 0 = a"
+    by (metis append_Cons append_Nil append_take_drop_id hd_conv_nth list.sel(1))
+next
+  assume nm: "\<not> List.member pl (pl ! 0)"
+  from this have pl_empty: "pl = []"
+    by (metis length_greater_0_conv member_def nth_mem)
+  from ne this pl_empty show "False"
+    by simp
+qed
+
+lemma top_l_above_r:
+  assumes ballot: "ballot_on A pl"
+  assumes ne: "length pl > 0"
+  shows "pl!0 = a \<longleftrightarrow> above (pl_\<alpha> pl) a = {a}"
+proof -
+  from ne have listeq: "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
+    by (simp add: top_above)
+  from assms have above_abstract: "set (above_l pl a) = above (pl_\<alpha> pl) a" unfolding ballot_on_def 
+    by (auto simp add: aboveeq)
+  have list_set: "above_l pl a = [a] \<longleftrightarrow> set (above_l pl a) = {a}"
+    by (metis above_l_def append_self_conv2 gr0I hd_take id_take_nth_drop insert_not_empty list.sel(1) list.set(1) list.set_sel(1) list.simps(15) listeq ne singleton_iff take_eq_Nil)
+  from above_abstract listeq this show ?thesis
+    by (simp)
+qed
+
 
 lemma winsr_imp_refine:
   assumes "linear_order_on_l A l"
@@ -419,7 +468,7 @@ lemma winsr_imp_refine:
   by (metis assms(1) assms(2) in_br_conv) 
 
 lemma winsr_imp'_eq:
-  assumes "well_formed_pl l"
+  assumes "well_formed_pl l" and "l \<noteq> []" (* necessary with current implementation*)
   shows "winsr_imp' l a = (winsr_imp l a)"
   unfolding winsr_imp'_def winsr_imp_def
 proof (simp, safe)
@@ -476,8 +525,7 @@ definition win_count_imp' :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat
 "win_count_imp' p a \<equiv> do {
   (r, ac) \<leftarrow> WHILET (\<lambda>(r, _). r < length p) (\<lambda>(r, ac). do {
     ASSERT (r < length p);
-    let ballot = (p!r);
-    let ac = ac + winsr_imp' ballot a;
+    let ac = ac + (winsr_imp' (p!r) a);
     let r = r + 1;
     RETURN (r, ac)
   })(0,0);
@@ -485,46 +533,73 @@ definition win_count_imp' :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat
 }"
 
 
-lemma win_count_imp'_refine: assumes "profile_l A pl"
+lemma win_count_imp'_refine: 
+  fixes a:: "'a"
+  assumes "profile_l A pl"
+  assumes nempty_cands: "A \<noteq> {}"
   shows "win_count_imp' pl a \<le> \<Down>Id (win_count_imp pl a)"
-  unfolding win_count_imp'_def win_count_imp_def winsr_imp_def wc_invar_def
+  unfolding win_count_imp'_def win_count_imp_def wc_invar_def
   apply (refine_rcg)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
-  apply simp_all
-  apply (auto simp add: 
-     refine_rel_defs)
-proof (unfold winsr_imp'_def, simp_all)
-  fix x1
+  apply clarsimp_all
+proof (unfold winsr_imp'_def winsr_imp_def, simp, safe)
+  fix x1              
   assume range: "x1 < length pl"
-  assume mem: "List.member (pl ! x1) a"
-  assume fst: "List_Index.index (pl ! x1) a = 0"
-  from mem fst show "pl!x1!0 = a"
-    by (metis in_set_member nth_index)
+  assume mem: "List.member (pl ! x1) (pl ! x1 ! 0)"
+  from mem show "List_Index.index (pl ! x1) (pl ! x1 ! 0) = 0"
+    by (simp add: index_eqI)
 next
   fix x1
   assume range: "x1 < length pl"
   assume mem: "List.member (pl ! x1) a"
-  assume nfst: "List_Index.index (pl ! x1) a > 0"
-  from mem nfst show "pl!x1!0 \<noteq> a"
-    by (metis index_eq_iff)
+  assume nfst: "(pl!x1!0) \<noteq> a"
+  from range mem nfst show "List_Index.index (pl ! x1) a > 0"
+    by (metis in_set_member nth_index zero_less_iff_neq_zero)
 next
   fix x1
   assume range: "x1 < length pl"
-  assume nmem: "\<not> List.member (pl ! x1) a"
-  from assms range have nonempty_ballot: "(pl!x1) \<noteq> []" unfolding profile_l_def well_formed_pl_def
-    by (metis len_greater_imp_nonempty)
-  have "l\<noteq>[] \<and> (l!0 = a) \<longrightarrow> List.member l a"
-    by (metis length_greater_0_conv member_def nth_mem) 
-  from this nonempty_ballot nmem show "pl!x1!0 \<noteq> a"
-    by (metis length_greater_0_conv member_def nth_mem)
+  assume nmem: "\<not> List.member (pl ! x1) (pl ! x1 ! 0)"
+  from nmem have empty: "length (pl!x1) = 0"
+    by (metis in_set_member not_gr_zero nth_mem)
+  from this have empty: "pl!x1 = []"
+    by blast
+  from this assms show "False"
+    by (metis linear_order_on_l_def local.range member_rec(2) profile_l_def 
+          set_notEmptyE total_on_l_def)
 qed
+
+lemma win_count_fst_acc_refine_alt:
+  assumes "(pl,pr)\<in>build_rel pr1_\<alpha> (profile_l A)" 
+  shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
+  unfolding win_count_imp'_def win_count.simps
+  apply (intro WHILET_rule[where I="(wc_invar pr a)" and R="measure (\<lambda>(r,_). 
+    (length pl) - r)"] refine_vcg)
+  unfolding wc_invar_def
+  apply (simp_all)
+  apply (erule subst)
+   apply (safe, clarsimp_all)
+proof (unfold winsr_imp'_def, simp_all, safe)
+  from assms have lengths: "length pl = length pr"
+    using in_br_conv length_preserving
+    by metis
+  fix n
+  assume "n < (length pl)"
+  from this lengths show "Suc n \<le> (length pr)" by auto
+next (* this fails, because we allow empty ballots and candidate sets*)
+  fix n::nat
+  assume aail: "n < length pl"
+  from aail obtain ballot where "ballot = pl!n" by blast
+  assume atop: "a = (ballot!0)"
+  (*assume rank1: "card (above (p ! aa) a) = Suc 0"*)
+  oops
+
 
 theorem win_count_imp'_correct:
   assumes "(pl,pr)\<in>build_rel pr1_\<alpha> (profile_l A)"
   shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using ref_two_step[OF win_count_imp'_refine win_count_imp_correct] assms refine_IdD
-  by (metis in_br_conv) 
+  oops
 
 
 text \<open> Moving from Lists to Arrays \<close>
