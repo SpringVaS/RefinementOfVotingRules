@@ -429,7 +429,8 @@ lemma nmem_empty_l[simp]:
     by (simp add: member_rec(2))
 
 lemma winsr_imp'_eq:
-  assumes "well_formed_pl l" (*and "l \<noteq> []"  necessary with current implementation*)
+  assumes "well_formed_pl l" 
+(*and "l \<noteq> []"  necessary when not checking for empty ballots *)
   shows "winsr_imp' l a = (winsr_imp l a)"
   unfolding winsr_imp'_def winsr_imp_def
 proof (simp, safe)
@@ -498,13 +499,7 @@ lemma win_count_imp'_refine:
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
   apply clarsimp_all
-proof (unfold winsr_imp'_def winsr_imp_def, simp_all, safe)
-  fix x1              
-  assume range: "x1 < length pl"
-  assume mem: "List.member (pl ! x1) (pl ! x1 ! 0)"
-  from mem show "List_Index.index (pl ! x1) (pl ! x1 ! 0) = 0"
-    by (simp add: index_eqI)
-next
+proof (unfold winsr_imp'_def winsr_imp_def, (simp_all add: index_eqI), safe)
   fix x1
   assume range: "x1 < length pl"
   assume mem: "List.member (pl ! x1) a"
@@ -518,31 +513,6 @@ next
   assume "pl ! x1 \<noteq> []"
   from nmem this show "False" by (metis hd_conv_nth hd_in_set in_set_member)
 qed
-
-lemma win_count_fst_acc_refine_alt:
-  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)" 
-  shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
-  unfolding win_count_imp'_def win_count.simps
-  apply (intro WHILET_rule[where I="(wc_invar pr a)" and R="measure (\<lambda>(r,_). 
-    (length pl) - r)"] refine_vcg)
-  unfolding wc_invar_def
-  apply (simp_all)
-  apply (erule subst)
-   apply (safe, clarsimp_all)
-proof (unfold winsr_imp'_def, simp_all, safe)
-  from assms have lengths: "length pl = length pr"
-    using in_br_conv length_preserving
-    by metis
-  fix n
-  assume "n < (length pl)"
-  from this lengths show "Suc n \<le> (length pr)" by auto
-next (* this fails, because we allow empty ballots and candidate sets*)
-  fix n::nat
-  assume aail: "n < length pl"
-  from aail obtain ballot where "ballot = pl!n" by blast
-  assume atop: "a = (ballot!0)"
-  (*assume rank1: "card (above (p ! aa) a) = Suc 0"*)
-  oops
 
 
 theorem win_count_imp'_correct:
