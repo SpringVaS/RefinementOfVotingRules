@@ -247,7 +247,8 @@ in the win_count_mon_correct lemma *)
 lemma win_count_mon_correct:
   shows "win_count_mon p a \<le> SPEC (\<lambda> wc. wc = win_count p a)"
   unfolding win_count_mon_def win_count.simps
-  apply (intro WHILET_rule[where I="(wc_invar p a)" and R="measure (\<lambda>(r,_). (length p) - r)"] refine_vcg)
+  apply (intro WHILET_rule[where I="(wc_invar p a)" 
+        and R="measure (\<lambda>(r,_). (length p) - r)"] refine_vcg)
   unfolding wc_invar_def
   apply (simp_all)
   apply (erule subst)
@@ -516,7 +517,6 @@ qed
 
 
 theorem win_count_imp'_correct:
-  assumes nempty_cands: "A \<noteq> {}"
   assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
   shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using ref_two_step[OF win_count_imp'_refine win_count_imp_correct] 
@@ -564,7 +564,6 @@ lemma a_l_r_step: "(pl_to_pr_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
   by (simp add: fun_comp_eq_conv pa_to_pr_def)
   
 lemma win_count_imp_array_correct:
-  assumes "A \<noteq> {}"
   assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)"
   shows "win_count_imp_array pa a \<le> SPEC (\<lambda>ac. ac = win_count pr a)"
   using assms ref_two_step[OF win_count_imp_array_refine win_count_imp'_correct]
@@ -577,16 +576,14 @@ schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp_array p 
 concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
 
 lemma win_count_array[simp]:
-  assumes "A \<noteq> {}"
   assumes lg: "(profile_a A pa)"
   shows "win_count_imp_code pa a = win_count (pa_to_pr pa) a"
   using assms order_trans[OF win_count_imp_code.refine win_count_imp_array_correct,
-      of A]
+      of pa "(pa_to_pr pa)"]
   by (auto simp: refine_rel_defs)
 
 
 lemma win_count_array_code_correct: 
-  assumes "A \<noteq> {}"
   assumes lg: "(profile_a A pa)"
   shows "win_count (pa_to_pr pa) a = win_count_imp_code pa a"
   using assms by (metis lg win_count_array)
