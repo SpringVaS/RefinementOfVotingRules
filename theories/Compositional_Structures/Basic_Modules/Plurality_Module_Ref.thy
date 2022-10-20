@@ -1,5 +1,5 @@
 theory Plurality_Module_Ref
-  imports "Verified_Voting_Rule_Construction.Electoral_Module"
+  imports 
         "Component_Types/Electoral_Module_Ref"
         "Verified_Voting_Rule_Construction.Plurality_Module"
 begin

@@ -2,7 +2,6 @@ theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
   CAVA_Base.CAVA_Base 
-  "Collections.Diff_Array"
 begin
 
 notation array_get ("_[[_]]" [900,0] 1000)
@@ -105,62 +104,38 @@ definition array_index_of_mon :: "'a Preference_Array \<Rightarrow> 'a \<Rightar
     RETURN (i)
   }"         
 
+
 lemma array_length_idx[simp]: 
-  assumes  "(array, list) \<in> (br list_of_array (\<lambda>x. True))"
-  shows "\<forall>idx. idx < array_length array \<longleftrightarrow> idx < length list"
+  shows "\<And>idx. idx < array_length array \<longleftrightarrow> idx < length (list_of_array array)"
 proof (safe)
   fix x1
   assume ir: "x1 < array_length array"
-  from assms ir show "x1 < length list"
-    by (simp add: array_length_list in_br_conv)
+  from ir show "x1 < length (list_of_array array)"
+    by (simp add: array_length_list)
 next
   fix x1
-  assume ir: "x1 < length list"
-  from assms ir show "x1 < array_length array"
-    by (simp add: array_length_list in_br_conv)
+  assume ir: "x1 < length (list_of_array array)"
+  from ir show "x1 < array_length array"
+    by (simp add: array_length_list)
 qed
 
 lemma array_access[simp]: 
-  assumes  "(array, list) \<in> (br list_of_array (\<lambda>x. True))"
-  shows "\<forall>i < array_length array. array[[i]] = list!i"
+  fixes array:: "'a array" and list:: "'a list"
+  assumes  "list = list_of_array array"
+  shows "\<forall>i < length list. array[[i]] = list!i"
 proof safe
   fix i
-  assume "i < array_length array"
+  assume "i < length list"
   from assms this show "array[[i]] = list!i"
     by (simp add: a_idx_it.get_correct array_length_list in_br_conv)
-     
 qed
 
 lemma array_index_refine : 
-  assumes "(ballot_a, ballot_l) \<in> (br list_of_array (\<lambda>x. True))"
-  shows "array_index_of_mon ballot_a a \<le> \<Down>Id (index_mon ballot_l a)"
+  shows "array_index_of_mon ballot_a a \<le> \<Down>Id (index_mon (list_of_array ballot_a) a)"
   unfolding array_index_of_mon_def index_mon_def
   apply (refine_rcg)
-  apply (refine_dref_type)
-proof (simp_all, safe)
-  fix i
-  assume "i < array_length ballot_a"
-  from this assms show "i < length ballot_l" 
-    by simp
-next
-  fix i
-  assume ir: "i < array_length ballot_a"
-  assume "ballot_a[[i]] \<noteq> ballot_l ! i"
-  from ir assms this show "False"
-    by simp
-next
-  fix i
-  assume "i < length ballot_l"
-  from this assms show "i < array_length ballot_a"
-    by simp
-next
-  fix i
-  assume ir: "i < length ballot_l"
-  assume "ballot_l ! i \<noteq> ballot_a[[i]]"
-  from ir assms this show "False"
-    by simp
-qed
-
+   apply (refine_dref_type)
+  by auto
 
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "is_less_pref_array x ballot y \<equiv> do {
@@ -176,7 +151,7 @@ definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarr
     RETURN (ret)
   }"
 
-lemma "lparray_correct" : 
+lemma lparray_correct : 
   assumes "(barray, r) \<in> br (pa_to_pr) (well_formed_prefa)"
   shows "is_less_pref_array x barray y \<le> SPEC (\<lambda> lp. lp = x \<preceq>\<^sub>r y)"
   unfolding is_less_pref_array_def
@@ -225,6 +200,11 @@ lemma profile_a_rel: assumes "profile_a A pa"
   using profile_data_refine
   by (metis assms brI pa_to_pr_def profile_a_def)
 
+lemma array_refine_length[simp]:
+  assumes "(pa, pl) \<in> br pa_to_pl (profile_a A)"
+  shows "length (list_of_array pa) = length pl"
+  using assms in_br_conv array_length_list
+     by (metis length_map pa_to_pl_def) 
 
 text \<open>
   Monadic redifintion of counting functions.
@@ -393,7 +373,7 @@ definition winsr_imp :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" 
 (* This implementation requires the aasumption that ballots are not empty
    For empty ballots, a guard must be added to avoid accessing the first element *)
 definition winsr_imp' :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
-  "winsr_imp' l a \<equiv> (if (l!0 = a) then 1 else 0)"
+  "winsr_imp' l a \<equiv> (if ((length l > 0) \<and> (l!0 = a)) then 1 else 0)"
 
 (* these auxiliary lemmas illustrate the equivalence of checking the the first
   candidate on a non empty ballot. *)
@@ -443,10 +423,13 @@ lemma winsr_imp_refine:
   unfolding winsr_imp_def winsr_def
   using rankeq
   by (metis assms in_br_conv)
-  
+
+lemma nmem_empty_l[simp]:
+  shows "\<not>List.member [] a"
+    by (simp add: member_rec(2))
 
 lemma winsr_imp'_eq:
-  assumes "well_formed_pl l" and "l \<noteq> []" (* necessary with current implementation*)
+  assumes "well_formed_pl l" (*and "l \<noteq> []"  necessary with current implementation*)
   shows "winsr_imp' l a = (winsr_imp l a)"
   unfolding winsr_imp'_def winsr_imp_def
 proof (simp, safe)
@@ -458,13 +441,9 @@ next
   from amem anhd show "0 < List_Index.index l a"
     by (metis gr0I in_set_member nth_index)
 next
-  assume nmem: "\<not> List.member l (l!0)"
-  assume fstex: "a = l ! 0"
-  from nmem have "set l = {}"
-    by (metis length_greater_0_conv member_def nth_mem set_empty2)
-  from this have "l = []"
-    using set_empty by simp
-  from assms this show "False" unfolding well_formed_pl_def by simp
+  assume "\<not> List.member l (l ! 0)" and "l \<noteq> []"
+  thus "False"
+    by (metis hd_conv_nth hd_in_set in_set_member)
 qed
 
 
@@ -513,14 +492,13 @@ definition win_count_imp' :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat
 lemma win_count_imp'_refine: 
   fixes a:: "'a"
   assumes "profile_l A pl"
-  assumes nempty_cands: "A \<noteq> {}"
   shows "win_count_imp' pl a \<le> \<Down>Id (win_count_imp pl a)"
   unfolding win_count_imp'_def win_count_imp_def wc_invar_def
   apply (refine_rcg)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
   apply clarsimp_all
-proof (unfold winsr_imp'_def winsr_imp_def, simp, safe)
+proof (unfold winsr_imp'_def winsr_imp_def, simp_all, safe)
   fix x1              
   assume range: "x1 < length pl"
   assume mem: "List.member (pl ! x1) (pl ! x1 ! 0)"
@@ -537,19 +515,12 @@ next
   fix x1
   assume range: "x1 < length pl"
   assume nmem: "\<not> List.member (pl ! x1) (pl ! x1 ! 0)"
-  from nmem have empty: "length (pl!x1) = 0"
-    by (metis in_set_member not_gr_zero nth_mem)
-  from this have empty: "pl!x1 = []"
-    by blast
-  from assms(1) range have "linear_order_on_l A (pl!x1)"
-    unfolding profile_l_def
-    by blast 
-  from empty this assms(1) nempty_cands show "False"
-    by (simp add: linear_order_on_l_def member_rec(2) total_on_l_def)  
+  assume "pl ! x1 \<noteq> []"
+  from nmem this show "False" by (metis hd_conv_nth hd_in_set in_set_member)
 qed
 
 lemma win_count_fst_acc_refine_alt:
-  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)" 
+  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)" 
   shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   unfolding win_count_imp'_def win_count.simps
   apply (intro WHILET_rule[where I="(wc_invar pr a)" and R="measure (\<lambda>(r,_). 
@@ -589,55 +560,35 @@ definition win_count_imp_array :: "'a Profile_Array \<Rightarrow> 'a \<Rightarro
 "win_count_imp_array p a \<equiv> do {
   (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < array_length p) (\<lambda>(i, ac). do {
     ASSERT (i < array_length p);
-    let ballot = (p[[i]]);
-    let ac = ac + (if (ballot[[0]] = a) then 1 else 0);
+    let ac = ac + (if (((array_length (p[[i]])) > 0) \<and> ((p[[i]])[[0]] = a)) then 1 else 0);
     let i = i + 1;
     RETURN (i, ac)
   })(0,0);
   RETURN ac
 }"
 
+lemma conv_array[simp]:
+  assumes "(pa, pl) \<in> br pa_to_pl (profile_a A)"
+  shows  "\<And>x1. x1 < length pl \<Longrightarrow> pl ! x1 = list_of_array (list_of_array pa ! x1)"
+proof (-)
+  fix x1
+  assume ir: "x1 < length pl"
+  from assms have "length (list_of_array pa) = length pl" 
+     using in_br_conv array_length_list
+     by (metis length_map pa_to_pl_def) 
+  from assms ir this show "pl ! x1 = list_of_array (list_of_array pa ! x1)"
+    by (metis in_br_conv nth_map pa_to_pl_def)
+qed
+    
 
 lemma win_count_imp_array_refine:
-  assumes nempty_cands: "A \<noteq> {}"
   assumes "(pa, pl) \<in> br pa_to_pl (profile_a A)"
   shows "win_count_imp_array pa a \<le> \<Down>Id (win_count_imp' pl a)"
   unfolding win_count_imp_array_def win_count_imp'_def winsr_imp'_def
   apply (refine_rcg)
   apply (refine_dref_type)
-  apply (simp_all, safe)
-proof (simp_all)
-  fix x1
-  assume ir: "x1 < array_length pa"
-  have "array_length pa = length (list_of_array pa)"
-    by (simp add: array_length_list)
-  from assms ir this show "x1 < length pl" unfolding pa_to_pl_def
-    by (simp add: in_br_conv)
-next
-  fix x1
-  assume ir: "x1 < length pl"
-  from assms ir show g2: "x1 < array_length pa" unfolding pa_to_pl_def
-    by (simp add: array_length_list in_br_conv)
-next
-  fix x1
-  assume ir: "x1 < length pl"
-  assume afst: "a = (pa[[x1]])[[0]]"
-  from ir have arrayac: "(pa[[x1]])[[0]] = list_of_array((list_of_array pa)!x1)!0"
-    by (metis Diff_Array.array.exhaust array_get.simps list_of_array.simps)
-  from assms ir arrayac show "pl! x1 ! 0 = (pa[[x1]])[[0]]" 
-    unfolding pa_to_pl_def well_formed_pl_def
-    by (simp add: in_br_conv)  
-next
-  fix x1
-  assume ir: "x1 < length pl"
-  assume neq: "pa[[x1]][[0]] \<noteq> pl ! x1 ! 0"
-  from ir have arrayac: "pa[[x1]][[0]] = list_of_array((list_of_array pa)!x1)!0"
-    by (metis Diff_Array.array.exhaust array_get.simps list_of_array.simps)
-  from assms ir arrayac have "pl! x1 ! 0 = pa[[x1]][[0]]" 
-    unfolding pa_to_pl_def well_formed_pl_def
-    by (simp add: in_br_conv)  
-  from neq this show "False" by simp
-qed
+  using assms by (safe, simp_all)+
+  
 
 lemma a_l_r_step: "(pl_to_pr_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
   by (simp add: fun_comp_eq_conv pa_to_pr_def)
