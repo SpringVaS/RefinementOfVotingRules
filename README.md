@@ -11,6 +11,7 @@ In this project, the Isabelle refinement framework is used to improve the perfor
 
 ## Dependencies
 
-The project depends on a fork from VCFVR (https://github.com/SpringVaS/verifiedVotingRuleConstruction). The project can be prebuild as described in the ROOT file. Currently, they are then added as component to Isabelle by invoking
+This project depends on a fork from VCFVR (https://github.com/SpringVaS/verifiedVotingRuleConstruction). This dependency can be prebuild as described in its ROOT file. 
 
-`isabelle components -u PATH_TO_theories`
+This project should build by running 
+  `isabelle build -d $PATH_TO$/verifiedVotingRuleConstruction/theories/ -b -P "output" -D `pwd` `
