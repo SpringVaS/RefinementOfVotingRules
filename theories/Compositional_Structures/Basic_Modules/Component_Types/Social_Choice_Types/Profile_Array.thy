@@ -200,6 +200,12 @@ lemma profile_a_rel: assumes "profile_a A pa"
   using profile_data_refine
   by (metis assms brI pa_to_pr_def profile_a_def)
 
+lemma finite_profile_a_rel:
+  shows "\<forall>A pa. finite_profile_a A pa \<longrightarrow> finite_profile A (pa_to_pr pa)"
+  using profile_data_refine
+  by (metis brI pa_to_pr_def profile_a_def)
+
+
 lemma array_refine_length[simp]:
   assumes "(pa, pl) \<in> br pa_to_pl (profile_a A)"
   shows "length (list_of_array pa) = length pl"
@@ -575,7 +581,7 @@ schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp_array p 
 
 concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
 
-lemma win_count_array[simp]:
+lemma win_count_array:
   assumes lg: "(profile_a A pa)"
   shows "win_count_imp_code pa a = win_count (pa_to_pr pa) a"
   using assms order_trans[OF win_count_imp_code.refine win_count_imp_array_correct,

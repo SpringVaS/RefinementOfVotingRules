@@ -12,20 +12,40 @@ fun plurality_r :: "'a Electoral_Module_Ref" where
      {})"
 
 lemma datarefplurality:
-  shows "(plurality_r, plurality) \<in> Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> 
-    Id"
+  fixes A :: "'a set"
+  shows "(plurality_r, plurality) \<in> Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> Id \<times>\<^sub>r Id \<times>\<^sub>r Id"
   apply (refine_rcg)
   apply (auto simp add: 
     refine_rel_defs win_count_array) 
   done
-  
+
+lemma plurality_ref_eq:
+  shows "\<forall> A pa. (profile_a A pa) \<longrightarrow> plurality_r A pa = plurality A (pa_to_pr pa)"
+  using datarefplurality em_corres by metis
 
 lemma plurality_r_sound:
-  shows "electoral_module_r plurality_r"
-  using datarefplurality plurality_sound
-  unfolding electoral_module_def electoral_module_r_def
-  apply safe
-  oops
+  shows "electoral_module_r plurality_r" 
+  unfolding electoral_module_r_def using plurality_sound plurality_ref_eq
+  by (metis electoral_module_def profile_a_rel)
+
+lemma plurality_r_electing2: "\<forall> A pa.
+                              (A \<noteq> {} \<and> finite_profile_a A pa) \<longrightarrow>
+                                elect_r (plurality_r A pa) \<noteq> {}"
+using plurality_electing2 plurality_ref_eq profile_a_rel
+  by metis
+
+theorem plurality_r_electing[simp]: "electing plurality"
+  oops (* Reformulate properties like electing for refined types. Discussion needed*)
+
+(* For further lemmas, Profile definitions have to be transeferred to profile Array
+
+lemma plurality_inv_mono2: "\<forall> A p q a.
+                              (a \<in> elect plurality A p \<and> lifted A p q a) \<longrightarrow>
+                                (elect plurality A q = elect plurality A p \<or>
+                                    elect plurality A q = {a})"*)
+
+(* --------  *)
+  section \<open>Further Refinement: Experiments\<close>
 
 
 type_synonym 'a Electoral_Module_Ref_T = "'a set \<Rightarrow> 'a Profile_Array \<Rightarrow> 'a Result_Ref nres"
@@ -56,7 +76,7 @@ lemma wcmap_correc : assumes "profile_a A p"
   apply (intro WHILET_rule[where I="(computewcinvar A p)" 
         and R="measure (\<lambda>(i,_). (array_length p) - i)"] refine_vcg)
   unfolding computewcinvar_def win_count_imp_code_def
-  apply auto 
+
   oops (* ambitious goal *)
 
 end

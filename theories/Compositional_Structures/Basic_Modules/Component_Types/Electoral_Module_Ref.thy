@@ -2,12 +2,26 @@ theory Electoral_Module_Ref
   imports "Social_Choice_Types/Profile_Array"
           "Social_Choice_Types/Result_Ref"
           "Verified_Voting_Rule_Construction.Electoral_Module"
-begin
+begin                            
 
 type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_Array \<Rightarrow> 'a Result"
 
 definition electoral_module_r :: " 'a Electoral_Module_Ref \<Rightarrow> bool" where
-  "electoral_module_r mr \<equiv> \<forall> A p. finite_profile_a A p \<longrightarrow> well_formed A (mr A p)"
+  "electoral_module_r mr \<equiv> \<forall> A pa. finite_profile_a A pa \<longrightarrow> well_formed A (mr A pa)"
+
+lemma em_corres:
+  shows "\<forall>A pa. ((em_r, em) \<in> (Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> (Id \<times>\<^sub>r Id \<times>\<^sub>r Id))
+      \<and> (profile_a A pa))
+      \<longrightarrow> (em_r A pa) = (em A (pa_to_pr pa))"
+proof (clarsimp)
+  fix A :: "'a set" and
+      pa :: "'a Profile_Array"
+  assume p: "profile_a A pa"
+  assume "(em_r, em) \<in> Id \<rightarrow> br pa_to_pr (profile_a A) \<rightarrow> Id"
+  from p this show "em_r A pa = em A (pa_to_pr pa)"
+    by (metis (no_types, opaque_lifting) in_br_conv pair_in_Id_conv tagged_fun_relD_none)
+qed
+
 
 (*lemma elec_mod_r_refine:
   "(Electoral_Module_Ref, Electoral_Module) \<in> Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> 
