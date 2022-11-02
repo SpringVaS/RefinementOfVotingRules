@@ -381,13 +381,13 @@ definition win_count_imp :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat 
 lemma win_count_imp_refine: 
   assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
   shows "win_count_imp pl a \<le> \<Down>Id (win_count_mon_outer pr a)"
-  using assms unfolding win_count_imp_def win_count_mon_outer_def
+  using assms unfolding win_count_imp_def win_count_mon_outer_def pl_to_pr_\<alpha>_def
   apply (refine_rcg)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
-  apply (auto simp add: refine_rel_defs)
-  using  winsr_imp_refine
-  by (metis (no_types, lifting) brI profile_l_def)
+      apply (auto simp add: refine_rel_defs )
+  by (metis profile_l_def rankeq winsr_def winsr_imp_def)
+  
     
 theorem win_count_imp_correct:
   assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
@@ -507,7 +507,7 @@ definition prefer_count_mon_list :: "'a Profile_List \<Rightarrow> 'a \<Rightarr
 lemma prefer_count_mon_list_refine:
   assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)"
   shows "prefer_count_mon_list pl a b \<le> \<Down>Id (prefer_count_mon pr a b)"
-    using assms unfolding prefer_count_mon_list_def prefer_count_mon_def
+    using assms unfolding prefer_count_mon_list_def prefer_count_mon_def pl_to_pr_\<alpha>_def
   apply (refine_rcg)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
