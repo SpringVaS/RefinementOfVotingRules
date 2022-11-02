@@ -91,14 +91,26 @@ definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nr
   }"                          
 
 
-(* using smt for case lifting: TODO remove, manual cases *)
 lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l ballot a)"
   unfolding rank_mon_def
-proof (unfold rank_l.simps, clarsimp)
-  show "index_mon ballot a \<bind> (\<lambda>i. RETURN (if i = length ballot then 0 else i + 1))
-    \<le> RES {let i = index ballot a in if i = length ballot then 0 else i + 1}"
-    by (smt (z3) RES_sng_eq_RETURN index_mon_correct order_mono_setup.refl specify_left)
+proof (refine_vcg, clarsimp_all, safe)
+  assume mem: "List.member ballot a"
+  from this have "index ballot a \<noteq> length ballot"
+    by (simp add: in_set_member index_size_conv)
+  from this show "index_mon ballot a \<le> SPEC (\<lambda>i. i = index ballot a \<and> i \<noteq> length ballot)"
+    using index_mon_correct
+    by (metis (mono_tags, lifting) SPEC_cons_rule)
+next
+  assume nmem: "\<not> List.member ballot a"
+  from this have "index ballot a = length ballot"
+    by (simp add: in_set_member)
+  from this show "index_mon ballot a \<le> RES {length ballot}"
+    using index_mon_correct
+    by (metis singleton_conv)
 qed
+    
+
+
 (*lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
 proof (simp, safe)
   assume a2: "List.member ballot a"
@@ -455,10 +467,10 @@ lemma prefer_count_mon_correct:
   apply (intro WHILET_rule[where I="(prefer_count_invariant p a b)"
         and R="measure (\<lambda>(r,_). (length p) - r)"] refine_vcg)
   unfolding prefer_count_invariant_def
-  apply (simp_all)
+      apply (simp_all)
+   apply refine_vcg
   apply (erule subst)
   apply (simp)
-  apply (intro conjI impI)
 proof (simp_all)
   fix r
   assume ir: "r < length p"
