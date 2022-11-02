@@ -480,4 +480,26 @@ next
 qed  
 
 
+definition prefer_count_mon_list :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where
+  "prefer_count_mon_list p x y \<equiv> do {
+   (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+    ASSERT (i < length p);
+    let b = (p!i);
+    let ac = ac + (if y \<lesssim>\<^sub>b x then 1 else 0);
+    let i = i + 1;
+    RETURN (i, ac)
+  })(0,0);
+  RETURN ac
+}"
+
+lemma prefer_count_mon_list_refine:
+  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)"
+  shows "prefer_count_mon_list pl a b \<le> \<Down>Id (prefer_count_mon pr a b)"
+    using assms unfolding prefer_count_mon_list_def prefer_count_mon_def
+  apply (refine_rcg)
+  apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
+    refinement goals\<close>
+  apply (auto simp add: refine_rel_defs) unfolding pl_\<alpha>_def is_less_preferred_than.simps
+  by auto
+
 end
