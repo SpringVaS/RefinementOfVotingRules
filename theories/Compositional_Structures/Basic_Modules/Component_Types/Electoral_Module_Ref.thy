@@ -28,20 +28,4 @@ lemma em_onA:
   shows "(em_r A pa) = (em A (pa_to_pr pa))"
   by (metis assms(1) assms(2) brI pair_in_Id_conv tagged_fun_relD_rhs)
 
-(*lemma elec_mod_r_refine:
-  "(Electoral_Module_Ref, Electoral_Module) \<in> Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> 
-    (br res_\<alpha> (\<lambda> (e, r, d). ls.invar e \<and> ls.invar r \<and> ls.invar d))"
-  apply (refine_rcg)
-  apply (auto simp add: 
-    ls.correct  refine_rel_defs)
-  unfolding profile_a_def profile_l_def pa_to_pr_def pr1_\<alpha>.simps pl_\<alpha>_def 
-proof 
-  oops*)
-
-
-
-(*definition em_\<alpha> :: "'a Electoral_Module_Ref  \<Rightarrow> 
-   'a Electoral_Module" where
-  "em_\<alpha> mr = (\<lambda> A p. (res_\<alpha> (mr A (p))))"*)
-
 end
