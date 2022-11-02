@@ -19,6 +19,7 @@ directories
 
 theories
 (* "Social-Choice Types" *)
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Counting_Functions_Code"
   "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Profile_Array"
   "Compositional_Structures/Basic_Modules/Component_Types/Electoral_Module_Ref"
 

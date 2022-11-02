@@ -1,10 +1,10 @@
 theory Counting_Functions_Code
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
-  CAVA_Base.CAVA_Base 
+  Refine_Monadic.Refine_Monadic
 begin
 
-text \<open> Profile_List refines Profile\<close>
+text \<open>Profile List refines Profile\<close>
 
 lemma profile_data_refine:
   assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
@@ -64,13 +64,13 @@ next
     by (metis index_first order_le_imp_less_or_eq)
 qed
 
-schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a"
+(*schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a"
   unfolding index_mon_def
   by (refine_transfer)
 
 concrete_definition index_loop for xs a uses index_monadic_aux
 
-lemma index_loop_correct[simp]:
+lemma index_loop_correct:
   shows "index_loop xs a = List_Index.index xs a"
   using order_trans[OF index_loop.refine index_mon_correct]
   by (auto simp: refine_rel_defs)
@@ -81,23 +81,38 @@ lemma index_member: "List_Index.index l a = length l \<longrightarrow> \<not>Lis
 fun rank_loop :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "rank_loop ballot a = (let idx = (index_loop ballot a) in 
       if idx = (length ballot) then 0 
-      else (idx + 1))" 
+      else (idx + 1))" *)
 
-lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
+(* low level optimization for pref count *)
+definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+  "rank_mon ballot a \<equiv> do {
+    i \<leftarrow> (index_mon ballot a);
+    RETURN (if (i = length ballot) then 0 else (i + 1))
+  }"                          
+
+
+(* using smt for case lifting: TODO remove, manual cases *)
+lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l ballot a)"
+  unfolding rank_mon_def
+proof (unfold rank_l.simps, clarsimp)
+  show "index_mon ballot a \<bind> (\<lambda>i. RETURN (if i = length ballot then 0 else i + 1))
+    \<le> RES {let i = index ballot a in if i = length ballot then 0 else i + 1}"
+    by (smt (z3) RES_sng_eq_RETURN index_mon_correct order_mono_setup.refl specify_left)
+qed
+(*lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
 proof (simp, safe)
-  assume a1: "List_Index.index ballot a = length ballot"
   assume a2: "List.member ballot a"
   from a1 a2 show "False" using index_member by metis
 next
   assume "List_Index.index ballot a \<noteq> length ballot"
   thus "List.member ballot a"
     by (metis in_set_member size_index_conv)
-qed
+qed*)
 
 section \<open>Monadic implementation of counting functions \<close>
 
 text \<open>
-  win_count, multiple refinement steps
+  win-count, multiple refinement steps
 \<close>
 
 definition "wc_invar p0 a \<equiv> \<lambda>(r,ac).
@@ -294,7 +309,7 @@ qed
 
 lemma top_l_above_r:
   assumes ballot: "ballot_on A pl"
-  assumes ne: "length pl > 0"
+  assumes aA: "a \<in> A" and ne: "length pl > 0"
   shows "pl!0 = a \<longleftrightarrow> above (pl_\<alpha> pl) a = {a}"
 proof -
   from ne have listeq: "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
@@ -309,7 +324,7 @@ qed
 
 
 lemma winsr_imp_refine:
-  assumes "(l,r)\<in>build_rel pl_\<alpha> (ballot_on A)"
+  assumes "(l,r)\<in>build_rel pl_\<alpha> (ballot_on A)" and aA: "a \<in> A"
   shows "winsr_imp l a = (winsr r a)"
   unfolding winsr_imp_def winsr_def
   using rankeq
@@ -352,7 +367,7 @@ definition win_count_imp :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat 
   
 
 lemma win_count_imp_refine: 
-  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
   shows "win_count_imp pl a \<le> \<Down>Id (win_count_mon_outer pr a)"
   using assms unfolding win_count_imp_def win_count_mon_outer_def
   apply (refine_rcg)
@@ -363,7 +378,7 @@ lemma win_count_imp_refine:
   by (metis (no_types, lifting) brI profile_l_def)
     
 theorem win_count_imp_correct:
-  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
   shows "win_count_imp pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using ref_two_step[OF win_count_imp_refine win_count_mon_outer_correct] assms
     profile_data_refine by fastforce
@@ -407,7 +422,7 @@ qed
 
 
 theorem win_count_imp'_correct:
-  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
   shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using ref_two_step[OF win_count_imp'_refine win_count_imp_correct] 
       assms refine_IdD in_br_conv
@@ -415,7 +430,7 @@ theorem win_count_imp'_correct:
 
 
 text \<open>
-  pref_count
+  pref count
 \<close>
 
 definition  "prefer_count_invariant p x y \<equiv> \<lambda>(r, ac).
@@ -464,5 +479,27 @@ next
     using less_Suc_eq by metis    
 qed  
 
+
+definition prefer_count_mon_list :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where
+  "prefer_count_mon_list p x y \<equiv> do {
+   (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+    ASSERT (i < length p);
+    let b = (p!i);
+    let ac = ac + (if y \<lesssim>\<^sub>b x then 1 else 0);
+    let i = i + 1;
+    RETURN (i, ac)
+  })(0,0);
+  RETURN ac
+}"
+
+lemma prefer_count_mon_list_refine:
+  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)"
+  shows "prefer_count_mon_list pl a b \<le> \<Down>Id (prefer_count_mon pr a b)"
+    using assms unfolding prefer_count_mon_list_def prefer_count_mon_def
+  apply (refine_rcg)
+  apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
+    refinement goals\<close>
+  apply (auto simp add: refine_rel_defs) unfolding pl_\<alpha>_def is_less_preferred_than.simps
+  by auto
 
 end

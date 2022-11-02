@@ -10,18 +10,23 @@ definition electoral_module_r :: " 'a Electoral_Module_Ref \<Rightarrow> bool" w
   "electoral_module_r mr \<equiv> \<forall> A pa. finite_profile_a A pa \<longrightarrow> well_formed A (mr A pa)"
 
 lemma em_corres:
-  shows "\<forall>A pa. ((em_r, em) \<in> (Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> (Id \<times>\<^sub>r Id \<times>\<^sub>r Id))
-      \<and> (profile_a A pa))
-      \<longrightarrow> (em_r A pa) = (em A (pa_to_pr pa))"
-proof (clarsimp)
-  fix A :: "'a set" and
-      pa :: "'a Profile_Array"
+  fixes A :: "'a set" and pa :: "'a Profile_Array"
+  assumes "(em_r, em) \<in> (Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> Id)" 
+      and " (profile_a A pa)"
+  shows "(em_r A pa) = (em A (pa_to_pr pa))"
+using assms proof (-)
   assume p: "profile_a A pa"
   assume "(em_r, em) \<in> Id \<rightarrow> br pa_to_pr (profile_a A) \<rightarrow> Id"
   from p this show "em_r A pa = em A (pa_to_pr pa)"
     by (metis (no_types, opaque_lifting) in_br_conv pair_in_Id_conv tagged_fun_relD_none)
 qed
 
+lemma em_onA:
+  fixes A :: "'a set" 
+  assumes "(em_r A, em A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> Id" 
+    and " (profile_a A pa)"
+  shows "(em_r A pa) = (em A (pa_to_pr pa))"
+  by (metis assms(1) assms(2) brI pair_in_Id_conv tagged_fun_relD_rhs)
 
 (*lemma elec_mod_r_refine:
   "(Electoral_Module_Ref, Electoral_Module) \<in> Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> 

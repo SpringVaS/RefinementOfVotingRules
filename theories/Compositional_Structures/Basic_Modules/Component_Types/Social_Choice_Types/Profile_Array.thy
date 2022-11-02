@@ -1,7 +1,9 @@
 theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
-  Counting_Functions_Code
+    Counting_Functions_Code
+    Collections.Diff_Array
+    Collections.ArrayHashMap
 begin
 
 notation array_get ("_[[_]]" [900,0] 1000)
@@ -167,7 +169,7 @@ lemma a_l_r_step: "(pl_to_pr_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
   by (simp add: fun_comp_eq_conv pa_to_pr_def)
   
 lemma win_count_imp_array_correct:
-  assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)"
+  assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)" and aA: "a \<in> A"
   shows "win_count_imp_array pa a \<le> SPEC (\<lambda>ac. ac = win_count pr a)"
   using assms ref_two_step[OF win_count_imp_array_refine win_count_imp'_correct]
   by (metis in_br_conv pa_to_pr_def profile_a_l refine_IdD)
@@ -179,7 +181,7 @@ schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp_array p 
 concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
 
 lemma win_count_array:
-  assumes lg: "(profile_a A pa)"
+  assumes lg: "(profile_a A pa)" and aA: "a \<in> A"
   shows "win_count_imp_code pa a = win_count (pa_to_pr pa) a"
   using assms order_trans[OF win_count_imp_code.refine win_count_imp_array_correct,
       of pa "(pa_to_pr pa)"]
@@ -187,7 +189,7 @@ lemma win_count_array:
 
 
 lemma win_count_array_code_correct: 
-  assumes lg: "(profile_a A pa)"
+  assumes lg: "(profile_a A pa)" and aA: "a \<in> A"
   shows "win_count (pa_to_pr pa) a = win_count_imp_code pa a"
   using assms by (metis lg win_count_array)
 
