@@ -3,6 +3,7 @@ theory Profile_Array
     "Verified_Voting_Rule_Construction.Profile_List"
     Counting_Functions_Code
     Collections.Diff_Array
+    Collections.ArrayHashMap
 begin
 
 notation array_get ("_[[_]]" [900,0] 1000)
@@ -168,7 +169,7 @@ lemma a_l_r_step: "(pl_to_pr_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
   by (simp add: fun_comp_eq_conv pa_to_pr_def)
   
 lemma win_count_imp_array_correct:
-  assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)"
+  assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)" and aA: "a \<in> A"
   shows "win_count_imp_array pa a \<le> SPEC (\<lambda>ac. ac = win_count pr a)"
   using assms ref_two_step[OF win_count_imp_array_refine win_count_imp'_correct]
   by (metis in_br_conv pa_to_pr_def profile_a_l refine_IdD)

@@ -90,32 +90,15 @@ definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nr
     RETURN (if (i = length ballot) then 0 else (i + 1))
   }"                          
 
+
+(* using smt for case lifting: TODO remove, manual cases *)
 lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l ballot a)"
   unfolding rank_mon_def
-proof (clarsimp, safe)
-  assume mem: "List.member ballot a"
-  have nf: "nofail (index_mon ballot a)" using index_mon_correct
-    by (metis SPEC_nofail)
-  from mem have neq: "index ballot a \<noteq> length ballot"
-    by (simp add: in_set_member index_size_conv)
-  have bindidx: "bind (index_mon ballot a) (RETURN) \<le> RES {(index ballot a)}"
-    using index_mon_correct
-    by fastforce
-  from nf neq bindidx have 
-    "index_mon ballot a \<bind> (\<lambda>i. RETURN (if i = length ballot then 0 else i + 1))
-    \<le> bind (index_mon ballot a) (\<lambda> i. RETURN (i + 1))" using index_mon_correct
-    by (smt (verit, best) RES_sng_eq_RETURN bind_cong nres_monad2 nres_order_simps(20) order_class.order_eq_iff order_trans)
-  from nf bindidx have 
-    "bind (index_mon ballot a) (\<lambda> i. RETURN (i + 1)) \<le> RES {(index ballot a) + 1}"
-    by (metis (no_types, lifting) RES_sng_eq_RETURN SPEC_trans bind_le_nofailI nres_monad2 
-        nres_order_simps(20) singleton_conv2)
-
-  
-    
-  
-
-  oops
-
+proof (unfold rank_l.simps, clarsimp)
+  show "index_mon ballot a \<bind> (\<lambda>i. RETURN (if i = length ballot then 0 else i + 1))
+    \<le> RES {let i = index ballot a in if i = length ballot then 0 else i + 1}"
+    by (smt (z3) RES_sng_eq_RETURN index_mon_correct order_mono_setup.refl specify_left)
+qed
 (*lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
 proof (simp, safe)
   assume a2: "List.member ballot a"
@@ -326,7 +309,7 @@ qed
 
 lemma top_l_above_r:
   assumes ballot: "ballot_on A pl"
-  assumes ne: "length pl > 0"
+  assumes aA: "a \<in> A" and ne: "length pl > 0"
   shows "pl!0 = a \<longleftrightarrow> above (pl_\<alpha> pl) a = {a}"
 proof -
   from ne have listeq: "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
@@ -341,7 +324,7 @@ qed
 
 
 lemma winsr_imp_refine:
-  assumes "(l,r)\<in>build_rel pl_\<alpha> (ballot_on A)"
+  assumes "(l,r)\<in>build_rel pl_\<alpha> (ballot_on A)" and aA: "a \<in> A"
   shows "winsr_imp l a = (winsr r a)"
   unfolding winsr_imp_def winsr_def
   using rankeq
@@ -384,7 +367,7 @@ definition win_count_imp :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat 
   
 
 lemma win_count_imp_refine: 
-  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
   shows "win_count_imp pl a \<le> \<Down>Id (win_count_mon_outer pr a)"
   using assms unfolding win_count_imp_def win_count_mon_outer_def
   apply (refine_rcg)
@@ -395,7 +378,7 @@ lemma win_count_imp_refine:
   by (metis (no_types, lifting) brI profile_l_def)
     
 theorem win_count_imp_correct:
-  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
   shows "win_count_imp pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using ref_two_step[OF win_count_imp_refine win_count_mon_outer_correct] assms
     profile_data_refine by fastforce
@@ -439,7 +422,7 @@ qed
 
 
 theorem win_count_imp'_correct:
-  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)" and aA: "a \<in> A"
   shows "win_count_imp' pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using ref_two_step[OF win_count_imp'_refine win_count_imp_correct] 
       assms refine_IdD in_br_conv
