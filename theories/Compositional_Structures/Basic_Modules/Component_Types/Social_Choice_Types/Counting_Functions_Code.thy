@@ -1,7 +1,7 @@
 theory Counting_Functions_Code
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
-  CAVA_Base.CAVA_Base 
+  Refine_Monadic.Refine_Monadic
 begin
 
 text \<open> Profile_List refines Profile\<close>
@@ -64,13 +64,13 @@ next
     by (metis index_first order_le_imp_less_or_eq)
 qed
 
-schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a"
+(*schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a"
   unfolding index_mon_def
   by (refine_transfer)
 
 concrete_definition index_loop for xs a uses index_monadic_aux
 
-lemma index_loop_correct[simp]:
+lemma index_loop_correct:
   shows "index_loop xs a = List_Index.index xs a"
   using order_trans[OF index_loop.refine index_mon_correct]
   by (auto simp: refine_rel_defs)
@@ -81,18 +81,50 @@ lemma index_member: "List_Index.index l a = length l \<longrightarrow> \<not>Lis
 fun rank_loop :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "rank_loop ballot a = (let idx = (index_loop ballot a) in 
       if idx = (length ballot) then 0 
-      else (idx + 1))" 
+      else (idx + 1))" *)
 
-lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
+(* low level optimization for pref count *)
+definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+  "rank_mon ballot a \<equiv> do {
+    i \<leftarrow> (index_mon ballot a);
+    RETURN (if (i = length ballot) then 0 else (i + 1))
+  }"                          
+
+lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l ballot a)"
+  unfolding rank_mon_def
+proof (clarsimp, safe)
+  assume mem: "List.member ballot a"
+  have nf: "nofail (index_mon ballot a)" using index_mon_correct
+    by (metis SPEC_nofail)
+  from mem have neq: "index ballot a \<noteq> length ballot"
+    by (simp add: in_set_member index_size_conv)
+  have bindidx: "bind (index_mon ballot a) (RETURN) \<le> RES {(index ballot a)}"
+    using index_mon_correct
+    by fastforce
+  from nf neq bindidx have 
+    "index_mon ballot a \<bind> (\<lambda>i. RETURN (if i = length ballot then 0 else i + 1))
+    \<le> bind (index_mon ballot a) (\<lambda> i. RETURN (i + 1))" using index_mon_correct
+    by (smt (verit, best) RES_sng_eq_RETURN bind_cong nres_monad2 nres_order_simps(20) order_class.order_eq_iff order_trans)
+  from nf bindidx have 
+    "bind (index_mon ballot a) (\<lambda> i. RETURN (i + 1)) \<le> RES {(index ballot a) + 1}"
+    by (metis (no_types, lifting) RES_sng_eq_RETURN SPEC_trans bind_le_nofailI nres_monad2 
+        nres_order_simps(20) singleton_conv2)
+
+  
+    
+  
+
+  oops
+
+(*lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
 proof (simp, safe)
-  assume a1: "List_Index.index ballot a = length ballot"
   assume a2: "List.member ballot a"
   from a1 a2 show "False" using index_member by metis
 next
   assume "List_Index.index ballot a \<noteq> length ballot"
   thus "List.member ballot a"
     by (metis in_set_member size_index_conv)
-qed
+qed*)
 
 section \<open>Monadic implementation of counting functions \<close>
 

@@ -1,7 +1,8 @@
 theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
-  Counting_Functions_Code
+    Counting_Functions_Code
+    Collections.Diff_Array
 begin
 
 notation array_get ("_[[_]]" [900,0] 1000)
