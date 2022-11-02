@@ -181,7 +181,7 @@ schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp_array p 
 concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
 
 lemma win_count_array:
-  assumes lg: "(profile_a A pa)"
+  assumes lg: "(profile_a A pa)" and aA: "a \<in> A"
   shows "win_count_imp_code pa a = win_count (pa_to_pr pa) a"
   using assms order_trans[OF win_count_imp_code.refine win_count_imp_array_correct,
       of pa "(pa_to_pr pa)"]
@@ -189,7 +189,7 @@ lemma win_count_array:
 
 
 lemma win_count_array_code_correct: 
-  assumes lg: "(profile_a A pa)"
+  assumes lg: "(profile_a A pa)" and aA: "a \<in> A"
   shows "win_count (pa_to_pr pa) a = win_count_imp_code pa a"
   using assms by (metis lg win_count_array)
 

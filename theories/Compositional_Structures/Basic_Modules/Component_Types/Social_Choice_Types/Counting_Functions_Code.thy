@@ -4,7 +4,7 @@ theory Counting_Functions_Code
   Refine_Monadic.Refine_Monadic
 begin
 
-text \<open> Profile_List refines Profile\<close>
+text \<open>Profile List refines Profile\<close>
 
 lemma profile_data_refine:
   assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
@@ -112,7 +112,7 @@ qed*)
 section \<open>Monadic implementation of counting functions \<close>
 
 text \<open>
-  win_count, multiple refinement steps
+  win-count, multiple refinement steps
 \<close>
 
 definition "wc_invar p0 a \<equiv> \<lambda>(r,ac).
@@ -430,7 +430,7 @@ theorem win_count_imp'_correct:
 
 
 text \<open>
-  pref_count
+  pref count
 \<close>
 
 definition  "prefer_count_invariant p x y \<equiv> \<lambda>(r, ac).

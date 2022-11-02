@@ -13,15 +13,18 @@ fun plurality_r :: "'a Electoral_Module_Ref" where
 
 lemma datarefplurality:
   fixes A :: "'a set"
-  shows "(plurality_r, plurality) \<in> Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> Id \<times>\<^sub>r Id \<times>\<^sub>r Id"
+  shows "(plurality_r A, plurality A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> Id"
   apply (refine_rcg)
   apply (auto simp add: 
     refine_rel_defs win_count_array) 
   done
 
 lemma plurality_ref_eq:
-  shows "\<forall> A pa. (profile_a A pa) \<longrightarrow> plurality_r A pa = plurality A (pa_to_pr pa)"
-  using datarefplurality em_corres by metis
+  fixes A :: "'a set" and pa :: "'a Profile_Array"
+  assumes "(profile_a A pa)"
+  shows "plurality_r A pa = plurality A (pa_to_pr pa)"
+  using assms datarefplurality em_onA
+  by blast 
 
 lemma plurality_r_sound:
   shows "electoral_module_r plurality_r" 
