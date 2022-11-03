@@ -1,7 +1,7 @@
 theory Counting_Functions_Code
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
-  Refine_Monadic.Refine_Monadic
+  Refine_Imperative_HOL.IICF
 begin
 
 text \<open>Profile List refines Profile\<close>
@@ -26,8 +26,10 @@ definition "index_mon_inv ballot a \<equiv> \<lambda> (i).
 (* low level optimization for pref count *)
 definition index_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
   "index_mon ballot a \<equiv> do {
-    i \<leftarrow> WHILET (\<lambda>(i). (i < (length ballot) \<and> ballot!i \<noteq> a)) 
+    i \<leftarrow> WHILEIT ((index_mon_inv ballot a)) (\<lambda>(i). (i < (length ballot) \<and> ballot!i \<noteq> a)) 
       (\<lambda>(i). do {
+      ASSERT (i < (length ballot));
+      ASSERT (ballot!i \<noteq> a);
       RETURN (i + 1)
     })(0);
     RETURN (i)
@@ -37,7 +39,7 @@ definition index_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat n
 lemma index_mon_correct:
   shows "index_mon ballot_l a \<le> SPEC (\<lambda> r. r = List_Index.index ballot_l a)"
   unfolding index_mon_def   
-  apply (intro WHILET_rule[where I="(index_mon_inv ballot_l a)" and R="measure (\<lambda>(i). length ballot_l - i)"] refine_vcg)
+  apply (intro WHILEIT_rule[where  R="measure (\<lambda>(i). length ballot_l - i)"] refine_vcg)
   unfolding index_mon_inv_def 
   apply (clarsimp_all, safe, simp_all)
 proof -

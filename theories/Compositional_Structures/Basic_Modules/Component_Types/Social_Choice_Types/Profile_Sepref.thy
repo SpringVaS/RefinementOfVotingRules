@@ -6,13 +6,25 @@ theory Profile_Sepref
 
 begin
 
-definition profile_invar :: "'a Profile_List \<Rightarrow> bool " where
-    "profile_invar \<equiv> (profile_l (A::'a set))"
+definition "ballot_rel A \<equiv> br pl_\<alpha> (ballot_on A)"
 
-abbreviation "profile_rel \<equiv> br pl_to_pr_\<alpha> (profile_l A)"
 
-abbreviation "profile_assn \<equiv> array_assn (array_assn id_assn)"
+definition "ballot_assn A \<equiv> hr_comp ballot_imp_assn (ballot_rel A)"
 
-definition index_mon_imp
+sepref_definition idx_imp is 
+  "uncurry index_mon" :: "(array_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
+  unfolding index_mon_def[abs_def] index_mon_inv_def[abs_def]
+  by sepref
+  
+
+
+definition "profile_rel A \<equiv> br pl_to_pr_\<alpha> (profile_l A)"
+
+
+
+abbreviation "profile_impl_assn \<equiv> array_assn (array_assn id_assn)"
+
+definition "profile_assn A
+    \<equiv> hr_comp profile_impl_assn (profile_rel A)"
 
 end
