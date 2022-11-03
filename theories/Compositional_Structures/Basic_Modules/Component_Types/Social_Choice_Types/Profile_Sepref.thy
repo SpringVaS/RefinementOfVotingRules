@@ -11,14 +11,12 @@ definition "ballot_rel A \<equiv> br pl_\<alpha> (ballot_on A)"
 
 definition "ballot_assn A \<equiv> hr_comp (array_assn id_assn) (ballot_rel A)"
 
+abbreviation "cand_assn \<equiv> (id_assn::'a \<Rightarrow> _)"
+
+
 sepref_definition idx_imp is 
   "uncurry index_mon" :: "(array_assn nat_assn)\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
   unfolding index_mon_def[abs_def] index_mon_inv_def[abs_def]
-  apply (sepref_dbg_keep)
-  supply [[goals_limit=1]] \<comment> \<open>There will be many subgoals during translation, and printing them takes very long with Isabelle :(\<close>
-      apply sepref_dbg_trans_keep
-  apply sepref_dbg_trans_step_keep
-
   by sepref
   
 

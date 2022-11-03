@@ -20,72 +20,68 @@ qed
 
 text \<open> Monadic definition of ballot properties \<close>
 
-definition "index_mon_inv ballot a \<equiv> \<lambda> (i).
-    (i \<le> List_Index.index ballot a)"
+definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
+    (i \<le> List_Index.index ballot a)
+  \<and> (found \<longrightarrow> (i = List_Index.index ballot a)))"
+(*  \<and> (\<not>found \<longrightarrow> (i \<le> List_Index.index ballot a)))"*)
 
 (* low level optimization for pref count *)
 definition index_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
   "index_mon ballot a \<equiv> do {
-    i \<leftarrow> WHILEIT ((index_mon_inv ballot a)) (\<lambda>(i). (i < (length ballot) \<and> ballot!i \<noteq> a)) 
-      (\<lambda>(i). do {
+    (i, found) \<leftarrow> WHILEIT ((index_mon_inv ballot a)) 
+  (\<lambda>(i, found). (i < (length ballot) \<and> \<not>found)) 
+      (\<lambda>(i,_). do {
       ASSERT (i < (length ballot));
-      ASSERT (ballot!i \<noteq> a);
-      RETURN (i + 1)
-    })(0);
+      let xi = ballot!i; \<comment> \<open>It's not trivial to show that \<open>i\<close> is in range\<close>
+      if a=xi then
+        RETURN (i,True)
+      else
+        RETURN (i+1,False)
+    })(0, False);
     RETURN (i)
   }"                          
 
+lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))" by simp
+
+lemma index_sound:
+  fixes a:: 'a and l :: "'a list" and i::nat
+  assumes  "i \<le> index l a"
+  shows "(a = l ! i) \<longrightarrow> (i = index l a)"
+  by (metis assms(1) index_first le_eq_less_or_eq)
+
+  
 
 lemma index_mon_correct:
-  shows "index_mon ballot_l a \<le> SPEC (\<lambda> r. r = List_Index.index ballot_l a)"
-  unfolding index_mon_def   
-  apply (intro WHILEIT_rule[where  R="measure (\<lambda>(i). length ballot_l - i)"] refine_vcg)
-  unfolding index_mon_inv_def 
-  apply (clarsimp_all, safe, simp_all)
-proof -
+  shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = List_Index.index ballot a)"
+  unfolding index_mon_def index_mon_inv_def
+  apply (intro WHILEIT_rule[where  R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
+proof (safe, simp_all)
+  fix aa::nat
+  assume bound: "aa \<le> index ballot (ballot ! aa)"
+  (*assume range : "aa < length ballot"*)
+  thus "aa = index ballot (ballot ! aa)" by (simp add: index_sound)
+next
   fix i
-  assume notyet: "i \<le> List_Index.index ballot_l a"
-  assume ir: "i < length ballot_l"
-  assume notnow: "ballot_l ! i \<noteq> a"
-  from notnow have "i \<noteq> List_Index.index ballot_l a"
+  assume notnow: "a \<noteq> ballot ! i"
+  assume notyet: "i \<le> List_Index.index ballot a"
+  assume ir: "i < length ballot"
+  from notnow have "i \<noteq> List_Index.index ballot a"
     by (metis index_eq_iff ir)
-  from notyet this show "Suc i \<le> List_Index.index ballot_l a"
+  from notyet this show "Suc i \<le> List_Index.index ballot a"
     by fastforce
 next
-  fix i
-  assume a1: "i \<le> List_Index.index ballot_l a"
-  assume a2: "\<not> i < length ballot_l"
-  from a2 have "i \<ge> length ballot_l" by fastforce
-  from a1 this show "i = List_Index.index ballot_l a"
-    using index_le_size
-    by (metis le_trans verit_la_disequality)
+  assume "index ballot a < length ballot"
+  and "a \<noteq> ballot ! index ballot a"
+  thus "False"
+    by (metis index_eq_iff)
 next
-  fix i
-  assume "i \<le> List_Index.index ballot_l (ballot_l ! i)"
-  from this show "i = List_Index.index ballot_l (ballot_l ! i)"
-    by (metis index_first order_le_imp_less_or_eq)
+  fix aa
+  assume "aa \<le> index ballot a"
+    and "aa \<noteq> index ballot a"
+  thus "aa < length ballot"
+    by (metis antisym index_le_size le_neq_implies_less order_trans)
 qed
 
-(*schematic_goal index_monadic_aux: "RETURN ?index_loop_based \<le> index_mon xs a"
-  unfolding index_mon_def
-  by (refine_transfer)
-
-concrete_definition index_loop for xs a uses index_monadic_aux
-
-lemma index_loop_correct:
-  shows "index_loop xs a = List_Index.index xs a"
-  using order_trans[OF index_loop.refine index_mon_correct]
-  by (auto simp: refine_rel_defs)
-
-lemma index_member: "List_Index.index l a = length l \<longrightarrow> \<not>List.member l a"
-  by (simp add: in_set_member index_size_conv)
-
-fun rank_loop :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
-  "rank_loop ballot a = (let idx = (index_loop ballot a) in 
-      if idx = (length ballot) then 0 
-      else (idx + 1))" *)
-
-(* low level optimization for pref count *)
 definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
   "rank_mon ballot a \<equiv> do {
     i \<leftarrow> (index_mon ballot a);
@@ -111,17 +107,6 @@ next
     by (metis singleton_conv)
 qed
     
-
-
-(*lemma rank_loop_eq: "rank_loop ballot a = rank_l ballot a"
-proof (simp, safe)
-  assume a2: "List.member ballot a"
-  from a1 a2 show "False" using index_member by metis
-next
-  assume "List_Index.index ballot a \<noteq> length ballot"
-  thus "List.member ballot a"
-    by (metis in_set_member size_index_conv)
-qed*)
 
 section \<open>Monadic implementation of counting functions \<close>
 
