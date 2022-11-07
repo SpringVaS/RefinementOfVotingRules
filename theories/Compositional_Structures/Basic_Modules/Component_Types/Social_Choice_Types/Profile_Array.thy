@@ -23,12 +23,18 @@ lemma wfa_imp_wfl[simp]: "well_formed_prefa pa \<longrightarrow> well_formed_pl 
 
 definition array_index_of_mon :: "'a Preference_Array \<Rightarrow> 'a \<Rightarrow> nat nres" where
   "array_index_of_mon ballot a \<equiv> do {
-    i \<leftarrow> WHILET (\<lambda>(i). (i < (array_length ballot) \<and> ballot[[i]] \<noteq> a)) 
-      (\<lambda>(i). do {
-      RETURN (i + 1)
-    })(0);
+   (i, found) \<leftarrow> WHILEIT (index_mon_inv (list_of_array ballot) a) 
+  (\<lambda>(i, found). (i < (array_length ballot) \<and> \<not>found)) 
+      (\<lambda>(i,_). do {
+      ASSERT (i < (array_length ballot));
+      let (c) = (ballot[[i]]);
+      if (a = c) then
+        RETURN (i,True)
+      else
+        RETURN (i+1,False)
+    })(0, False);
     RETURN (i)
-  }"         
+  }"                    
 
 
 lemma array_length_idx[simp]: 
@@ -59,8 +65,8 @@ qed
 lemma array_index_refine : 
   shows "array_index_of_mon ballot_a a \<le> \<Down>Id (index_mon (list_of_array ballot_a) a)"
   unfolding array_index_of_mon_def index_mon_def
-  apply (refine_rcg)
-   apply (refine_dref_type)
+  apply (refine_rcg index_mon_correct)
+  apply (refine_dref_type)
   by auto
 
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where
