@@ -164,7 +164,7 @@ qed
 
 lemma win_count_imp_array_refine:
   assumes "(pa, pl) \<in> br pa_to_pl (profile_a A)"
-  shows "win_count_imp_array pa a \<le> \<Down>Id (win_count_imp' pl a)"
+  shows "win_count_imp_array pa a \<le> \<Down>Id (win_count_ pl a)"
   unfolding win_count_imp_array_def win_count_imp'_def winsr_imp'_def
   apply (refine_rcg)
   apply (refine_dref_type)

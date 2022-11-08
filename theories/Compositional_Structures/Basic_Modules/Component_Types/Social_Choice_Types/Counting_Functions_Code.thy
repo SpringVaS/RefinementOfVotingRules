@@ -203,9 +203,6 @@ lemma carde: assumes pprofile: "profile A p"
 
 lemma isp1_measure: "wf (measure (\<lambda>(i, _).(length p) - i))" by simp
 
-lemma lgt0: "\<forall>l i. (i < length l \<longrightarrow> lengthl - Suc i < length l - i)"
-  oops
-
 lemma win_count_mon_r_correct:
   assumes prof: "profile A p"
   shows "win_count_mon_r p a \<le> SPEC (\<lambda> wc. wc = win_count p a)"
@@ -257,11 +254,6 @@ lemma win_count_mon_r_refine_spec:
   done
 
 
-definition winsr :: "'a Preference_Relation \<Rightarrow> 'a \<Rightarrow> nat" where
-  "winsr r a \<equiv> (if (rank r a = 1) then 1 else 0)"
-
-
-
 schematic_goal wc_code_aux: "RETURN ?wc_code \<le> win_count_mon p a"
   unfolding win_count_mon_def
   by (refine_transfer)
@@ -280,17 +272,6 @@ qed
 export_code win_count in Scala
 
 text \<open> Data refinement \<close>
-
-definition winsr_list :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat" where
-  "winsr_list l a \<equiv> (if (rank_l l a = 1) then 1 else 0)"
-
-(* This implementation requires the aasumption that ballots are not empty
-   For empty ballots, a guard must be added to avoid accessing the first element *)
-definition winsr_imp' :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-  "winsr_imp' l a \<equiv> do {
-    ranka \<leftarrow> rank_mon l a;
-    RETURN (if (ranka = 1) then 1 else 0)
-}"
 
 (* these auxiliary lemmas illustrate the equivalence of checking the the first
   candidate on a non empty ballot. *)
@@ -333,42 +314,13 @@ proof -
     by (simp)
 qed
 
-
-lemma winsr_list_refine:
-  assumes "(l,r)\<in>build_rel pl_\<alpha> (ballot_on A)" and aA: "a \<in> A"
-  shows "winsr_list l a = (winsr r a)"
-  unfolding winsr_list_def winsr_def
-  using rankeq assms
-  by (metis in_br_conv)
-
-lemma nmem_empty_l[simp]:
-  shows "\<not>List.member [] a"
-    by (simp add: member_rec(2))
-
-lemma winsr_imp'_ref:
-(*and "l \<noteq> []"  necessary when not checking for empty ballots *)
-  shows "(winsr_imp', (\<lambda> ballot a. RETURN (winsr_list ballot a))) \<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  unfolding winsr_imp'_def winsr_list_def
-  apply (refine_vcg rank_mon_correct)
-  by auto
-(*proof (auto)
-  show "List_Index.index l (l ! 0) = 0"
-    by (simp add: index_eqI) 
-next
-  assume amem: "List.member l a"
-  assume anhd: "l!0 \<noteq> a"
-  from amem anhd show "0 < List_Index.index l a"
-    by (metis gr0I in_set_member nth_index)
-next
-  assume "\<not> List.member l (l ! 0)" and "l \<noteq> []"
-  thus "False"
-    by (metis hd_conv_nth hd_in_set in_set_member)
-qed*)
+definition "wc_list_invar p0 a \<equiv> \<lambda>(i,ac).
+  0 \<le> i \<and> i \<le> length p0"
 
 
-definition win_count_imp :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_imp p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+definition win_count_list_r :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_list_r p a \<equiv> do {
+  (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
     let ballot = p!i;
     let ranka = rank_l ballot a;
@@ -394,9 +346,10 @@ proof -
 qed
 
 
-lemma win_count_imp_refine: 
-  shows "(win_count_imp, win_count_mon_r) \<in> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  unfolding win_count_imp_def win_count_mon_r_def pl_to_pr_\<alpha>_def profile_l_def
+lemma win_count_list_r_refine: 
+  shows "(win_count_list_r, win_count_mon_r) \<in> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding win_count_list_r_def win_count_mon_r_def pl_to_pr_\<alpha>_def profile_l_def wc_list_invar_def
+    wc_invar_def
   apply (refine_vcg rankeq_refine)
       apply clarsimp_all
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
@@ -457,10 +410,10 @@ next
     by simp
 qed
   
-theorem win_count_imp_correct:
-  shows "(win_count_imp, (\<lambda> pr a. RETURN (win_count pr a))) \<in>
+theorem win_count_list_r_correct:
+  shows "(win_count_list_r, (\<lambda> pr a. RETURN (win_count pr a))) \<in>
     br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply (refine_vcg win_count_imp_refine win_count_mon_r_refine_spec)
+  apply (refine_vcg win_count_list_r_refine win_count_mon_r_refine_spec)
 proof auto
   fix pl:: "'a Profile_List"
   fix pr:: "'a Profile"
@@ -472,17 +425,17 @@ proof auto
   from this have "win_count_mon_r pr alt \<le> SPEC (\<lambda>c. (c, win_count pr alt) \<in> nat_rel)"
     using win_count_mon_r_correct by (metis (mono_tags, lifting) SPEC_cons_rule pair_in_Id_conv)
   from this 
-    rel have "win_count_imp pl alt \<le> SPEC (\<lambda>c. (c, win_count pr alt) \<in> nat_rel)" using win_count_imp_refine
+    rel have "win_count_list_r pl alt \<le> SPEC (\<lambda>c. (c, win_count pr alt) \<in> nat_rel)" using win_count_list_r_refine
     by (metis conc_trans_additional(5) nres_relD pair_in_Id_conv relAPP_def tagged_fun_relD_both)
-  from this show "win_count_imp pl alt \<le> RES {card {i. i < length pr \<and> above (pr ! i) alt = {alt}}}"
+  from this show "win_count_list_r pl alt \<le> RES {card {i. i < length pr \<and> above (pr ! i) alt = {alt}}}"
     by fastforce
 qed
   
 
 
-definition win_count_r_imp :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_r_imp p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+definition win_count_list_r_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_list_r_mon p a \<equiv> do {
+  (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
     let ballot = p!i;
     ranka \<leftarrow> (rank_mon ballot a);
@@ -493,9 +446,9 @@ definition win_count_r_imp :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> na
   RETURN ac
 }"
 
-lemma win_count_imp_r_refine: 
-  shows "(win_count_r_imp, win_count_imp) \<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  unfolding win_count_r_imp_def win_count_imp_def
+lemma win_count_list_r_mon_refine: 
+  shows "(win_count_list_r_mon, win_count_list_r) \<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding win_count_list_r_mon_def win_count_list_r_def
   apply (refine_vcg rank_mon_correct)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
