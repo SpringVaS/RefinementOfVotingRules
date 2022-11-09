@@ -361,15 +361,15 @@ proof (-)
   fix alt::'a
   assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
   assume ir: "idx < length pl"
-  assume con: "alt \<in> set (pl ! idx)"
+  assume mem: "List.member (pl ! idx) alt"
   assume fst: "index (pl ! idx) alt = 0"
   from prof ir have ibal: "ballot_on A (pl!idx)"
     by blast 
-  from ibal con have aA: "alt \<in> A"
-    by (metis Preference_List.limited_def connex_l_def in_set_member lin_ord_imp_connex_l)
-  from con fst have "(rank_l (pl!idx) alt) = 1"
-    by auto
-  from aA ibal this have "(rank (pl_\<alpha> (pl!idx)) alt) = 1" using rankeq
+  from mem fst have "length (pl!idx) \<noteq> 0"
+    by (metis index_size_conv member_def)     
+  from mem fst this  have "(rank_l (pl!idx) alt) = 1"
+    by fastforce
+  from ibal this have "(rank (pl_\<alpha> (pl!idx)) alt) = 1" using rankeq
     by metis
   from this show "card (above (pl_\<alpha> (pl!idx)) alt) = Suc 0"
     by simp
@@ -379,13 +379,11 @@ next
   fix alt::'a
   assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
   assume ir: "idx < length pl"
-  assume con: "alt \<in> set (pl ! idx)"
+  assume con: "List.member (pl ! idx) alt"
   assume fst: "index (pl ! idx) alt > 0"
   assume np: "card (above (pl_\<alpha> (pl ! idx)) alt) = Suc 0"
   from prof ir have ibal: "ballot_on A (pl!idx)"
     by blast 
-  from ibal con have aA: "alt \<in> A"
-    by (metis Preference_List.limited_def connex_l_def in_set_member lin_ord_imp_connex_l)
   from con fst have "(rank_l (pl!idx) alt) > 1"
     by auto
   from ibal this have "(rank (pl_\<alpha> (pl!idx)) alt) > 1" using rankeq
@@ -397,7 +395,7 @@ next
   fix alt::'a
   assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
   assume ir: "idx < length pl"
-  assume ncon: "alt \<notin> set (pl ! idx)"
+  assume ncon: "\<not> List.member (pl ! idx) alt"
   assume rank1: "card (above (pl_\<alpha> (pl ! idx)) alt) = Suc 0"
   from prof ir have ibal: "ballot_on A (pl!idx)"
     by blast 

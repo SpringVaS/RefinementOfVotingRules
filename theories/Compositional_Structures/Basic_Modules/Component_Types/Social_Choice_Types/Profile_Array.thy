@@ -186,6 +186,8 @@ schematic_goal wc_code_refine_aux: "RETURN ?wc_code \<le> win_count_imp_array p 
 
 concrete_definition win_count_imp_code for p a uses wc_code_refine_aux
 
+thm win_count_imp_code_def
+
 lemma win_count_array:
   assumes lg: "(profile_a A pa)" and aA: "a \<in> A"
   shows "win_count_imp_code pa a = win_count (pa_to_pr pa) a"
