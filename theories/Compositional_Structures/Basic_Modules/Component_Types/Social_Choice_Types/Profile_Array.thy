@@ -2,18 +2,16 @@ theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
     Counting_Functions_Code
-    Collections.Diff_Array
-    Collections.ArrayHashMap
+    "$AFP/Refine_Imperative_HOL/IICF/Impl/IICF_Array"
 begin
 
-notation array_get ("_[[_]]" [900,0] 1000)
 
 type_synonym 'a Preference_Array = "'a array"
 
 type_synonym 'a Profile_Array = "('a Preference_Array) array"
 
 definition well_formed_prefa :: "'a Preference_Array \<Rightarrow> bool" where
-  "well_formed_prefa pa = ((array_length pa > 0) \<and> distinct (list_of_array pa))"
+  "well_formed_prefa pa = (((IICF_Array.array_length pa) > 0))"
 
 lemma wfa_imp_wfl[simp]: "well_formed_prefa pa \<longrightarrow> well_formed_pl (list_of_array pa)"
   unfolding well_formed_prefa_def well_formed_pl_def
@@ -65,9 +63,19 @@ qed
 lemma array_index_refine : 
   shows "array_index_of_mon ballot_a a \<le> \<Down>Id (index_mon (list_of_array ballot_a) a)"
   unfolding array_index_of_mon_def index_mon_def
-  apply (refine_rcg index_mon_correct)
+  apply (refine_rcg)
   apply (refine_dref_type)
   by auto
+
+schematic_goal idx_array_code_ref_aux: "RETURN ?idx_code_a \<le> array_index_of_mon p a"
+  unfolding array_index_of_mon_def
+  by (refine_transfer)
+
+concrete_definition idx_array_code for p a uses idx_array_code_ref_aux
+
+thm idx_array_code_def
+
+export_code idx_array_code in Scala
 
 definition is_less_pref_array ::"'a \<Rightarrow> 'a Preference_Array \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "is_less_pref_array x ballot y \<equiv> do {
@@ -195,6 +203,8 @@ lemma win_count_array:
       of pa "(pa_to_pr pa)"]
   by (auto simp: refine_rel_defs)
 
+
+export_code win_count_imp_code in Scala
 
 lemma win_count_array_code_correct: 
   assumes lg: "(profile_a A pa)" and aA: "a \<in> A"

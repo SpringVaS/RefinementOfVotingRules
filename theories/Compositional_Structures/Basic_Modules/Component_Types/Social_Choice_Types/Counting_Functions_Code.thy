@@ -91,7 +91,7 @@ lemma index_mon_refine:
 definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
   "rank_mon ballot a \<equiv> do {
     i \<leftarrow> (index_mon ballot a);
-    RETURN (if (i = length ballot) then 0 else (i + 1))
+    if (i = length ballot) then RETURN 0 else RETURN (i + 1)
   }"       
 
 
@@ -135,9 +135,9 @@ definition win_count_mon :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres"
 "win_count_mon p a \<equiv> do {
   (r, ac) \<leftarrow> WHILET (\<lambda>(r, _). r < length p) (\<lambda>(r, ac). do {
     ASSERT (r < length p);
-    let ac = ac + (if (above (p!r) a = {a}) then 1 else 0);
+    let wc = (if (above (p!r) a = {a}) then (ac + 1) else ac);
     let r = r + 1;
-    RETURN (r, ac)
+    RETURN (r, wc)
   })(0,0);
   RETURN ac
 }"
@@ -148,11 +148,12 @@ definition win_count_mon_r :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nre
   (i, ac) \<leftarrow> WHILEIT (wc_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
     let ballot = p!i;
-    let ranka = rank ballot a;
-    let wins = (if (ranka = 1) then 1 else 0);
-    let ac = ac + wins;
+    wc \<leftarrow> do {
+      ranka \<leftarrow> RETURN (rank ballot a);
+     (if (ranka = 1) then RETURN (ac + 1) else RETURN ac)
+    };
     let i = i + 1;
-    RETURN (i, ac)
+    RETURN (i, wc)
   })(0,0);
   RETURN ac
 }"
@@ -195,6 +196,23 @@ next
        card {i. i < Suc r \<and> above (p ! i) a = {a}}"
     by (metis less_Suc_eq)
 qed
+
+schematic_goal wc_code_aux: "RETURN ?wc_code \<le> win_count_mon p a"
+  unfolding win_count_mon_def
+  by (refine_transfer)
+
+concrete_definition win_count_code for p a uses wc_code_aux
+
+
+lemma win_count_equiv: 
+  shows "win_count p a = win_count_code p a"
+proof -
+  from order_trans[OF win_count_code.refine win_count_mon_correct] 
+    have "win_count_code p a = win_count p a"
+      by fastforce
+  thus ?thesis by simp
+qed
+
 
 lemma carde: assumes pprofile: "profile A p"
   shows "\<forall> r < length p. (card (above (p ! r) a) = 1) = (above (p ! r) a = {a})" 
@@ -254,22 +272,7 @@ lemma win_count_mon_r_refine_spec:
   done
 
 
-schematic_goal wc_code_aux: "RETURN ?wc_code \<le> win_count_mon p a"
-  unfolding win_count_mon_def
-  by (refine_transfer)
 
-concrete_definition win_count_code for p a uses wc_code_aux
-
-lemma win_count_equiv: 
-  shows "win_count p a = win_count_code p a"
-proof -
-  from order_trans[OF win_count_code.refine win_count_mon_correct] 
-    have "win_count_code p a = win_count p a"
-      by fastforce
-  thus ?thesis by simp
-qed
-
-export_code win_count in Scala
 
 text \<open> Data refinement \<close>
 
@@ -323,11 +326,15 @@ definition win_count_list_r :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> n
   (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
     let ballot = p!i;
-    let ranka = rank_l ballot a;
-    let wins = (if (ranka = 1) then 1 else 0);
-    let ac = ac + wins;
+    wc \<leftarrow> do {
+      ranka \<leftarrow> RETURN (rank_l ballot a);
+      if (ranka = 1) then 
+          RETURN (ac + 1) 
+      else 
+          RETURN ac
+    };
     let i = i + 1;
-    RETURN (i, ac)
+    RETURN (i, wc)
   })(0,0);
   RETURN ac
 }"
@@ -347,14 +354,15 @@ qed
 
 
 lemma win_count_list_r_refine: 
-  shows "(win_count_list_r, win_count_mon_r) \<in> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  fixes A:: "'a set"
+  shows "(win_count_list_r, win_count_mon_r) \<in> 
+  (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
   unfolding win_count_list_r_def win_count_mon_r_def pl_to_pr_\<alpha>_def profile_l_def wc_list_invar_def
     wc_invar_def
   apply (refine_vcg rankeq_refine)
-      apply clarsimp_all
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
-  apply (auto simp add: rankeq_refine refine_rel_defs)
+  apply (auto simp add:  rankeq_refine rankdef refine_rel_defs)
 proof (-)
   fix pl:: "'a Profile_List"
   fix idx::nat
@@ -362,53 +370,30 @@ proof (-)
   assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
   assume ir: "idx < length pl"
   assume mem: "List.member (pl ! idx) alt"
-  assume fst: "index (pl ! idx) alt = 0"
-  from prof ir have ibal: "ballot_on A (pl!idx)"
+  from prof ir have bal: "ballot_on A (pl!idx)"
     by blast 
-  from mem fst have "length (pl!idx) \<noteq> 0"
-    by (metis index_size_conv member_def)     
-  from mem fst this  have "(rank_l (pl!idx) alt) = 1"
-    by fastforce
-  from ibal this have "(rank (pl_\<alpha> (pl!idx)) alt) = 1" using rankeq
-    by metis
-  from this show "card (above (pl_\<alpha> (pl!idx)) alt) = Suc 0"
-    by simp
-next
- fix pl:: "'a Profile_List"
-  fix idx::nat
-  fix alt::'a
-  assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
-  assume ir: "idx < length pl"
-  assume con: "List.member (pl ! idx) alt"
-  assume fst: "index (pl ! idx) alt > 0"
-  assume np: "card (above (pl_\<alpha> (pl ! idx)) alt) = Suc 0"
-  from prof ir have ibal: "ballot_on A (pl!idx)"
-    by blast 
-  from con fst have "(rank_l (pl!idx) alt) > 1"
-    by auto
-  from ibal this have "(rank (pl_\<alpha> (pl!idx)) alt) > 1" using rankeq
-    by metis
-  from this np show "False" by simp
-next
-  fix pl:: "'a Profile_List"
-  fix idx::nat
-  fix alt::'a
-  assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
-  assume ir: "idx < length pl"
-  assume ncon: "\<not> List.member (pl ! idx) alt"
-  assume rank1: "card (above (pl_\<alpha> (pl ! idx)) alt) = Suc 0"
-  from prof ir have ibal: "ballot_on A (pl!idx)"
-    by blast 
-  from ncon have "rank_l (pl!idx) alt = 0"
-    by simp 
-  from ibal this have "rank (pl_\<alpha> (pl ! idx)) alt = 0"
+  from bal have "rank_l (pl ! idx) alt = rank (pl_\<alpha> (pl ! idx)) alt" 
     using rankeq
     by metis
-  from this rank1 show "False"
-    by simp
+  from mem this show "Suc (index (pl ! idx) alt) = card (above (pl_\<alpha> (pl ! idx)) alt)"
+    by (metis Suc_eq_plus1 rank.simps rank_alt.elims rankdef)
+next
+    fix pl:: "'a Profile_List"
+  fix idx::nat
+  fix alt::'a
+  assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
+  assume ir: "idx < length pl"
+  assume nmem: "\<not> List.member (pl ! idx) alt"
+   from prof ir have bal: "ballot_on A (pl!idx)"
+    by blast 
+  from bal have "rank_l (pl ! idx) alt = rank (pl_\<alpha> (pl ! idx)) alt" 
+    using rankeq
+    by metis
+  from nmem this show "card (above (pl_\<alpha> (pl ! idx)) alt) = 0"
+    by (simp add: rankdef)
 qed
-  
-theorem win_count_list_r_correct:
+
+lemma win_count_list_r_refine_spec:
   shows "(win_count_list_r, (\<lambda> pr a. RETURN (win_count pr a))) \<in>
     br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
   apply (refine_vcg win_count_list_r_refine win_count_mon_r_refine_spec)
@@ -436,24 +421,94 @@ definition win_count_list_r_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightarro
   (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
     let ballot = p!i;
-    ranka \<leftarrow> (rank_mon ballot a);
-    let ac = ac + (if (ranka = 1) then 1 else 0);
+    wc \<leftarrow> do {
+      ranka \<leftarrow> rank_mon ballot a;
+      if (ranka = 1) then
+        RETURN (ac + 1) 
+      else RETURN ac
+    };
     let i = i + 1;
-    RETURN (i, ac)
+    RETURN (i, wc)
   })(0,0);
   RETURN ac
 }"
 
+
+
 lemma win_count_list_r_mon_refine: 
   shows "(win_count_list_r_mon, win_count_list_r) \<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  unfolding win_count_list_r_mon_def win_count_list_r_def
+  unfolding win_count_list_r_mon_def win_count_list_r_def wc_list_invar_def
   apply (refine_vcg rank_mon_correct)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
   apply (auto simp add: refine_rel_defs)
   done
 
+
 (* TODO correctness proof *)
+
+definition win_count_list_top_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_list_top_mon p a \<equiv> do {
+  (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+    ASSERT (i < length p);
+    let ballot = List.nth p i;
+    winadd \<leftarrow>
+       (if (0 < length ballot)
+        then do {
+        ASSERT (0 < (length ballot));
+        let top = List.nth ballot 0;
+        if (top = a) then 
+         RETURN (ac + 1) 
+         else 
+         RETURN ac
+        }
+       else 
+         RETURN ac);
+    let i = i + 1;
+    RETURN (i, winadd)
+  })(0,0);
+  RETURN ac
+}"
+
+lemma win_count_list_top_refine_sep: 
+  shows "(win_count_list_top_mon, win_count_list_r) \<in>
+      Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding win_count_list_top_mon_def win_count_list_r_def wc_list_invar_def
+  apply (refine_vcg)
+        apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
+    refinement goals\<close>
+        apply (auto simp add: rank_mon_correct index_eqI refine_rel_defs)
+proof (-)
+  fix p::"'a Profile_List"
+  fix idx::nat
+  fix alt::'a
+  assume ir: "idx < length p"
+  assume mem: "alt \<in> set(p!idx)"
+  assume nfst: "p ! idx ! 0 \<noteq> alt"
+  from nfst mem show "0 < index (p ! idx) alt"
+    by (metis gr0I nth_index)
+next  
+  fix p::"'a Profile_List"
+  fix idx::nat
+  fix alt::'a
+  assume ir: "idx < length p"
+  assume "p ! idx ! 0 \<notin> set (p ! idx)"
+  from this show "(p ! idx)= []"
+    by (metis hd_conv_nth list.set_sel(1))
+qed
+
+
+definition win_count_imp_array :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_imp_array p a \<equiv> do {
+  (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+    ASSERT (i < length p);
+    let ac = ac + (if (((length (p!i)) > 0) \<and> ((p!i!0) = a)) then 1 else 0);
+    let i = i + 1;
+    RETURN (i, ac)
+  })(0,0);
+  RETURN ac
+}"
+
 
 text \<open>
   pref count
