@@ -2,13 +2,13 @@ theory Profile_Array
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
     Counting_Functions_Code
-    "$AFP/Refine_Imperative_HOL/IICF/Impl/IICF_Array"
+
 begin
 
 
 type_synonym 'a Preference_Array = "'a array"
 
-type_synonym 'a Profile_Array = "('a Preference_Array) array"
+(*type_synonym 'a Profile_Array = "('a Preference_Array) array"*)
 
 definition well_formed_prefa :: "'a Preference_Array \<Rightarrow> bool" where
   "well_formed_prefa pa = (((IICF_Array.array_length pa) > 0))"

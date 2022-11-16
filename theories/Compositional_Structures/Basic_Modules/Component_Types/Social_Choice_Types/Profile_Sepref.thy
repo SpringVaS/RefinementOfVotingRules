@@ -51,14 +51,18 @@ definition "profile_rel A \<equiv> br pl_to_pr_\<alpha> (profile_l A)"
 definition "profile_assn A
     \<equiv> hr_comp profile_impl_assn (profile_rel A)"*)
 
-
+context 
+  fixes N::nat 
+  notes [[sepref_register_adhoc N]]
+  notes [sepref_import_param] = IdI[of N]
+begin
 sepref_definition win_count_imp_sep is
-  "uncurry win_count_imp_array" :: "(array_assn (array_assn id_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
+  "uncurry win_count_imp_array" :: "(array_assn (list_assn id_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
   unfolding win_count_imp_array_def[abs_def] wc_list_invar_def[abs_def]  short_circuit_conv
   apply sepref_dbg_keep
   done
 
 export_code win_count_imp_sep in Scala_imp
-
+end
 
 end

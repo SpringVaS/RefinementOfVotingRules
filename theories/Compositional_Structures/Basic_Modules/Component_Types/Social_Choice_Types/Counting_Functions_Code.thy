@@ -88,6 +88,7 @@ lemma index_mon_refine:
   apply simp
   done
 
+
 definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
   "rank_mon ballot a \<equiv> do {
     i \<leftarrow> (index_mon ballot a);
@@ -119,7 +120,9 @@ lemma rank_mon_refine:
   apply (refine_vcg rank_mon_correct)
   apply simp
   done
-    
+
+sepref_register rank_mon
+
 
 section \<open>Monadic implementation of counting functions \<close>
 
@@ -142,7 +145,6 @@ definition win_count_mon :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres"
   RETURN ac
 }"
 
-
 definition win_count_mon_r :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres" where
 "win_count_mon_r p a \<equiv> do {
   (i, ac) \<leftarrow> WHILEIT (wc_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
@@ -157,7 +159,19 @@ definition win_count_mon_r :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nre
   })(0,0);
   RETURN ac
 }"
-  
+
+definition "win_count_fold p a =
+   foldli p (\<lambda>_. True) 
+    (\<lambda>x (ac::nat). 
+     if (above x a = {a}) then (ac+1) else (ac)) 
+    (0)"
+
+lemma "win_count_fold p a = win_count p a"
+  unfolding win_count_fold_def
+  apply (induction p)
+   apply (clarsimp_all, safe)
+
+  oops
 
 (* The lemma is implicitly proven
 in the win_count_mon_correct lemma *)
@@ -203,6 +217,8 @@ schematic_goal wc_code_aux: "RETURN ?wc_code \<le> win_count_mon p a"
 
 concrete_definition win_count_code for p a uses wc_code_aux
 
+thm win_count_code_def
+
 
 lemma win_count_equiv: 
   shows "win_count p a = win_count_code p a"
@@ -214,10 +230,21 @@ proof -
 qed
 
 
-lemma carde: assumes pprofile: "profile A p"
-  shows "\<forall> r < length p. (card (above (p ! r) a) = 1) = (above (p ! r) a = {a})" 
-  using pprofile
-    by (metis profile_def rank.simps Preference_Relation.rankone1 Preference_Relation.rankone2)
+lemma carde: assumes lo: "linear_order_on A ballot"
+  shows " (card (above ballot a) = 1) = (above ballot a = {a})" 
+  using lo
+    by (metis rank.simps Preference_Relation.rankone1 Preference_Relation.rankone2)
+
+definition "win_count_fold_r l a =
+   foldli l (\<lambda>_. True) 
+    (\<lambda>x (ac::nat). 
+     if (rank x a = 1) then (ac+1) else (ac)) 
+    (0)"
+
+lemma assumes "profile A p"
+  shows "win_count_fold_r p a = win_count_fold p a"
+  unfolding win_count_fold_r_def win_count_fold_def
+  using assms carde 
 
 lemma isp1_measure: "wf (measure (\<lambda>(i, _).(length p) - i))" by simp
 
@@ -447,16 +474,34 @@ lemma win_count_list_r_mon_refine:
 
 (* TODO correctness proof *)
 
-definition win_count_list_top_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_list_top_mon p a \<equiv> do {
+definition "wc_fold l a \<equiv> do {
+  (ac,a) \<leftarrow> nfoldli l (\<lambda>_. True) 
+    (\<lambda>x (ac, a). do {
+     if ((length x > 0) \<and> (x!0 = a))then RETURN (ac+1,a) else RETURN (ac,a)
+    }) 
+    (0,a);
+  RETURN ac
+}"
+
+sepref_register wc_fold
+
+sepref_definition win_count_imp_sep is
+  "uncurry wc_fold" :: "(list_assn (array_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
+  unfolding wc_fold_def[abs_def]  short_circuit_conv 
+  apply sepref_dbg_keep 
+  done
+
+
+definition win_count_list_top_mon :: "nat \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_list_top_mon N p a \<equiv> do {
   (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
-    let ballot = List.nth p i;
+    let ballot = (p!i);
     winadd \<leftarrow>
        (if (0 < length ballot)
         then do {
         ASSERT (0 < (length ballot));
-        let top = List.nth ballot 0;
+        let top = ballot!0;
         if (top = a) then 
          RETURN (ac + 1) 
          else 
@@ -469,6 +514,14 @@ definition win_count_list_top_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightar
   })(0,0);
   RETURN ac
 }"
+
+sepref_register win_count_list_top_mon
+
+sepref_definition win_count_imp_sep is
+  "uncurry2 win_count_list_top_mon" :: "(nat_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
+  unfolding win_count_list_top_mon_def[abs_def] wc_list_invar_def[abs_def]  
+  apply sepref_dbg_keep
+  done
 
 lemma win_count_list_top_refine_sep: 
   shows "(win_count_list_top_mon, win_count_list_r) \<in>
