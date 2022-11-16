@@ -136,7 +136,7 @@ definition "wc_invar p0 a \<equiv> \<lambda>(i,ac).
 
 definition win_count_mon :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres" where
 "win_count_mon p a \<equiv> do {
-  (r, ac) \<leftarrow> WHILET (\<lambda>(r, _). r < length p) (\<lambda>(r, ac). do {
+  (r, ac) \<leftarrow> WHILEIT (wc_invar p a) (\<lambda>(r, _). r < length p) (\<lambda>(r, ac). do {
     ASSERT (r < length p);
     let wc = (if (above (p!r) a = {a}) then (ac + 1) else ac);
     let r = r + 1;
@@ -147,24 +147,21 @@ definition win_count_mon :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres"
 
 definition win_count_mon_r :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres" where
 "win_count_mon_r p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILEIT (wc_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
-    ASSERT (i < length p);
-    let ballot = p!i;
-    wc \<leftarrow> do {
-      ranka \<leftarrow> RETURN (rank ballot a);
-     (if (ranka = 1) then RETURN (ac + 1) else RETURN ac)
-    };
-    let i = i + 1;
-    RETURN (i, wc)
+  (r, ac) \<leftarrow> WHILEIT (wc_invar p a) (\<lambda>(r, _). r < length p) (\<lambda>(r, ac). do {
+    ASSERT (r < length p);
+    let wc = (if (rank (p!r) a = 1) then (ac + 1) else ac);
+    let r = r + 1;
+    RETURN (r, wc)
   })(0,0);
   RETURN ac
 }"
 
 definition "win_count_fold p a =
-   foldli p (\<lambda>_. True) 
-    (\<lambda>x (ac::nat). 
+   foldl
+    (\<lambda>(ac::nat) x. 
      if (above x a = {a}) then (ac+1) else (ac)) 
-    (0)"
+    0 p"
+
 
 lemma "win_count_fold p a = win_count p a"
   unfolding win_count_fold_def
@@ -182,8 +179,7 @@ in the win_count_mon_correct lemma *)
 lemma win_count_mon_correct:
   shows "win_count_mon p a \<le> SPEC (\<lambda> wc. wc = win_count p a)"
   unfolding win_count_mon_def win_count.simps
-  apply (intro WHILET_rule[where I="(wc_invar p a)" 
-        and R="measure (\<lambda>(r,_). (length p) - r)"] refine_vcg)
+  apply (intro WHILEIT_rule[where R="measure (\<lambda>(r,_). (length p) - r)"] refine_vcg)
   unfolding wc_invar_def
   apply (simp_all)
   apply (erule subst)
@@ -230,21 +226,11 @@ proof -
 qed
 
 
-lemma carde: assumes lo: "linear_order_on A ballot"
-  shows " (card (above ballot a) = 1) = (above ballot a = {a})" 
-  using lo
-    by (metis rank.simps Preference_Relation.rankone1 Preference_Relation.rankone2)
-
-definition "win_count_fold_r l a =
-   foldli l (\<lambda>_. True) 
-    (\<lambda>x (ac::nat). 
-     if (rank x a = 1) then (ac+1) else (ac)) 
-    (0)"
-
-lemma assumes "profile A p"
-  shows "win_count_fold_r p a = win_count_fold p a"
-  unfolding win_count_fold_r_def win_count_fold_def
-  using assms carde 
+lemma carde: assumes prof: "profile A p"
+  shows "\<forall> ballot \<in> set p. (rank ballot a  = 1) = (above ballot a = {a})" 
+  using prof
+  by (metis above_rank profile_set)
+  
 
 lemma isp1_measure: "wf (measure (\<lambda>(i, _).(length p) - i))" by simp
 
@@ -350,18 +336,11 @@ definition "wc_list_invar p0 a \<equiv> \<lambda>(i,ac).
 
 definition win_count_list_r :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
 "win_count_list_r p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+  (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
-    let ballot = p!i;
-    wc \<leftarrow> do {
-      ranka \<leftarrow> RETURN (rank_l ballot a);
-      if (ranka = 1) then 
-          RETURN (ac + 1) 
-      else 
-          RETURN ac
-    };
+    let ac = ac + (if (rank_l (p!i) a = 1) then 1 else 0);
     let i = i + 1;
-    RETURN (i, wc)
+    RETURN (i, ac)
   })(0,0);
   RETURN ac
 }"
@@ -389,7 +368,7 @@ lemma win_count_list_r_refine:
   apply (refine_vcg rankeq_refine)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
-  apply (auto simp add:  rankeq_refine rankdef refine_rel_defs)
+  apply (auto simp add:  rankeq_refine  refine_rel_defs)
 proof (-)
   fix pl:: "'a Profile_List"
   fix idx::nat
@@ -443,33 +422,34 @@ qed
   
 
 
-definition win_count_list_r_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_list_r_mon p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
+definition win_count_imp_array :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_imp_array p a \<equiv> do {
+  (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
-    let ballot = p!i;
-    wc \<leftarrow> do {
-      ranka \<leftarrow> rank_mon ballot a;
-      if (ranka = 1) then
-        RETURN (ac + 1) 
-      else RETURN ac
-    };
+    let ac = ac + (if (((length (p!i)) > 0) \<and> ((p!i!0) = a)) then 1 else 0);
     let i = i + 1;
-    RETURN (i, wc)
+    RETURN (i, ac)
   })(0,0);
   RETURN ac
 }"
 
+lemma win_count_imp_array_refine:
+  shows "win_count_imp_array pl a \<le> \<Down>Id (win_count_imp' pl a)"
+  unfolding win_count_imp_array_def win_count_imp'_def winsr_imp'_def
+  apply (refine_rcg)
+  apply (refine_dref_type)
+  using assms by (safe, simp_all)+
+  
 
+lemma a_l_r_step: "(pl_to_pr_\<alpha> \<circ> pa_to_pl) = pa_to_pr"
+  by (simp add: fun_comp_eq_conv pa_to_pr_def)
+  
+lemma win_count_imp_array_correct:
+  assumes "(pa, pr) \<in> br pa_to_pr (profile_a A)" and aA: "a \<in> A"
+  shows "win_count_imp_array pa a \<le> SPEC (\<lambda>ac. ac = win_count pr a)"
+  using assms ref_two_step[OF win_count_imp_array_refine win_count_imp'_correct]
+  by (metis in_br_conv pa_to_pr_def profile_a_l refine_IdD)
 
-lemma win_count_list_r_mon_refine: 
-  shows "(win_count_list_r_mon, win_count_list_r) \<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  unfolding win_count_list_r_mon_def win_count_list_r_def wc_list_invar_def
-  apply (refine_vcg rank_mon_correct)
-  apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
-    refinement goals\<close>
-  apply (auto simp add: refine_rel_defs)
-  done
 
 
 (* TODO correctness proof *)
@@ -483,6 +463,7 @@ definition "wc_fold l a \<equiv> do {
   RETURN ac
 }"
 
+
 sepref_register wc_fold
 
 sepref_definition win_count_imp_sep is
@@ -492,8 +473,8 @@ sepref_definition win_count_imp_sep is
   done
 
 
-definition win_count_list_top_mon :: "nat \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_list_top_mon N p a \<equiv> do {
+definition win_count_list_top_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"win_count_list_top_mon p a \<equiv> do {
   (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
     ASSERT (i < length p);
     let ballot = (p!i);
@@ -517,8 +498,8 @@ definition win_count_list_top_mon :: "nat \<Rightarrow> 'a Profile_List \<Righta
 
 sepref_register win_count_list_top_mon
 
-sepref_definition win_count_imp_sep is
-  "uncurry2 win_count_list_top_mon" :: "(nat_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
+sepref_definition win_count_imp_sep_alt is
+  "uncurry win_count_list_top_mon" :: "(list_assn (list_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
   unfolding win_count_list_top_mon_def[abs_def] wc_list_invar_def[abs_def]  
   apply sepref_dbg_keep
   done
