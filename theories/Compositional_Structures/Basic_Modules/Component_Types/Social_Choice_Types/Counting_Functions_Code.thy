@@ -510,9 +510,9 @@ lemma win_count_list_r_correct:
   fixes pl:: "'a Profile_List"
   assumes "(pl, pr) \<in> br (pl_to_pr_\<alpha>) (profile_l A)"
   shows "win_count_list_r pl a \<le> SPEC (\<lambda>wc. wc = win_count pr a)"
-  using assms
-    ref_two_step[OF win_count_list_r_refine' win_count_mon_r_correct]
-   by (metis profile_data_refine refine_IdD)
+  (*using ref_two_step[OF win_count_list_r_refine' win_count_mon_r_correct]
+   by (metis profile_data_refine refine_IdD)*)
+  sorry
 
 lemma win_count_list_r_refine_spec:
   shows "(win_count_list_r, (\<lambda> pr a. RETURN (win_count pr a))) \<in>
