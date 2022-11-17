@@ -155,9 +155,10 @@ definition win_count_mon_r :: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nre
   })(0,0);
   RETURN ac
 }"
+(*  (xs \<noteq> [] \<longrightarrow> (hd xs = (p0!(length p0 - length xs)))) \<and> *)
 
 definition "wc_invar_fe p0 a \<equiv> \<lambda>(xs,ac).
-  (xs \<noteq> [] \<longrightarrow> (hd xs = (p0!(length p0 - length xs)))) \<and> 
+  xs = drop (length p0 - length xs) p0 \<and>
   ac = card {i. i < (length p0 - length xs) \<and> above (p0!i) a = {a}}"
 
 definition wc_while_rank:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres" where 
@@ -173,32 +174,71 @@ lemma win_count_mon_r_correct:
   shows "wc_while_rank p a \<le> SPEC (\<lambda> wc. wc = win_count p a)"
   unfolding wc_while_rank_def  wc_invar_fe_def
   FOREACH_cond_def FOREACH_body_def
-  apply (intro WHILEIT_rule[where R="measure (\<lambda>(xs,_). length xs)"] refine_vcg)
+  apply (intro WHILEIT_rule[where R="measure (\<lambda>(xs,_). length xs)"] FOREACHoi_rule refine_vcg)
   unfolding wc_invar_def
-      apply (clarsimp_all)
-  using hd_conv_nth apply blast
-  apply safe 
+      apply (clarsimp_all, safe, auto)
+  apply (metis append_Nil diff_le_self drop_Suc drop_all drop_append length_drop tl_drop)
 proof (-)
   fix xs:: "'a Profile"
+  assume headr: "xs = drop (length p - length xs) p"
   assume pnemp: "xs \<noteq> []"
-  assume atop: "above (p ! (length p - length xs)) a = {a}"
-  with pnemp have prep: 
-         "{i. i < Suc (length p) - length xs \<and> above (p ! i) a = {a}} 
-        = {i. i < (length p) - length xs \<and> above (p ! i) a = {a}} \<union> 
-          {(length p) - length xs}"
-    
-  then show   
-         "Suc (card {i. i < r \<and> above (p ! i) a = {a}}) =
-          card {i. i < Suc r \<and> above (p ! i) a = {a}}"
+  from pnemp headr have hdidx: "hd xs = (p!(length p - length xs))"
+    by (metis drop_eq_Nil hd_drop_conv_nth linorder_not_le)
+  assume atop: "above (hd xs) a = {a}"
+  from hdidx this have aba: "above (p!(length p - length xs)) a = {a}" by simp
+  from this aba have comp: "{i. i \<le> (length p) - length xs \<and> above (p ! i) a = {a}} 
+        = ({i. i < length p - length xs \<and> above (p ! i) a = {a}} \<union> 
+          {(length p - length xs)})"
+    by fastforce
+  from headr have "{i. i \<le> (length p) - length xs \<and> above (p ! i) a = {a}} 
+        = {i. i < Suc (length p) - length xs \<and> above (p ! i) a = {a}}"
+    by (metis Suc_diff_le diff_le_self length_drop less_Suc_eq_le)
+  from this comp have "{i. i < Suc (length p) - length xs \<and> above (p ! i) a = {a}} 
+        = ({i. i < length p - length xs \<and> above (p ! i) a = {a}} \<union> 
+          {(length p - length xs)})" by simp
+  from this show   
+         "Suc (card {i. i < (length p) - length xs \<and> above (p ! i) a = {a}}) =
+        card {i. i < Suc (length p) - length xs \<and> above (p ! i) a = {a}}"
     by fastforce
 next
-  fix r :: nat
-  assume "r < length p"
-  assume atop: "above (p ! r) a \<noteq> {a}"
-  then show "
-       card {i. i < r \<and> above (p ! i) a = {a}} =
-       card {i. i < Suc r \<and> above (p ! i) a = {a}}"
-    by (metis less_Suc_eq)
+  fix xs:: "'a Profile"
+  fix alt:: "'a"
+  assume headr: "xs = drop (length p - length xs) p"
+  show "tl xs = drop (Suc (length p) - length xs) p"
+    by (metis Suc_diff_le diff_le_self drop_Suc headr length_drop tl_drop)
+next
+  fix xs:: "'a Profile"
+  fix alt:: "'a"
+  assume headr: "xs = drop (length p - length xs) p"
+  assume pnemp: "xs \<noteq> []"
+  from pnemp headr have hdidx: "hd xs = (p!(length p - length xs))"
+    by (metis drop_eq_Nil hd_drop_conv_nth linorder_not_le)
+  assume xtop: "alt \<in>  above (hd xs) a"
+  assume xna: "alt \<noteq> a"
+  from hdidx headr xna xtop show   
+         "card {i. i < (length p) - length xs \<and> above (p ! i) a = {a}} =
+        card {i. i < Suc (length p) - length xs \<and> above (p ! i) a = {a}}"
+  by (metis  Suc_diff_le diff_le_self insert_absorb insert_iff insert_not_empty length_drop less_Suc_eq )
+next
+    fix xs:: "'a Profile"
+  fix alt:: "'a"
+  assume headr: "xs = drop (length p - length xs) p"
+  from headr show "tl xs = drop (Suc (length p) - length xs) p"
+    by (metis Suc_diff_le diff_le_self drop_Suc length_drop tl_drop)
+next
+    fix xs:: "'a Profile"
+  fix alt:: "'a"
+  assume headr: "xs = drop (length p - length xs) p"
+  assume pnemp: "xs \<noteq> []"
+  from pnemp headr have hdidx: "hd xs = (p!(length p - length xs))"
+    by (metis drop_eq_Nil hd_drop_conv_nth linorder_not_le)
+  assume xtop: "a \<notin>  above (hd xs) a"
+  from hdidx this have aba: "above (p!(length p - length xs)) a \<noteq> {a}"
+    by fastforce
+  from this show   
+         "card {i. i < (length p) - length xs \<and> above (p ! i) a = {a}} =
+        card {i. i < Suc (length p) - length xs \<and> above (p ! i) a = {a}}"
+    by (metis Suc_diff_le diff_le_self headr length_drop less_Suc_eq)
 qed
   
 
