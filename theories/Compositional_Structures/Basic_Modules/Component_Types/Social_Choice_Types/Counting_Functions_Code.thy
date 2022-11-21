@@ -258,13 +258,15 @@ lemma cardei: assumes prof: "profile A p"
   shows "\<forall>i < length p. let ballot=(p!i) in ((rank ballot a = 1) = (above ballot a = {a}))" 
   using prof
   by (metis carde nth_mem)
- 
+
+definition "f_inner_rel a \<equiv> (\<lambda>(x::'a Preference_Relation) (ac::nat).
+     (if (rank x a = 1) then RETURN (ac+1) else RETURN (ac)
+    ))"
+
 definition wc_foreach_rank:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "wc_foreach_rank p a \<equiv> do {
-  (xs,ac) \<leftarrow> WHILEIT (wc_invar_fe p a) (FOREACH_cond (\<lambda>_.True)) 
-    (FOREACH_body (\<lambda>x (ac).
-     if (rank x a = 1) then RETURN (ac+1) else RETURN (ac)
-    )) (p,0);
+  (xs,ac) \<leftarrow> WHILET (FOREACH_cond (\<lambda>_.True)) 
+    (FOREACH_body (f_inner_rel a)) (p,0::nat);
   RETURN ac
 }"
 
@@ -272,7 +274,8 @@ definition wc_foreach_rank:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres
 lemma wc_foreach_rank_refine:
   assumes prof: "profile A p"
   shows "wc_foreach_rank p a \<le> \<Down> nat_rel (wc_foreach p a)"
-  unfolding wc_foreach_rank_def wc_foreach_def wc_invar_fe_def FOREACH_body_def FOREACH_cond_def
+  unfolding wc_foreach_rank_def wc_foreach_def wc_invar_fe_def FOREACH_body_def FOREACH_cond_def 
+    f_inner_rel_def
   apply (refine_vcg)
     apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
@@ -284,6 +287,24 @@ proof clarsimp_all
     by (metis One_nat_def in_set_dropD list.set_sel(1) prof rank.simps)
 qed
 
+lemma rank_refaux:
+  assumes prof: "profile A p"
+  shows "wc_foreach_rank p a \<le> (wc_foreach p a)"
+  using prof wc_foreach_rank_refine
+  by (metis refine_IdD) 
+
+theorem wc_foreach_rank_correct:
+  assumes prof: "profile A p"
+  shows "wc_foreach_rank p a \<le> SPEC (\<lambda> wc. wc = win_count p a)"
+  using assms ref_two_step[OF wc_foreach_rank_refine wc_foreach_correct]
+  by fastforce
+
+
+lemma wc_foreach_crel:
+  shows "(wc_foreach_rank, (\<lambda> p a. SPEC (\<lambda> wc. wc = (win_count p a)))) \<in>
+    (br (\<lambda>x. x) (profile A)) \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  apply (refine_vcg)
+  by (auto simp only: refine_rel_defs wc_foreach_rank_correct)
 
 text \<open> Data refinement \<close>
 (* these auxiliary lemmas illustrate the equivalence of checking the the first
@@ -314,7 +335,7 @@ qed
 
 lemma top_l_above_r:
   assumes ballot: "ballot_on A pl"
-  assumes aA: "a \<in> A" and ne: "length pl > 0"
+  and ne: "length pl > 0"
   shows "pl!0 = a \<longleftrightarrow> above (pl_\<alpha> pl) a = {a}"
 proof -
   from ne have listeq: "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
@@ -327,24 +348,23 @@ proof -
     by (simp)
 qed
 
-definition "wc_list_invar p0 a \<equiv> \<lambda>(i,ac).
+
+
+
+
+definition "f_inner_list a \<equiv> (\<lambda>x ac::nat.
+     (if (rank_l x a = 1) then RETURN (ac+1) else RETURN (ac)))"
+
+
+definition "wc_list_invar p0 a \<equiv> \<lambda>(i,ac::nat).
   0 \<le> i \<and> i \<le> length p0"
 
 definition "wc_list_invar' p0 a \<equiv> \<lambda>(xs,ac).
   xs = drop (length p0 - length xs) p0"
 
-definition wc_foreach_list_rank :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"wc_foreach_list_rank p a \<equiv> do {
-  (xs,ac) \<leftarrow> WHILEIT (wc_list_invar' p a) (FOREACH_cond (\<lambda>_.True)) 
-    (FOREACH_body (\<lambda>x (ac).
-     if (rank_l x a = 1) then RETURN (ac+1) else RETURN (ac)
-    )) (p,0);
-  RETURN ac
-}"
-
 
 lemma rankeq_refine: 
-  fixes A :: "'a set" and l :: "'a Preference_List" and a :: 'a
+  fixes A :: "'a set" and pl :: "'a Preference_List" and a :: 'a
   assumes "(pl, pr) \<in> (br pl_\<alpha> (ballot_on A))"
   shows "rank_l pl a = Preference_Relation.rank pr a"
 proof -
@@ -356,116 +376,137 @@ proof -
     by metis
 qed
 
+lemma innerf_eq:
+  fixes A:: "'a set"  and l :: "'a Preference_List" and a :: 'a
+  assumes "ballot_on A l"
+  shows "f_inner_list a l n \<le> (f_inner_rel a (pl_\<alpha> l) n)"
+proof -
+  from assms show ?thesis unfolding f_inner_list_def f_inner_rel_def 
+  using rankeq
+  by (metis order_le_less)
+  
+qed
+
+lemma foreachrel:
+  assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))" and "pl \<noteq> []"
+  shows "(hd pl, hd pr) \<in> (br pl_\<alpha> (ballot_on A)) \<and> 
+  (tl pl, tl pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
+proof(safe)
+  from assms show "(hd pl, hd pr) \<in> br pl_\<alpha> (ballot_on A)" using in_br_conv pl_to_pr_\<alpha>_def
+    by (metis (no_types, lifting) hd_conv_nth hd_map length_greater_0_conv profile_l_def)
+next
+   from assms show "(tl pl, tl pr) \<in> br pl_to_pr_\<alpha> (profile_l A)" using in_br_conv map_tl
+    by (metis (no_types, lifting) Misc.nth_tl Nitpick.size_list_simp(2) not_less_eq pl_to_pr_\<alpha>_def profile_l_def)
+qed
+
+     
+definition wc_foreach_list_rank :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+"wc_foreach_list_rank pl a \<equiv> do {
+  (xs,ac) \<leftarrow> WHILET (FOREACH_cond (\<lambda>_.True)) 
+    (FOREACH_body (f_inner_list a)) (pl,0::nat);
+  RETURN ac
+}"
+
+lemma initrel: 
+  fixes A:: "'a set"
+  assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
+  shows "((pl,0::nat), pr , 0::nat) \<in> (((br pl_to_pr_\<alpha> (profile_l A)) \<times>\<^sub>r nat_rel))"
+  using assms
+  by simp 
+
+
+lemma wc_foreach_list_rank_refine: 
+  fixes A:: "'a set"
+  shows "(wc_foreach_list_rank, wc_foreach_rank) \<in> 
+  (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding wc_foreach_list_rank_def wc_foreach_rank_def 
+  FOREACH_cond_def FOREACH_body_def
+  apply (refine_vcg initrel)
+  apply (simp_all add: refine_rel_defs initrel)
+  apply refine_dref_type
+proof (safe, simp_all add: pl_to_pr_\<alpha>_def)
+  fix x1:: "'a Profile_List"
+  fix x2::nat
+  fix a'a:: 'a
+  assume ne: "x1 \<noteq> []"
+  assume prof: "profile_l A x1"
+  from this have bal: "ballot_on A (hd x1)"
+    by (simp add: hd_conv_nth ne profile_l_def)
+  from bal have "f_inner_list a'a (hd x1) x2 \<le> f_inner_rel a'a (pl_\<alpha> (hd x1)) x2"
+    using innerf_eq
+    by metis 
+  from ne this show "f_inner_list a'a (hd x1) x2 \<le> f_inner_rel a'a (hd (map pl_\<alpha> x1)) x2"
+    by (simp add: hd_map)
+next
+  fix x1:: "'a Profile_List"
+  show "tl (map pl_\<alpha> x1) = map pl_\<alpha> (tl x1)"
+    by (simp add: map_tl)
+next
+  fix x1:: "'a Profile_List"
+  assume ne: "x1 \<noteq> []"
+  assume prof: "profile_l A x1"
+  from this show "profile_l A (tl x1)" using profile_l_def
+    by (metis List.nth_tl Nitpick.size_list_simp(2) Suc_mono ne)
+qed
+
 lemma win_count_list_r_refine_os: 
   fixes A:: "'a set"
   assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
   shows "wc_foreach_list_rank pl a \<le> \<Down> Id (wc_foreach_rank pr a)"
-  unfolding wc_foreach_list_rank_def wc_foreach_rank_def
-  using assms apply clarsimp
-proof -
-  assume "(pl, pr) \<in> br pl_to_pr_\<alpha> (profile_l A)"
-  from this have "\<forall>i < length pl. rank_l (pl!i) a = rank (pr!i) a" using rankeq_refine
-    by (metis (mono_tags, lifting) in_br_conv nth_map pl_to_pr_\<alpha>_def profile_l_def)
-  from this have "
-     ((FOREACH_body (\<lambda>x ac. if (if a \<in> set x then index x a + 1 else 0) = Suc 0 then RETURN (ac + 1) else RETURN ac)) (pl,0))
-     \<le> \<Down> ((br pl_to_pr_\<alpha> (profile_l A)) \<times>\<^sub>r Id) ((FOREACH_body (\<lambda>x ac. if rank x a = 1 then RETURN (ac + 1) else RETURN ac)) (pr,0))"
-    oops
-
-lemma win_count_list_r_refine: 
-  fixes A:: "'a set"
-  shows "(wc_foreach_list_rank, wc_foreach_rank) \<in> 
-  (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
-  unfolding wc_foreach_list_rank_def wc_foreach_rank_def pl_to_pr_\<alpha>_def profile_l_def
-  FOREACH_cond_def FOREACH_body_def WHILEIT_def WHILEI_body_def
-  
-  apply (refine_rcg)
-  apply(clarify)
-         apply (refine_dref_type) 
-  
-  using in_br_conv rankeq rankdef
-  apply (metis Suc_eq_plus1 hd_conv_nth in_set_member length_greater_0_conv list.map_sel(1) rank.simps rank_alt.elims) 
-       
-  using  rankdef rankeq
-  apply (metis Suc_eq_plus1 hd_conv_nth length_greater_0_conv lessI list.map_sel(1) not_less_eq rank.simps rank_alt.elims) 
-
-  using rankdef rankeq
-  apply (metis hd_conv_nth hd_in_set hd_map in_set_member length_pos_if_in_set lessI order_less_le rank.elims rank_alt.elims)
-   
-  using rankdef rankeq rankeq_refine
-   
-  
-
-lemma win_count_list_r_refine':
-  fixes A:: "'a set"
-  assumes "(pl,pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
-  shows "win_count_list_r pl a \<le> \<Down>Id (win_count_mon_r pr a)"
-unfolding win_count_list_r_def win_count_mon_r_def pl_to_pr_\<alpha>_def profile_l_def wc_list_invar_def
-    wc_invar_def
-   apply (refine_vcg win_count_list_r_refine rankeq rankeq_refine)
-  apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
-    refinement goals\<close>
-  using assms apply(auto simp add: length_preserving  refine_rel_defs )
-  sorry
-(*proof (-)
-  fix pl:: "'a Profile_List"
-  fix idx::nat
-  fix alt::'a
-  assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
-  assume ir: "idx < length pl"
-  assume mem: "alt \<in> set (pl ! idx)"
-  from prof ir have bal: "ballot_on A (pl!idx)"
-    by blast 
-  from bal have "rank_l (pl ! idx) alt = rank (pl_\<alpha> (pl ! idx)) alt" 
-    using rankeq
-    by metis
-  from mem this show "Suc (index (pl ! idx) alt) = card (above (pl_\<alpha> (pl ! idx)) alt)"
-    by (metis Suc_eq_plus1 rank.simps rank_alt.elims rankdef)
+  unfolding wc_foreach_list_rank_def wc_foreach_rank_def 
+  FOREACH_cond_def FOREACH_body_def
+  using assms apply (refine_vcg wc_foreach_list_rank_refine initrel)
+  apply (simp_all only: refine_rel_defs pl_to_pr_\<alpha>_def)
+  apply refine_dref_type
+proof (clarsimp_all, safe)
+  fix x1:: "'a Profile_List"
+  fix x2::nat
+  fix a'a:: 'a
+  assume ne: "x1 \<noteq> []"
+  assume prof: "profile_l A x1"
+  from this have bal: "ballot_on A (hd x1)"
+    by (simp add: hd_conv_nth ne profile_l_def)
+  from bal have "f_inner_list a'a (hd x1) x2 \<le> f_inner_rel a'a (pl_\<alpha> (hd x1)) x2"
+    using innerf_eq
+    by metis 
+  from ne this show "f_inner_list a'a (hd x1) x2 \<le> f_inner_rel a'a (hd (map pl_\<alpha> x1)) x2"
+    by (simp add: hd_map)
+  next
+  fix x1:: "'a Profile_List"
+  show "tl (map pl_\<alpha> x1) = map pl_\<alpha> (tl x1)"
+    by (simp add: map_tl)
 next
-    fix pl:: "'a Profile_List"
-  fix idx::nat
-  fix alt::'a
-  assume prof: "\<forall>i<length pl. ballot_on A (pl ! i)"
-  assume ir: "idx < length pl"
-  assume nmem: "\<not> List.member (pl ! idx) alt"
-   from prof ir have bal: "ballot_on A (pl!idx)"
-    by blast 
-  from bal have "rank_l (pl ! idx) alt = rank (pl_\<alpha> (pl ! idx)) alt" 
-    using rankeq
-    by metis
-  from nmem this show "card (above (pl_\<alpha> (pl ! idx)) alt) = 0"
-    by (simp add: rankdef)
-qed*)
-
-lemma win_count_list_r_correct:
-  fixes pl:: "'a Profile_List"
-  assumes "(pl, pr) \<in> br (pl_to_pr_\<alpha>) (profile_l A)"
-  shows "win_count_list_r pl a \<le> SPEC (\<lambda>wc. wc = win_count pr a)"
-  (*using ref_two_step[OF win_count_list_r_refine' win_count_mon_r_correct]
-   by (metis profile_data_refine refine_IdD)*)
-  sorry
-
-lemma win_count_list_r_refine_spec:
-  shows "(win_count_list_r, (\<lambda> pr a. RETURN (win_count pr a))) \<in>
-    br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply (refine_vcg win_count_list_r_refine win_count_mon_r_refine_spec)
-proof auto
-  fix pl:: "'a Profile_List"
-  fix pr:: "'a Profile"
-  fix alt:: 'a
-  assume rel: "(pl, pr) \<in> br pl_to_pr_\<alpha> (profile_l A)"
-  from this have "profile_l A pl" using in_br_conv by metis
-  from rel this have "profile A pr"
-    using profile_data_refine by blast
-  from this have "win_count_mon_r pr alt \<le> SPEC (\<lambda>c. (c, win_count pr alt) \<in> nat_rel)"
-    using win_count_mon_r_correct by (metis (mono_tags, lifting) SPEC_cons_rule pair_in_Id_conv)
-  from this 
-    rel have "win_count_list_r pl alt \<le> SPEC (\<lambda>c. (c, win_count pr alt) \<in> nat_rel)" using win_count_list_r_refine
-    by (metis conc_trans_additional(5) nres_relD pair_in_Id_conv relAPP_def tagged_fun_relD_both)
-  from this show "win_count_list_r pl alt \<le> RES {card {i. i < length pr \<and> above (pr ! i) alt = {alt}}}"
-    by fastforce
+  fix x1:: "'a Profile_List"
+  assume ne: "x1 \<noteq> []"
+  assume prof: "profile_l A x1"
+  from this show "profile_l A (tl x1)" using profile_l_def
+    by (metis List.nth_tl Nitpick.size_list_simp(2) Suc_mono ne)
 qed
+
+(*lemma win_count_list_r_refine_os_aux:
+ fixes A:: "'a set"
+  assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
+  shows "wc_foreach_list_rank pl a \<le> (wc_foreach_rank pr a)"
+  using assms win_count_list_r_refine_os refine_IdD by metis*)
+
+lemma wc_foreach_list_rank_correct:
+  assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
+  shows "wc_foreach_list_rank pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
+  using assms ref_two_step[OF win_count_list_r_refine_os wc_foreach_rank_correct] refine_IdD profile_data_refine
+  by metis
   
 
+
+lemma top_rank1:
+  assumes ballot: "ballot_on A ballot" and "length ballot > 0"
+  shows "ballot!0 = a \<longleftrightarrow> rank_l ballot a = 1"
+  using assms 
+  apply clarsimp
+  apply safe
+    apply (simp add: index_eq_iff)
+   apply (metis nth_index)
+  by simp 
+  
 
 definition win_count_imp_array :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
 "win_count_imp_array p a \<equiv> do {
@@ -478,7 +519,7 @@ definition win_count_imp_array :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow
   RETURN ac
 }"
 
-lemma win_count_imp_array_refine:
+(*lemma win_count_imp_array_refine:
   shows "win_count_imp_array pl a \<le> \<Down>Id (win_count_list_r pl a)"
   unfolding win_count_imp_array_def win_count_list_r_def wc_list_invar_def
   apply (refine_rcg)
@@ -486,21 +527,35 @@ lemma win_count_imp_array_refine:
   apply(auto simp add: carde  refine_rel_defs )
    apply (metis index_first not_gr_zero)
   apply (metis gr0I nth_index)
-  done
+  done*)
 
 
 (* TODO correctness proof *)
 
 
 
-definition wc_while_ref:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where 
-"wc_while_ref p  a \<equiv> do {
+definition wc_foreach_top:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where 
+"wc_foreach_top p  a \<equiv> do {
   (xs::'a Profile_List,ac) \<leftarrow> WHILET (FOREACH_cond (\<lambda>_.True)) 
     (FOREACH_body (\<lambda>x (ac).
      if ((length x > 0) \<and> (x!0 = a)) then RETURN (ac+1) else RETURN (ac)
     )) (p,0);
   RETURN ac
 }"
+
+lemma wc_foreach_top_refine_os: 
+  fixes A:: "'a set"
+  assumes "profile_l A pl"
+  shows "wc_foreach_top pl a \<le> \<Down> Id (wc_foreach_list_rank pl a)"
+  unfolding wc_foreach_list_rank_def f_inner_list_def wc_foreach_top_def 
+  FOREACH_cond_def FOREACH_body_def
+  using assms apply (refine_vcg wc_foreach_list_rank_refine initrel)
+  apply (simp_all only: refine_rel_defs pl_to_pr_\<alpha>_def)
+  apply refine_dref_type
+  apply auto
+   apply (metis gr0I index_first)
+  by (metis index_eq_iff length_pos_if_in_set)
+  
 
 definition  wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" 
   where "wc_fold l a \<equiv> 
@@ -518,8 +573,8 @@ definition  wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres"
           (\<lambda>(_, \<sigma>). RETURN \<sigma>))"*)
 
 lemma wc_fold_refine:
-  shows "wc_fold pl a \<le> \<Down> nat_rel (wc_while_ref pl a)"
-  unfolding wc_fold_def wc_while_ref_def
+  shows "wc_fold pl a \<le> \<Down> nat_rel (wc_foreach_top pl a)"
+  unfolding wc_fold_def wc_foreach_top_def
   apply(auto simp add: refine_rel_defs nfoldli_while while.WHILET_def)
   done
 
@@ -530,77 +585,6 @@ sepref_definition win_count_imp_sep is
   unfolding wc_fold_def[abs_def]  short_circuit_conv 
   apply sepref_dbg_keep 
   done
-
-
-definition win_count_list_top_mon :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_list_top_mon p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILEIT (wc_list_invar p a) (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
-    ASSERT (i < length p);
-    let ballot = (p!i);
-    winadd \<leftarrow>
-       (if (0 < length ballot)
-        then do {
-        ASSERT (0 < (length ballot));
-        let top = ballot!0;
-        if (top = a) then 
-         RETURN (ac + 1) 
-         else 
-         RETURN ac
-        }
-       else 
-         RETURN ac);
-    let i = i + 1;
-    RETURN (i, winadd)
-  })(0,0);
-  RETURN ac
-}"
-
-sepref_register win_count_list_top_mon
-
-sepref_definition win_count_imp_sep_alt is
-  "uncurry win_count_list_top_mon" :: "(list_assn (list_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
-  unfolding win_count_list_top_mon_def[abs_def] wc_list_invar_def[abs_def]  
-  apply sepref_dbg_keep
-  done
-
-lemma win_count_list_top_refine_sep: 
-  shows "(win_count_list_top_mon, win_count_list_r) \<in>
-      Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  unfolding win_count_list_top_mon_def win_count_list_r_def wc_list_invar_def
-  apply (refine_vcg)
-        apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
-    refinement goals\<close>
-        apply (auto simp add: rank_mon_correct index_eqI refine_rel_defs)
-proof (-)
-  fix p::"'a Profile_List"
-  fix idx::nat
-  fix alt::'a
-  assume ir: "idx < length p"
-  assume mem: "alt \<in> set(p!idx)"
-  assume nfst: "p ! idx ! 0 \<noteq> alt"
-  from nfst mem show "0 < index (p ! idx) alt"
-    by (metis gr0I nth_index)
-next  
-  fix p::"'a Profile_List"
-  fix idx::nat
-  fix alt::'a
-  assume ir: "idx < length p"
-  assume "p ! idx ! 0 \<notin> set (p ! idx)"
-  from this show "(p ! idx)= []"
-    by (metis hd_conv_nth list.set_sel(1))
-qed
-
-
-definition win_count_imp_array :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_imp_array p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
-    ASSERT (i < length p);
-    let ac = ac + (if (((length (p!i)) > 0) \<and> ((p!i!0) = a)) then 1 else 0);
-    let i = i + 1;
-    RETURN (i, ac)
-  })(0,0);
-  RETURN ac
-}"
 
 
 text \<open>
