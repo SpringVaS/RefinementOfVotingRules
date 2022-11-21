@@ -555,7 +555,12 @@ lemma wc_foreach_top_refine_os:
   apply auto
    apply (metis gr0I index_first)
   by (metis index_eq_iff length_pos_if_in_set)
-  
+
+lemma wc_foreach_top_correct:
+  assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
+  shows "wc_foreach_top pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
+  using assms ref_two_step[OF wc_foreach_top_refine_os wc_foreach_list_rank_correct] refine_IdD 
+  by (metis in_br_conv) 
 
 definition  wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" 
   where "wc_fold l a \<equiv> 
@@ -573,10 +578,16 @@ definition  wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres"
           (\<lambda>(_, \<sigma>). RETURN \<sigma>))"*)
 
 lemma wc_fold_refine:
-  shows "wc_fold pl a \<le> \<Down> nat_rel (wc_foreach_top pl a)"
+  shows "wc_fold pl a \<le> \<Down> Id (wc_foreach_top pl a)"
   unfolding wc_fold_def wc_foreach_top_def
   apply(auto simp add: refine_rel_defs nfoldli_while while.WHILET_def)
   done
+
+lemma wc_fold_correct:
+  assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
+  shows "wc_fold pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
+  using assms ref_two_step[OF wc_fold_refine wc_foreach_top_correct] refine_IdD 
+  by (metis) 
 
 sepref_register wc_fold
 
@@ -586,6 +597,7 @@ sepref_definition win_count_imp_sep is
   apply sepref_dbg_keep 
   done
 
+thm win_count_imp_sep_def
 
 text \<open>
   pref count
