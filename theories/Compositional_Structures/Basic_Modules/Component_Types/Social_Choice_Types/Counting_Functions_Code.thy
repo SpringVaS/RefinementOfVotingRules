@@ -494,8 +494,6 @@ lemma wc_foreach_list_rank_correct:
   shows "wc_foreach_list_rank pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using assms ref_two_step[OF win_count_list_r_refine_os wc_foreach_rank_correct] refine_IdD profile_data_refine
   by metis
-  
-
 
 lemma top_rank1:
   assumes ballot: "ballot_on A ballot" and "length ballot > 0"
@@ -562,7 +560,7 @@ lemma wc_foreach_top_correct:
   using assms ref_two_step[OF wc_foreach_top_refine_os wc_foreach_list_rank_correct] refine_IdD 
   by (metis in_br_conv) 
 
-definition  wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" 
+definition wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" 
   where "wc_fold l a \<equiv> 
    nfoldli l (\<lambda>_. True) 
     (\<lambda>x (ac). 
@@ -583,21 +581,23 @@ lemma wc_fold_refine:
   apply(auto simp add: refine_rel_defs nfoldli_while while.WHILET_def)
   done
 
-lemma wc_fold_correct:
+theorem wc_fold_correct:
   assumes "(pl, pr) \<in> (br pl_to_pr_\<alpha> (profile_l A))"
   shows "wc_fold pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using assms ref_two_step[OF wc_fold_refine wc_foreach_top_correct] refine_IdD 
   by (metis) 
 
-sepref_register wc_fold
+lemma wc_fold_refine_spec:
+  shows "(wc_fold, (\<lambda>p a. SPEC (\<lambda> wc. wc = win_count p a))) 
+  \<in> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  apply (refine_vcg wc_fold_correct)
+   apply (simp_all only: refine_rel_defs)
+  by fastforce
 
-sepref_definition win_count_imp_sep is
-  "uncurry wc_fold" :: "(list_assn (array_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
-  unfolding wc_fold_def[abs_def]  short_circuit_conv 
-  apply sepref_dbg_keep 
-  done
 
-thm win_count_imp_sep_def
+(*theorem win_count_imp_sep3_correct: "(uncurry win_count_imp_sep, uncurry wc_foreach_list_rank) 
+\<in> (list_assn (array_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
+    using win_count_imp_sep.refine[FCOMP wc_fold_refine, FCOMP wc_foreach_top_refine] .*)
 
 text \<open>
   pref count

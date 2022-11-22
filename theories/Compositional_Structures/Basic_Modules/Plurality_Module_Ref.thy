@@ -1,22 +1,65 @@
 theory Plurality_Module_Ref
   imports 
-        "Component_Types/Electoral_Module_Ref"
         "Verified_Voting_Rule_Construction.Plurality_Module"
+        "Component_Types/Social_Choice_Types/Counting_Functions_Code"
+        "Component_Types/Electoral_Module_Ref"
 begin
 
+sepref_register wc_fold
 
-fun plurality_r :: "'a Electoral_Module_Ref" where
-  "plurality_r A p =
-    ({a \<in> A. \<forall>x \<in> A. win_count_imp_code p x \<le> win_count_imp_code p a},
-     {a \<in> A. \<exists>x \<in> A. win_count_imp_code p x > win_count_imp_code p a},
-     {})"
+sepref_definition win_count_imp_sep is
+  "uncurry wc_fold" :: "(list_assn (array_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
+  unfolding wc_fold_def[abs_def]  short_circuit_conv 
+  apply sepref_dbg_keep 
+  done
+
+thm win_count_imp_sep.code
+
+definition (*compute_score :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a, nat nres) map" 
+  where *)"compute_scores A p \<equiv> do {
+  m \<leftarrow> FOREACHc A (\<lambda> _. True) 
+    (\<lambda>x l. do {
+      scx \<leftarrow> (wc_fold p x);
+      RETURN (l(x\<mapsto>scx))
+  }) (Map.empty);
+  RETURN m
+}"
+
+
+sepref_register compute_scores
+
+sepref_definition compute_score_sep is
+  "uncurry (compute_scores)" :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k
+    \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn))" 
+  unfolding compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
+  apply (rewrite in "FOREACHc _ _ _ \<hole>" hm.fold_custom_empty)
+  apply (sepref_dbg_keep)
+  done
+
+definition plurality_r :: "'a Electoral_Module_Ref" where
+  "plurality_r A p \<equiv> do {
+    (m) \<leftarrow> compute_scores A p ;
+    let alts = dom m;
+    RETURN ({}, {}, {})
+  } "
+
+sepref_register plurality_r
+
+sepref_definition plurality_sepref is
+  "uncurry plurality_r":: 
+    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
+   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
+  unfolding plurality_r_def[abs_def] wc_fold_def[abs_def]
+  apply sepref_dbg_keep
 
 lemma datarefplurality:
   fixes A :: "'a set"
-  shows "(plurality_r A, plurality A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> Id"
-  apply (refine_rcg)
-  apply (auto simp add: 
-    refine_rel_defs win_count_array) 
+  shows "(plurality_r A, plurality A) \<in> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id"
+  unfolding plurality_r.simps plurality.simps
+  apply (refine_vcg wc_fold_refine_spec)
+  apply (auto simp only: 
+    refine_rel_defs)
+  
   done
 
 lemma plurality_ref_eq:
