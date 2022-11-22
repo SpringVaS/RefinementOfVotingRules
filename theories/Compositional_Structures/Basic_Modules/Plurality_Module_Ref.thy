@@ -17,30 +17,46 @@ thm win_count_imp_sep.code
 
 definition (*compute_score :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a, nat nres) map" 
   where *)"compute_scores A p \<equiv> do {
-  m \<leftarrow> FOREACHc A (\<lambda> _. True) 
-    (\<lambda>x l. do {
+  (scores, max) \<leftarrow> FOREACH A 
+    (\<lambda>x (l, max::nat). do {
       scx \<leftarrow> (wc_fold p x);
-      RETURN (l(x\<mapsto>scx))
-  }) (Map.empty);
-  RETURN m
+      RETURN (l(x\<mapsto>scx), (if (scx > max) then scx else max))
+  }) (Map.empty, 0::nat);
+  RETURN (scores, max)
 }"
 
+lemma 
+  fixes p:: "'a Profile_List" and A:: "'a set"
+  shows "(compute_scores A p) \<le> \<Down> Id (RETURN ([a \<mapsto> (win_count (pl_to_pr_\<alpha> p) a)] |` A,
+       (Max ((win_count (pl_to_pr_\<alpha> p))`{a.  a \<in> A}))))"
+  unfolding compute_scores_def FOREACH_def
+  apply (refine_vcg wc_fold_refine_spec)
+  oops
+  
 
 sepref_register compute_scores
 
-sepref_definition compute_score_sep is
+sepref_definition compute_scores_sep is
   "uncurry (compute_scores)" :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k
-    \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn))" 
+    \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn) \<times>\<^sub>a nat_assn)" 
   unfolding compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACHc _ _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   apply (sepref_dbg_keep)
   done
 
 definition plurality_r :: "'a Electoral_Module_Ref" where
   "plurality_r A p \<equiv> do {
-    (m) \<leftarrow> compute_scores A p ;
-    let alts = dom m;
-    RETURN ({}, {}, {})
+    (scores, maxscore) \<leftarrow> compute_scores A p; 
+    (e,r,d) \<leftarrow> FOREACH A 
+    (\<lambda>x (e,r,d). do {
+      ASSERT (x \<in> dom scores);
+      let scx = the (scores x);
+      (if (scx = maxscore) then 
+          RETURN (insert x e,r,d) 
+      else 
+          RETURN(e, insert x r,d))
+    }) ({},{},{}); 
+    RETURN (e,r,d)
   } "
 
 sepref_register plurality_r
@@ -49,15 +65,20 @@ sepref_definition plurality_sepref is
   "uncurry plurality_r":: 
     "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
    \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
-  unfolding plurality_r_def[abs_def] wc_fold_def[abs_def]
+  unfolding plurality_r_def[abs_def] 
+    compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
   apply sepref_dbg_keep
+  done
 
 lemma datarefplurality:
-  fixes A :: "'a set"
-  shows "(plurality_r A, plurality A) \<in> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id"
-  unfolding plurality_r.simps plurality.simps
-  apply (refine_vcg wc_fold_refine_spec)
-  apply (auto simp only: 
+  shows "\<forall> A. (plurality_r, (\<lambda> A p. SPEC (\<lambda> elecres. elecres = plurality A p))) \<in> 
+    Id \<rightarrow> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding plurality_r_def FOREACH_def
+  compute_scores_def[abs_def]
+  apply (refine_vcg wc_fold_correct)
+  apply (auto simp add: 
     refine_rel_defs)
   
   done
