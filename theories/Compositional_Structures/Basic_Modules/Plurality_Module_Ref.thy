@@ -15,22 +15,28 @@ sepref_definition win_count_imp_sep is
 
 thm win_count_imp_sep.code
 
-definition (*compute_score :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a, nat nres) map" 
-  where *)"compute_scores A p \<equiv> do {
-  (scores, max) \<leftarrow> FOREACH A 
-    (\<lambda>x (l, max::nat). do {
+lemma nfwcc: "nofail (wc_fold p a)"
+  unfolding wc_fold_def 
+  apply (induction p rule: rev_induct, simp)
+   apply simp
+  by (simp add: pw_bind_nofail)
+   
+
+definition compute_scores :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
+  where "compute_scores A p \<equiv> do {
+  (scores) \<leftarrow> FOREACH A 
+    (\<lambda>x m. do {
       scx \<leftarrow> (wc_fold p x);
-      RETURN (l(x\<mapsto>scx), (if (scx > max) then scx else max))
-  }) (Map.empty, 0::nat);
-  RETURN (scores, max)
+      RETURN (m(x\<mapsto>scx))
+  }) (Map.empty);
+  RETURN (scores)
 }"
 
 lemma 
-  fixes p:: "'a Profile_List" and A:: "'a set"
-  shows "(compute_scores A p) \<le> \<Down> Id (RETURN ([a \<mapsto> (win_count (pl_to_pr_\<alpha> p) a)] |` A,
-       (Max ((win_count (pl_to_pr_\<alpha> p))`{a.  a \<in> A}))))"
-  unfolding compute_scores_def FOREACH_def
-  apply (refine_vcg wc_fold_refine_spec)
+  fixes pl:: "'a Profile_List" and A:: "'a set"
+  assumes "finite A"
+  shows "(compute_scores, ((\<lambda> A p. RETURN ([a \<mapsto> (win_count pr a)]))))
+    \<in> Id \<rightarrow> br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> \<langle>Id\<rangle>nres_rel "
   oops
   
 
@@ -38,20 +44,27 @@ sepref_register compute_scores
 
 sepref_definition compute_scores_sep is
   "uncurry (compute_scores)" :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k
-    \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn) \<times>\<^sub>a nat_assn)" 
+    \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn))" 
   unfolding compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
   apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   apply (sepref_dbg_keep)
   done
 
+
+definition (*compute_threshold :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres" 
+  where*) "compute_threshold A scores \<equiv> do {
+    
+    RETURN 0  
+}"
+
 definition plurality_r :: "'a Electoral_Module_Ref" where
   "plurality_r A p \<equiv> do {
-    (scores, maxscore) \<leftarrow> compute_scores A p; 
+    (scores) \<leftarrow> compute_scores A p; 
     (e,r,d) \<leftarrow> FOREACH A 
     (\<lambda>x (e,r,d). do {
       ASSERT (x \<in> dom scores);
       let scx = the (scores x);
-      (if (scx = maxscore) then 
+      (if (scx = 1) then 
           RETURN (insert x e,r,d) 
       else 
           RETURN(e, insert x r,d))
