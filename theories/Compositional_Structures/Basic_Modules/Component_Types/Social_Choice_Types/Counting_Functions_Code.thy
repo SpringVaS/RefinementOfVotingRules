@@ -121,7 +121,13 @@ lemma rank_mon_refine:
   apply simp
   done
 
+sepref_register index_mon
 sepref_register rank_mon
+
+sepref_definition rank_imp_sep
+  is "uncurry rank_mon" :: "((array_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn)"
+  unfolding rank_mon_def[abs_def] index_mon_def[abs_def]
+  by sepref
 
 
 section \<open>Monadic implementation of counting functions \<close>
@@ -147,7 +153,7 @@ lemma wc_foreach_correct:
   shows "wc_foreach p a \<le> SPEC (\<lambda> wc. wc = win_count p a)"
   unfolding wc_foreach_def wc_invar_fe_def
   FOREACH_cond_def FOREACH_body_def
-  apply (intro WHILEIT_rule[where R="measure (\<lambda>(xs,_). length xs)"] FOREACHoi_rule refine_vcg)
+  apply (intro WHILEIT_rule[where R="measure (\<lambda>(xs,_). length xs)"]  refine_vcg)
   apply (safe, simp_all)
   apply (metis append_Nil diff_le_self drop_Suc drop_all drop_append length_drop tl_drop)
 proof (-)
@@ -607,6 +613,10 @@ definition  "prefer_count_invariant p x y \<equiv> \<lambda>(r, ac).
       r \<le> length p \<and>
       ac = card {i::nat. i < r \<and> (let r = (p!i) in (y \<preceq>\<^sub>r x))}"
 
+definition "pc_invar_fe p0 a b \<equiv> \<lambda>(xs,ac).
+  xs = drop (length p0 - length xs) p0 \<and>
+  ac = card {i::nat. i < (length p0 - length xs) \<and> (let r = (p0!i) in (b \<preceq>\<^sub>r a))}"
+
 definition prefer_count_mon :: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where
   "prefer_count_mon p x y \<equiv> do {
    (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
@@ -618,6 +628,73 @@ definition prefer_count_mon :: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<R
   })(0,0);
   RETURN ac
 }"
+
+
+definition pc_foreach:: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
+"pc_foreach p a b \<equiv> do {
+  (xs,ac) \<leftarrow> WHILEIT (pc_invar_fe p a b) (FOREACH_cond (\<lambda>_.True)) 
+    (FOREACH_body (\<lambda>x (ac).
+     if (b \<preceq>\<^sub>x a) then RETURN (ac+1) else RETURN (ac)
+    )) (p,0);
+  RETURN ac
+}"
+thm prefer_count_code.elims
+
+lemma pc_foreach_correct:
+  shows "pc_foreach p a b \<le> SPEC (\<lambda> wc. wc = prefer_count p a b)"
+  unfolding pc_foreach_def pc_invar_fe_def
+  FOREACH_cond_def FOREACH_body_def
+  apply (intro WHILEIT_rule[where R="measure (\<lambda>(xs,_). length xs)"] FOREACHoi_rule refine_vcg)
+  apply (auto)
+     apply (metis Suc_diff_le diff_le_self drop_Suc length_drop tl_drop)
+  proof (-)
+    fix aa:: "'a Profile"
+    assume last: "aa = drop (length p - length aa) p"
+  assume pnemp: "aa \<noteq> []"
+  assume hdr: "(b, a) \<in> hd aa"
+  from last pnemp have hdidx: "hd aa = (p!(length p - length aa))"
+    by (metis drop_eq_Nil hd_drop_conv_nth linorder_not_less)
+  from hdidx hdr have aba: "(b, a) \<in> (p!(length p - length aa))" by simp
+  from pnemp aba have prep: 
+         "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
+        = {i. i < length p - length aa \<and> (b, a) \<in> p ! i} \<union> {(length p) - length aa}"
+    by fastforce
+  from last have "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
+        = {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}"
+    by (metis Suc_diff_le diff_le_self length_drop less_Suc_eq_le)
+  from this prep have "{i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i} 
+        = ({i. i < length p - length aa \<and> (b, a) \<in> p ! i} \<union> 
+          {(length p - length aa)})" by simp
+  from pnemp this show "Suc (card {i. i < length p - length aa \<and> (b, a) \<in> p ! i}) =
+          card {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}"
+    by fastforce
+next
+  fix xs:: "'a Profile"
+  fix alt:: "'a"
+  assume headr: "xs = drop (length p - length xs) p"
+  show "tl xs = drop (Suc (length p) - length xs) p"
+    by (metis Suc_diff_le diff_le_self drop_Suc headr length_drop tl_drop)
+next
+  fix aa:: "'a Profile"
+  assume last: "aa = drop (length p - length aa) p"
+  assume pnemp: "aa \<noteq> []"
+  assume hdr: "(b, a) \<notin> hd aa"
+  from last pnemp have hdidx: "hd aa = (p!(length p - length aa))"
+    by (metis drop_eq_Nil hd_drop_conv_nth linorder_not_less)
+  from hdidx hdr have aba: "(b, a) \<notin> (p!(length p - length aa))" by simp
+  from pnemp aba have prep: 
+         "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
+        = {i. i < length p - length aa \<and> (b, a) \<in> p ! i}"
+    using order_le_less by blast   
+  from last have "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
+        = {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}"
+    by (metis Suc_diff_le diff_le_self length_drop less_Suc_eq_le)
+  from this prep have "{i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i} 
+        = ({i. i < length p - length aa \<and> (b, a) \<in> p ! i})" by simp
+  from this show " card {i. i < length p - length aa \<and> (b, a) \<in> p ! i} =
+          card {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}" 
+    by simp
+qed
 
 lemma prefer_count_mon_correct:
   shows "prefer_count_mon p a b \<le> SPEC (\<lambda> wc. wc = prefer_count p a b)"

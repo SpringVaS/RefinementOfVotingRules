@@ -3,8 +3,35 @@ theory Plurality_Module_Ref
         "Verified_Voting_Rule_Construction.Plurality_Module"
         "Component_Types/Social_Choice_Types/Counting_Functions_Code"
         "Component_Types/Electoral_Module_Ref"
+    HOL.Finite_Set
 begin
 
+
+definition plurality_fe:: "'a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres"
+  where
+  "plurality_fe A p = do {
+    let maxwc = (Finite_Set.fold max (0::nat) ((win_count p)`A)  );
+    (e,r,d) \<leftarrow> FOREACH A 
+    (\<lambda>x (e,r,d). do {
+      let scx = win_count p x;
+      (if (scx = maxwc) then 
+          RETURN (insert x e,r,d) 
+      else 
+          RETURN(e, insert x r,d))
+    }) ({},{},{}); 
+    RETURN (e,r,d)}" 
+
+lemma 
+  assumes "finite A"
+  shows "plurality_fe A p \<le> SPEC (\<lambda>res. res = plurality A p)"
+  unfolding plurality_fe_def 
+  apply (refine_vcg assms FOREACH_rule[where I="\<lambda> it (e,r,d). 
+              (alt \<in> e \<longrightarrow> (\<forall>x \<in> A. win_count p x \<le> win_count p alt)) \<and>
+              (alt \<in> r \<longrightarrow> (\<exists>x \<in> A. win_count p x > win_count p alt)) \<and>
+              d = {} \<and>
+              (e \<union> r \<union> d) = (A-it)"])
+  oops
+ 
 sepref_register wc_fold
 
 sepref_definition win_count_imp_sep is
@@ -20,11 +47,11 @@ lemma nfwcc: "nofail (wc_fold p a)"
   apply (induction p rule: rev_induct, simp)
    apply simp
   by (simp add: pw_bind_nofail)
-   
+ 
 
 definition compute_scores :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
   where "compute_scores A p \<equiv> do {
-  (scores) \<leftarrow> FOREACH A 
+  (scores) \<leftarrow> FOREACHi (\<lambda>it r. r = (\<lambda> e. Some (win_count (pl_to_pr_\<alpha> p) e)) |` (A - it)) A 
     (\<lambda>x m. do {
       scx \<leftarrow> (wc_fold p x);
       RETURN (m(x\<mapsto>scx))
@@ -32,13 +59,18 @@ definition compute_scores :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow>
   RETURN (scores)
 }"
 
+
 lemma 
   fixes pl:: "'a Profile_List" and A:: "'a set"
   assumes "finite A"
-  shows "(compute_scores, ((\<lambda> A p. RETURN ([a \<mapsto> (win_count pr a)]))))
-    \<in> Id \<rightarrow> br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> \<langle>Id\<rangle>nres_rel "
-  oops
-  
+  shows "(compute_scores A, ((\<lambda>p. RETURN ((\<lambda>a. Some (win_count p a))|`A))))
+    \<in> br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> \<langle>Id\<rangle>nres_rel "
+  unfolding compute_scores_def
+  apply (refine_vcg assms wc_fold_correct)
+  apply (auto simp del: win_count.simps)
+  apply (metis in_br_conv it_step_insert_iff restrict_map_insert)
+  by (metis in_br_conv)
+
 
 sepref_register compute_scores
 
@@ -46,7 +78,7 @@ sepref_definition compute_scores_sep is
   "uncurry (compute_scores)" :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k
     \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn))" 
   unfolding compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACHi _ _ _ \<hole>" hm.fold_custom_empty)
   apply (sepref_dbg_keep)
   done
 
