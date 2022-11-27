@@ -512,32 +512,6 @@ lemma top_rank1:
   by simp 
   
 
-definition win_count_imp_array :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
-"win_count_imp_array p a \<equiv> do {
-  (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
-    ASSERT (i < length p);
-    let ac = ac + (if (((length (p!i)) > 0) \<and> ((p!i!0) = a)) then 1 else 0);
-    let i = i + 1;
-    RETURN (i, ac)
-  })(0,0);
-  RETURN ac
-}"
-
-(*lemma win_count_imp_array_refine:
-  shows "win_count_imp_array pl a \<le> \<Down>Id (win_count_list_r pl a)"
-  unfolding win_count_imp_array_def win_count_list_r_def wc_list_invar_def
-  apply (refine_rcg)
-      apply (refine_dref_type)
-  apply(auto simp add: carde  refine_rel_defs )
-   apply (metis index_first not_gr_zero)
-  apply (metis gr0I nth_index)
-  done*)
-
-
-(* TODO correctness proof *)
-
-
-
 definition wc_foreach_top:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "wc_foreach_top p  a \<equiv> do {
   (xs::'a Profile_List,ac) \<leftarrow> WHILET (FOREACH_cond (\<lambda>_.True)) 
@@ -638,7 +612,6 @@ definition pc_foreach:: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarr
     )) (p,0);
   RETURN ac
 }"
-thm prefer_count_code.elims
 
 lemma pc_foreach_correct:
   shows "pc_foreach p a b \<le> SPEC (\<lambda> wc. wc = prefer_count p a b)"
