@@ -8,9 +8,6 @@ begin
 
 type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result nres"
 
-definition electoral_module_r :: " 'a Electoral_Module_Ref \<Rightarrow> bool" where
-  "electoral_module_r mr \<equiv> \<forall> A pa. well_formed A (mr A pa)"
-
 lemma em_corres:
   fixes A :: "'a set" and pa :: "'a Profile_List"
   assumes "(em_r, em) \<in> (Id \<rightarrow> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id)" 
@@ -31,5 +28,4 @@ lemma em_onA:
   by (metis assms(1) assms(2) brI pair_in_Id_conv tagged_fun_relD_rhs)
 
 
-type_synonym 'a Electoral_Module_SepRef = "nat set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result"
 end
