@@ -51,37 +51,66 @@ lemma nfwcc: "nofail (wc_fold p a)"
 
 definition compute_scores :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
   where "compute_scores A p \<equiv>
-  FOREACHi (\<lambda>it r. r = (\<lambda> e. Some (win_count (pl_to_pr_\<alpha> p) e)) |` (A - it)) A 
+  FOREACH A 
     (\<lambda>x m. do {
       scx \<leftarrow> (wc_fold p x);
       RETURN (m(x\<mapsto>scx))
   }) (Map.empty)"
 
-definition (*scoremax :: "'a set \<Rightarrow> ('a \<rightharpoonup> nat) \<Rightarrow> nat option nres" 
-  where *)"scoremax A ma \<equiv> do {
-  FOREACH (A)
+term "(range [1::nat\<mapsto>1::nat])"
+
+find_theorems ran
+
+definition scoremax:: "('a \<rightharpoonup> nat) \<Rightarrow> nat nres" where "scoremax ma \<equiv> do{
+ ASSERT(finite (range ma));
+ FOREACH (ran ma)
   (\<lambda>x m. do {
-      let s = (ma x);
+      let s = x;
       if (s > m) then RETURN (s) else RETURN (m)
-  }) (Some 0::nat option) }"
+  }) (0::nat)
+}"
 
 sepref_register scoremax
 
 sepref_definition tryitmap 
-  is "uncurry scoremax" :: "((hs.assn nat_assn)\<^sup>k *\<^sub>a (hm.assn (nat_assn) (nat_assn))\<^sup>k \<rightarrow>\<^sub>a (opt_assn nat_assn))"
+  is " scoremax" :: "((hm.assn (nat_assn) (nat_assn))\<^sup>k \<rightarrow>\<^sub>a (nat_assn))"
   unfolding scoremax_def[abs_def]
-  apply sepref_dbg_keep
+apply sepref_dbg_keep
+apply sepref_dbg_trans_keep
+apply sepref_dbg_trans_step_keep
+subgoal premises p
+  oops
 
 lemma compute_scores_correct:
   fixes pl:: "'a Profile_List" and A:: "'a set"
-  assumes "finite A"
-  shows "(compute_scores A, ((\<lambda>p. RETURN ((\<lambda>a. Some (win_count p a))|`A))))
-    \<in> br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> \<langle>Id\<rangle>nres_rel "
+  assumes "finite A" and "profile_l A pl" and "(pl, pr) \<in> profile_rel"
+  shows "(compute_scores A pl, ((\<lambda>A p. RETURN ((\<lambda>a. Some (win_count p a))|`A)) A pr))
+    \<in> \<langle>Id\<rangle>nres_rel "
   unfolding compute_scores_def
-  apply (refine_vcg assms wc_fold_correct)
+  using assms apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e)) |` (A - it))"])
   apply (auto simp del: win_count.simps)
-  apply (metis in_br_conv it_step_insert_iff restrict_map_insert)
-  by (metis in_br_conv)
+proof -
+  fix x:: 'a
+  fix it:: "'a set"
+  assume xit: "x \<in> it"
+  assume itA: "it \<subseteq> A"
+  from xit itA have xiA: "x \<in> A" by fastforce
+  from xit itA have wcr: "((\<lambda>e. Some (win_count pr e)) |` (A - it))(x \<mapsto> win_count pr x) =
+                      (\<lambda>e. Some (win_count pr e)) |` (A - (it - {x}))"
+      using it_step_insert_iff restrict_map_insert
+      by metis
+  from this have mapupdeq: "(\<lambda>scx. ((\<lambda>e. Some (win_count pr e)) |` (A - it))(x \<mapsto> scx) =
+                   (\<lambda>e. Some (win_count pr e)) |` (A - (it - {x})))
+      = (\<lambda> wc. wc = win_count pr x)"
+    by (metis map_upd_eqD1)
+  have "wc_fold pl x \<le> SPEC(\<lambda> scx. scx = win_count pr x)"
+    using assms(3) assms(2) wc_fold_correct by metis
+  from this mapupdeq show " wc_fold pl x
+       \<le> SPEC (\<lambda>scx. ((\<lambda>e. Some (win_count pr e)) |` (A - it))(x \<mapsto> scx) =
+                      (\<lambda>e. Some (win_count pr e)) |` (A - (it - {x})))"
+    using SPEC_cons_rule it_step_insert_iff restrict_map_insert
+    by presburger 
+qed 
 
 
 sepref_register compute_scores
@@ -90,10 +119,8 @@ sepref_definition compute_scores_sep is
   "uncurry (compute_scores)" :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k
     \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn))" 
   unfolding compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACHi _ _ _ \<hole>" hm.fold_custom_empty)
-  apply (sepref_dbg_keep)
-  done
-
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
+  by sepref
 
 definition (*compute_threshold :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres" 
   where*) "compute_threshold A scores \<equiv> do {
@@ -103,8 +130,8 @@ definition (*compute_threshold :: "'a set \<Rightarrow> 'a Profile_List \<Righta
 
 definition plurality_r :: "'a Electoral_Module_Ref" where
   "plurality_r A p \<equiv> do {
-    (scores) \<leftarrow> compute_scores A p;
-    scoremax \<leftarrow> scoremax A scores;
+    scores \<leftarrow> compute_scores A p;
+    scoremax \<leftarrow> (scoremax (Map.graph scores));
     (e,r,d) \<leftarrow> FOREACH A 
     (\<lambda>x (e,r,d). do {
       ASSERT (x \<in> dom scores);
@@ -125,10 +152,10 @@ sepref_definition plurality_sepref is
    \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
   unfolding plurality_r_def[abs_def] 
     compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACHi _ _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)+
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
   apply sepref_dbg_keep
-  done
+  oops
 
 lemma datarefplurality:
   shows "finite A \<longrightarrow> ((plurality_r A, (\<lambda> p. SPEC (\<lambda> elecres. elecres = plurality A p))) \<in> 
@@ -138,7 +165,7 @@ lemma datarefplurality:
   apply (refine_vcg wc_fold_correct compute_scores_correct)
   apply (auto simp add:  
     refine_rel_defs simp del: win_count.simps )
-   apply (metis it_step_insert_iff restrict_map_insert)
+
 
   
   oops

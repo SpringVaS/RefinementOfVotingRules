@@ -5,21 +5,6 @@ theory Counting_Functions_Code
   RefinementList
 begin
 
-text \<open>Profile List refines Profile\<close>
-
-lemma profile_data_refine:
-  assumes "(pl,pr)\<in>build_rel pl_to_pr_\<alpha> (profile_l A)"
-  shows "profile A pr"
-proof -
-  from assms have prof: "profile_l A pl"
-    using in_br_conv by metis
-  from assms have "pr = pl_to_pr_\<alpha> pl"
-    using in_br_conv by metis
-  with prof show ?thesis 
-    using profile_prop_refine by metis
-qed
-
-
 text \<open> Monadic definition of ballot properties \<close>
 
 definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
@@ -489,37 +474,16 @@ definition wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres"
     ) 
     (0)"
 
-
-(*lemma nfoldli_while: "nfoldli l c f \<sigma>
-          \<le>
-         (WHILE\<^sub>T\<^bsup>I\<^esup>
-           (FOREACH_cond c) (FOREACH_body f) (l, \<sigma>) \<bind>
-          (\<lambda>(_, \<sigma>). RETURN \<sigma>))"*)
-
 lemma wc_fold_refine:
   shows "wc_fold pl a \<le> \<Down> Id (wc_foreach_top pl a)"
   unfolding wc_fold_def wc_foreach_top_def
-  apply(auto simp add: refine_rel_defs nfoldli_while while.WHILET_def)
-  done
+  by (simp add: nfoldli_while while.WHILET_def)
 
 theorem wc_fold_correct:
   assumes "(pl, pr) \<in> profile_rel" and "profile_l A pl"
   shows "wc_fold pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using assms ref_two_step[OF wc_fold_refine wc_foreach_top_correct] refine_IdD 
   by (metis) 
-
-lemma wc_fold_refine_spec:
-  shows "(wc_fold, (\<lambda>p a. SPEC (\<lambda> wc. wc = win_count p a))) 
-  \<in> profile_rel \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply (refine_vcg )
-  apply (auto)
-  using wc_fold_correct 
-  
-
-
-(*theorem win_count_imp_sep3_correct: "(uncurry win_count_imp_sep, uncurry wc_foreach_list_rank) 
-\<in> (list_assn (array_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
-    using win_count_imp_sep.refine[FCOMP wc_fold_refine, FCOMP wc_foreach_top_refine] .*)
 
 text \<open>
   pref count
@@ -655,13 +619,16 @@ definition prefer_count_mon_list :: "'a Profile_List \<Rightarrow> 'a \<Rightarr
 }"
 
 lemma prefer_count_mon_list_refine:
-  assumes "(pl,pr)\<in>br pl_to_pr_\<alpha> (profile_l A)"
+  assumes "(pl,pr)\<in>profile_rel"
   shows "prefer_count_mon_list pl a b \<le> \<Down>Id (prefer_count_mon pr a b)"
-    using assms unfolding prefer_count_mon_list_def prefer_count_mon_def pl_to_pr_\<alpha>_def
+    using assms unfolding prefer_count_mon_list_def prefer_count_mon_def
   apply (refine_rcg)
   apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
     refinement goals\<close>
-  apply (auto simp add: refine_rel_defs) unfolding pl_\<alpha>_def is_less_preferred_than.simps
-  by auto
+    unfolding well_formed_pl_def
+  apply (auto simp add: refine_rel_defs list_all2_lengthD   simp del: is_less_preferred_than_l.simps)
+    unfolding pl_\<alpha>_def 
+  by (simp_all add: list_all2_conv_all_nth)
+  
 
 end

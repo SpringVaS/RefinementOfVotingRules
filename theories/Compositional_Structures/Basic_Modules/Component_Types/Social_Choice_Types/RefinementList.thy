@@ -58,7 +58,7 @@ abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 
 lemma profileref:
   shows "(profile_l, profile) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> bool_rel"
-  apply (refine_rcg linearorder_ref)
+  apply (refine_rcg)
  apply (clarsimp simp add: linearorder_ref)
 proof (-)
   fix pl:: "'a Profile_List" 
