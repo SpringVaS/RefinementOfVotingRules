@@ -116,21 +116,20 @@ proof -
 qed 
 
 
-lemma scoremax_correct:            
+lemma scoremax_correct:
+  fixes f:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat"
   assumes "finite A"
-  shows "scoremax A ((\<lambda>a. Some (f p a))|`A) \<le> SPEC (\<lambda>max. \<forall>a \<in> A. f p a \<le> max)"
+  shows "scoremax A ((\<lambda>a. Some (f p a))|`A) \<le> SPEC (\<lambda>max. (\<forall>a \<in> A. f p a \<le> max) \<and> ((\<exists>e \<in> A. max = f p e) \<or> max = 0))"
   unfolding scoremax_def
-  apply (intro FOREACH_rule[where I = "(\<lambda>it max. \<forall>a \<in> (A - it). f p a \<le> max)"] refine_vcg)
-  using assms apply auto[2]
-     apply (clarsimp_all simp del: win_count.simps)
-    apply blast
-  apply safe
-     apply (metis DiffI order_less_imp_le order_trans)
-  apply blast
-  apply linarith
-  done
+  apply (intro FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). f p a \<le> max) \<and> ((\<exists>e \<in> (A - it). max = f p e) \<or> max = 0))"] refine_vcg)
+  using assms apply auto
+  apply (metis Diff_iff leD nle_le order_trans)
+   apply (metis DiffI order_less_imp_le)
+  by (metis DiffI nat_neq_iff)
+  
   
 
+  oops
 sepref_register compute_scores
 
 sepref_definition compute_scores_sep is
@@ -146,11 +145,12 @@ definition (*compute_threshold :: "'a set \<Rightarrow> 'a Profile_List \<Righta
     RETURN 0  
 }"
 
-definition "plurint A scores sel \<equiv>  
+definition "plurint A scores th \<equiv>  
     FOREACH (A)
     (\<lambda>x (e,r,d). do {
       ASSERT (x \<in> dom scores);
       let scx = the (scores x);
+      sel <- th;
       (if (scx = sel) then 
           RETURN (insert x e,r,d) 
       else 
@@ -185,25 +185,29 @@ sepref_definition plurality_sepref is
   apply sepref_dbg_keep
   done
 
+find_theorems Max
+
 lemma datarefplurality:
-  fixes pl:: "'a Profile_List" and A:: "'a set"
-  assumes "finite A" and "profile_l A pl" and "(pl, pr) \<in> profile_rel"
-  shows "(plurint A pl, (\<lambda>A p. SPEC (\<lambda> elecres. elecres = plurality A p)) A pr ) \<in>
+  fixes pr:: "'a Profile" and A:: "'a set"
+  assumes "finite A" and "A \<noteq> {}"
+  shows "(plurint A ((\<lambda>a. Some (win_count pr a))|`A) 
+(SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0))), 
+(\<lambda>A p. SPEC (\<lambda> elecres. elecres = plurality A p)) A pr ) \<in>
    \<langle>Id\<rangle>nres_rel"
   unfolding plurint_def
-   apply (auto simp add:  
-     simp del: win_count.simps )
   apply (refine_rcg)
   apply (refine_vcg FOREACH_rule[where I = "
-  (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count p a \<le> win_count p elem))"] )
-  apply (auto simp add: refine_rel_defs compute_scores_correct
+  (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
+  \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)
+  \<and> d = {} \<and>
+  e \<union> r = (A - it))"] )
+  using assms(1) apply (auto simp add:
     simp del: win_count.simps )
-  using compute_scores_correct scoremax_correct 
-  
-
-
-  
-  oops
+  using nat_less_le apply blast
+  apply (rename_tac e r alt)
+  using leD apply blast
+   apply (metis UnCI leD)+
+  done
 
 
 end
