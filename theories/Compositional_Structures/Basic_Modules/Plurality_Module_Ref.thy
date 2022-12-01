@@ -126,10 +126,7 @@ lemma scoremax_correct:
   apply (metis Diff_iff leD nle_le order_trans)
    apply (metis DiffI order_less_imp_le)
   by (metis DiffI nat_neq_iff)
-  
-  
 
-  oops
 sepref_register compute_scores
 
 sepref_definition compute_scores_sep is
@@ -172,6 +169,12 @@ definition plurality_full :: "'a Electoral_Module_Ref" where
     }) ({},{},{})
   } "
 
+definition pluralityparam:: "'a Electoral_Module_Ref" where 
+"pluralityparam A p \<equiv> do {
+  scores <- compute_scores A p;
+  plurint A scores (scoremax A scores)
+}"
+
 sepref_register plurality_full
 
 sepref_definition plurality_sepref is
@@ -180,10 +183,24 @@ sepref_definition plurality_sepref is
    \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
   unfolding plurality_full_def[abs_def] 
     compute_scores_def[abs_def] wc_fold_def[abs_def] scoremax_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)+
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
   apply sepref_dbg_keep
   done
+
+sepref_register pluralityparam
+
+sepref_definition plurality_sepreftest is
+  "uncurry pluralityparam":: 
+    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
+   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
+  unfolding pluralityparam_def[abs_def] plurint_def[abs_def] 
+    compute_scores_def[abs_def] wc_fold_def[abs_def] scoremax_def[abs_def] short_circuit_conv
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
+  apply sepref_dbg_keep
+  done
+
 
 find_theorems Max
 
