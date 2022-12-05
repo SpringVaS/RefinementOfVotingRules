@@ -57,9 +57,6 @@ definition compute_scores :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow>
       RETURN (m(x\<mapsto>scx))
   }) (Map.empty)"
 
-term "(range [1::nat\<mapsto>1::nat])"
-
-find_theorems ran
 
 definition "scoremax A scores \<equiv> do {
   FOREACH (A)
@@ -75,21 +72,15 @@ definition "scoremax A scores \<equiv> do {
 
 sepref_register scoremax
 
-sepref_definition tryitmap 
-  is "uncurry scoremax" :: "((hs.assn nat_assn)\<^sup>k *\<^sub>a (hm.assn (nat_assn) (nat_assn))\<^sup>k \<rightarrow>\<^sub>a (nat_assn))"
-  unfolding scoremax_def[abs_def]
-  apply sepref_dbg_keep
-apply sepref_dbg_trans_keep
-          apply sepref_dbg_trans_step_keep
-subgoal premises p
-  oops
+definition "precompute_map_spec A p = SPEC (\<lambda> map. map = (\<lambda>a. Some (win_count p a))|`A)"
 
+(* TODO: cleanup in locale *)
 lemma compute_scores_correct:
   fixes pl:: "'a Profile_List" and A:: "'a set"
   assumes "finite A" and "profile_l A pl" and "(pl, pr) \<in> profile_rel"
-  shows "(compute_scores A pl, ((\<lambda>A p. RETURN ((\<lambda>a. Some (win_count p a))|`A)) A pr))
+  shows "(compute_scores A pl, (precompute_map_spec A pr))
     \<in> \<langle>Id\<rangle>nres_rel"
-  unfolding compute_scores_def
+  unfolding compute_scores_def precompute_map_spec_def
   using assms apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e)) |` (A - it))"])
   apply (auto simp del: win_count.simps)
 proof -
@@ -206,13 +197,12 @@ find_theorems Max
 
 lemma datarefplurality:
   fixes pr:: "'a Profile" and A:: "'a set"
-  assumes "finite A" and "A \<noteq> {}"
+  assumes "finite A"
   shows "(plurint A ((\<lambda>a. Some (win_count pr a))|`A) 
 (SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0))), 
 (\<lambda>A p. SPEC (\<lambda> elecres. elecres = plurality A p)) A pr ) \<in>
    \<langle>Id\<rangle>nres_rel"
   unfolding plurint_def
-  apply (refine_rcg)
   apply (refine_vcg FOREACH_rule[where I = "
   (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
   \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)

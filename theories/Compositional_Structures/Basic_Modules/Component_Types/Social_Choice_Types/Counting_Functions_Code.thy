@@ -108,9 +108,6 @@ lemma rank_mon_refine:
   apply simp
   done
 
-sepref_register index_mon
-sepref_register rank_mon
-
 sepref_definition rank_imp_sep
   is "uncurry rank_mon" :: "((array_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn)"
   unfolding rank_mon_def[abs_def] index_mon_def[abs_def]
