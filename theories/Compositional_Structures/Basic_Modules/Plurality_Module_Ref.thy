@@ -127,12 +127,6 @@ sepref_definition compute_scores_sep is
   apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   by sepref
 
-definition (*compute_threshold :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres" 
-  where*) "compute_threshold A scores \<equiv> do {
-    
-    RETURN 0  
-}"
-
 definition "plurint A scores th \<equiv>  
     FOREACH (A)
     (\<lambda>x (e,r,d). do {
@@ -166,7 +160,6 @@ definition pluralityparam:: "'a Electoral_Module_Ref" where
   plurint A scores (scoremax A scores)
 }"
 
-sepref_register plurality_full
 
 sepref_definition plurality_sepref is
   "uncurry plurality_full":: 
@@ -178,8 +171,6 @@ sepref_definition plurality_sepref is
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
   apply sepref_dbg_keep
   done
-
-sepref_register pluralityparam
 
 sepref_definition plurality_sepreftest is
   "uncurry pluralityparam":: 
@@ -193,16 +184,15 @@ sepref_definition plurality_sepreftest is
   done
 
 
-find_theorems Max
+definition "max_comp_spec_plurality A pr \<equiv> (SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0)))"
 
 lemma datarefplurality:
   fixes pr:: "'a Profile" and A:: "'a set"
   assumes "finite A"
-  shows "(plurint A ((\<lambda>a. Some (win_count pr a))|`A) 
-(SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0))), 
+  shows "(plurint A ((\<lambda>a. Some (win_count pr a))|`A) (max_comp_spec_plurality A pr), 
 (\<lambda>A p. SPEC (\<lambda> elecres. elecres = plurality A p)) A pr ) \<in>
    \<langle>Id\<rangle>nres_rel"
-  unfolding plurint_def
+  unfolding plurint_def max_comp_spec_plurality_def
   apply (refine_vcg FOREACH_rule[where I = "
   (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
   \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)
@@ -216,5 +206,11 @@ lemma datarefplurality:
    apply (metis UnCI leD)+
   done
 
+theorem plurality_refine:
+  fixes A:: "'a set"
+  assumes "finite A"
+  shows "((pluralityparam A), 
+((\<lambda> A p. plurint A ((\<lambda>a. Some (win_count p a))|`A) (max_comp_spec_plurality A p)) A))
+     \<in> (profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel)"
 
 end

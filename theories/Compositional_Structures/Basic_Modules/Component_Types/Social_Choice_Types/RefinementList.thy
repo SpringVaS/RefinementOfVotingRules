@@ -11,6 +11,8 @@ begin
 
 abbreviation "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
 
+abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"
+
 lemma linearorder_ref: 
   "(linear_order_on_l, linear_order_on) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ballot_rel \<rightarrow> bool_rel"                                 
 proof (refine_vcg, clarsimp_all)
@@ -48,13 +50,21 @@ lemma limitref:
   shows "(limit_l, limit) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ballot_rel \<rightarrow> ballot_rel"
   apply (refine_vcg)
   apply (auto simp add: refine_rel_defs)
-  oops
-  (*unfolding well_formed_pl_def pl_\<alpha>_def
-  apply auto
+  unfolding well_formed_pl_def pl_\<alpha>_def
   apply (simp_all add: member_def)
-   apply clarsimp_all*)
+   apply clarsimp_all
+oops
 
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
+abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
+
+lemma profile_prop_refine:
+  fixes A:: "'a set" and pl:: "'a Profile_List"
+  assumes "(pl,pr) \<in> profile_on_A_rel A"
+  shows "profile_l A pl"
+  unfolding profile_l_def
+  using assms in_br_conv
+  by (metis (full_types) list_rel_imp_same_length pair_in_Id_conv param_nth relcompEpair)
 
 lemma profileref:
   shows "(profile_l, profile) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> bool_rel"
