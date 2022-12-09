@@ -13,6 +13,13 @@ abbreviation "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
 
 abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"
 
+lemma ballot_prop_rel:
+  fixes A:: "'a set" and l:: "'a Preference_List"
+  assumes "(l,r) \<in> ballot_on_A_rel A"
+  shows "(l,r) \<in> ballot_rel"
+  using assms by (metis in_br_conv relcompEpair)
+  
+
 lemma linearorder_ref: 
   "(linear_order_on_l, linear_order_on) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ballot_rel \<rightarrow> bool_rel"                                 
 proof (refine_vcg, clarsimp_all)
@@ -58,7 +65,31 @@ oops
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
 
-lemma profile_prop_refine:
+find_theorems list_rel
+
+lemma profile_type_ref:
+  fixes A:: "'a set"
+  assumes "(pl, pr) \<in> profile_on_A_rel A" 
+  shows "(pl, pr) \<in> profile_rel"
+proof standard
+  from assms show "(pl, pr) \<in> profile_on_A_rel A" by simp
+next
+  show "profile_on_A_rel A \<subseteq> profile_rel"
+  proof standard
+    fix x:: "('a Profile_List \<times> 'a Profile)"
+    assume lrrel: "x \<in> (profile_on_A_rel A)"
+    from this have "(\<forall>i < length (fst x). (((fst x)!i), ((snd x)!i)) \<in> (ballot_on_A_rel A))"
+      using list_rel_imp_same_length pair_in_Id_conv param_nth
+      by (metis prod.exhaust_sel)      
+    from this have "(\<forall>i < length (fst x). (((fst x)!i), ((snd x)!i)) \<in> (ballot_rel))"
+      using ballot_prop_rel
+      by blast
+    from lrrel this show "x \<in> (profile_rel)"
+      by (metis list_rel_eq_listrel listrel_iff_nth prod.exhaust_sel relAPP_def)
+  qed
+qed    
+
+lemma profile_prop_list:
   fixes A:: "'a set" and pl:: "'a Profile_List"
   assumes "(pl,pr) \<in> profile_on_A_rel A"
   shows "profile_l A pl"
@@ -81,6 +112,21 @@ proof (-)
     by (simp add: list_rel_pres_length param_nth)
   from prel this show " profile_l A pl =profile A pr" using in_br_conv  profile_def profile_l_def
     by (metis linorder_l_imp_rel linorder_rel_imp_l list_rel_pres_length)
+qed
+
+lemma profile_prop_rel:
+  fixes A:: "'a set" and pl:: "'a Profile_List"
+  assumes "(pl,pr) \<in> profile_on_A_rel A"
+  shows "profile A pr"      
+proof (-)
+  from assms have profl: "profile_l A pl" 
+    using profile_prop_list by metis
+  from assms have profrel: "(pl,pr) \<in> profile_rel"
+    using profile_type_ref by metis
+  from profl this show "profile A pr"
+    using profileref
+    by (simp add: in_br_conv linorder_l_imp_rel list_rel_eq_listrel listrel_iff_nth 
+        profile_def profile_l_def relAPP_def)
 qed
 
 end

@@ -72,7 +72,7 @@ definition "scoremax A scores \<equiv> do {
 
 sepref_register scoremax
 
-definition "precompute_map_spec A p = SPEC (\<lambda> map. map = (\<lambda>a. Some (win_count p a))|`A)"
+abbreviation "precompute_map_spec A p \<equiv> SPEC (\<lambda> map. map = (\<lambda>a. Some (win_count p a))|`A)"
 
 (* TODO: cleanup in locale *)
 lemma compute_scores_correct:
@@ -80,7 +80,7 @@ lemma compute_scores_correct:
   assumes "finite A" and "profile_l A pl" and "(pl, pr) \<in> profile_rel"
   shows "(compute_scores A pl, (precompute_map_spec A pr))
     \<in> \<langle>Id\<rangle>nres_rel"
-  unfolding compute_scores_def precompute_map_spec_def
+  unfolding compute_scores_def
   using assms apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e)) |` (A - it))"])
   apply (auto simp del: win_count.simps)
 proof -
@@ -212,5 +212,9 @@ theorem plurality_refine:
   shows "((pluralityparam A), 
 ((\<lambda> A p. plurint A ((\<lambda>a. Some (win_count p a))|`A) (max_comp_spec_plurality A p)) A))
      \<in> ((profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel)"
+  unfolding pluralityparam_def 
+  apply (refine_vcg)
+  using compute_scores_correct scoremax_correct
+  oops
 
 end
