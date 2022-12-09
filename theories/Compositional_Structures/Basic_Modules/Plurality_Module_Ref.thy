@@ -211,6 +211,6 @@ theorem plurality_refine:
   assumes "finite A"
   shows "((pluralityparam A), 
 ((\<lambda> A p. plurint A ((\<lambda>a. Some (win_count p a))|`A) (max_comp_spec_plurality A p)) A))
-     \<in> (profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel)"
+     \<in> ((profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel)"
 
 end
