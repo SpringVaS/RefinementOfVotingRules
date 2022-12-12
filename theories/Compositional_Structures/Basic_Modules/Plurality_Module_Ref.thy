@@ -57,6 +57,8 @@ sepref_definition plurality_sepref is
   apply sepref_dbg_keep
   done
 
+export_code plurality_sepref in Scala_imp
+
 context voting_session
 begin
 
@@ -69,11 +71,11 @@ lemma plurality_monadic_correct:
   shows "pluralityparam A precompute_map max_comp_spec_plurality
           \<le> (SPEC (\<lambda> elecres. elecres = plurality A pr))"
   unfolding pluralityparam_def precompute_map_def max_comp_spec_plurality_def
-  apply (refine_vcg FOREACH_rule[where I = "
-  (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
-  \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)
-  \<and> d = {} \<and>
-  e \<union> r = (A - it))"] )
+  apply (refine_vcg FOREACH_rule[where I = 
+        "(\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
+          \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)
+          \<and> d = {} 
+          \<and> e \<union> r = (A - it))"] )
   apply (auto simp add: fina
     simp del: win_count.simps )
   using nat_less_le apply blast
@@ -86,7 +88,8 @@ lemma plurality_monadic_correct:
 lemma compute_scores_correct:
   shows "(compute_scores A pl, SPEC (\<lambda> map. map = precompute_map)) \<in> \<langle>Id\<rangle>nres_rel"
   unfolding compute_scores_def precompute_map_def
-  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e)) |` (A - it))"])
+  apply (refine_vcg FOREACH_rule[where I = 
+        "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e))|`(A - it))"])
   apply (auto simp add: fina simp del: win_count.simps)
 proof -
   fix x:: 'a
@@ -120,7 +123,7 @@ lemma scoremax_correct:
   apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). win_count pr a \<le> max) \<and> ((\<exists>e \<in> (A - it). max = win_count pr e) \<or> max = 0))"] )
   apply (auto simp add: fina simp del: win_count.simps)
   apply (metis Diff_iff leD nle_le order_trans)
-   apply (metis DiffI order_less_imp_le)
+  apply (metis DiffI order_less_imp_le)
   done
 
 lemma parameterized_refinement: 
@@ -130,15 +133,6 @@ lemma parameterized_refinement:
   apply (refine_dref_type)
   apply (auto simp add: refine_rel_defs)[3]
   apply clarsimp_all
-  using nres_relD refine_IdD by blast
-
-
-lemma "(pluralityparam A precompute_map, pluralityparam A precompute_map) \<in>
-  \<langle>nat_rel\<rangle>nres_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
- unfolding pluralityparam_def
-  apply refine_vcg
-  apply (refine_dref_type)
-  apply (auto simp add: refine_rel_defs)
   using nres_relD refine_IdD by blast
 
 
