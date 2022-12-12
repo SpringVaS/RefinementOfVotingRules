@@ -482,6 +482,12 @@ theorem wc_fold_correct:
   using assms ref_two_step[OF wc_fold_refine wc_foreach_top_correct] refine_IdD 
   by (metis) 
 
+lemma nfwcc: "nofail (wc_fold p a)"
+  unfolding wc_fold_def 
+  apply (induction p rule: rev_induct, simp)
+   apply simp
+  by (simp add: pw_bind_nofail)
+
 text \<open>
   pref count
 \<close>

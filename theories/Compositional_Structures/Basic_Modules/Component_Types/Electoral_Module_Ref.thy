@@ -1,12 +1,19 @@
 theory Electoral_Module_Ref                      
   imports "Verified_Voting_Rule_Construction.Profile_List"
           "Social_Choice_Types/Result_Ref"
+          "Social_Choice_Types/RefinementList"
           "Verified_Voting_Rule_Construction.Electoral_Module"
            Refine_Imperative_HOL.IICF
 begin                            
 
 
 type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result nres"
+
+locale voting_session =
+  fixes A:: "'a set"
+  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
+  assumes fina: "finite A"
+    and profrel: "(pl, pr) \<in> profile_on_A_rel A"
 
 lemma em_corres:
   fixes A :: "'a set" and pa :: "'a Profile_List"

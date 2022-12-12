@@ -7,48 +7,6 @@ theory Plurality_Module_Ref
 begin
 
 
-definition plurality_fe:: "'a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres"
-  where
-  "plurality_fe A p = do {
-    let maxwc = (Finite_Set.fold max (0::nat) ((win_count p)`A)  );
-    (e,r,d) \<leftarrow> FOREACH A 
-    (\<lambda>x (e,r,d). do {
-      let scx = win_count p x;
-      (if (scx = maxwc) then 
-          RETURN (insert x e,r,d) 
-      else 
-          RETURN(e, insert x r,d))
-    }) ({},{},{}); 
-    RETURN (e,r,d)}" 
-
-lemma 
-  assumes "finite A"
-  shows "plurality_fe A p \<le> SPEC (\<lambda>res. res = plurality A p)"
-  unfolding plurality_fe_def 
-  apply (refine_vcg assms FOREACH_rule[where I="\<lambda> it (e,r,d). 
-              (alt \<in> e \<longrightarrow> (\<forall>x \<in> A. win_count p x \<le> win_count p alt)) \<and>
-              (alt \<in> r \<longrightarrow> (\<exists>x \<in> A. win_count p x > win_count p alt)) \<and>
-              d = {} \<and>
-              (e \<union> r \<union> d) = (A-it)"])
-  oops
- 
-sepref_register wc_fold
-
-sepref_definition win_count_imp_sep is
-  "uncurry wc_fold" :: "(list_assn (array_assn nat_assn))\<^sup>k *\<^sub>a (nat_assn)\<^sup>k \<rightarrow>\<^sub>a (nat_assn)"
-  unfolding wc_fold_def[abs_def]  short_circuit_conv 
-  apply sepref_dbg_keep 
-  done
-
-thm win_count_imp_sep.code
-
-lemma nfwcc: "nofail (wc_fold p a)"
-  unfolding wc_fold_def 
-  apply (induction p rule: rev_induct, simp)
-   apply simp
-  by (simp add: pw_bind_nofail)
- 
-
 definition compute_scores :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
   where "compute_scores A p \<equiv>
   FOREACH A 
@@ -70,19 +28,74 @@ definition "scoremax A scores \<equiv> do {
     }) (0::nat)
 }"
 
-sepref_register scoremax
 
-abbreviation "precompute_map_spec A p \<equiv> SPEC (\<lambda> map. map = (\<lambda>a. Some (win_count p a))|`A)"
+
+
+lemma scoremax_correct:
+  fixes f:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat"
+  assumes "finite A"
+  shows "scoremax A ((\<lambda>a. Some (f p a))|`A) \<le> SPEC (\<lambda>max. (\<forall>a \<in> A. f p a \<le> max) \<and> ((\<exists>e \<in> A. max = f p e) \<or> max = 0))"
+  unfolding scoremax_def
+  apply (intro FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). f p a \<le> max) \<and> ((\<exists>e \<in> (A - it). max = f p e) \<or> max = 0))"] refine_vcg)
+  using assms apply auto
+  apply (metis Diff_iff leD nle_le order_trans)
+   apply (metis DiffI order_less_imp_le)
+  by (metis DiffI nat_neq_iff)
+
+
+
+
+definition "pluralityparam A scores th \<equiv>  
+    FOREACH (A)
+    (\<lambda>x (e,r,d). do {
+      ASSERT (x \<in> dom scores);
+      let scx = the (scores x);
+      sel <- th;
+      (if (scx = sel) then 
+          RETURN (insert x e,r,d) 
+      else 
+          RETURN(e, insert x r,d))
+    }) ({},{},{})"
+
+definition plurality_init:: "'a Electoral_Module_Ref" where 
+"plurality_init A p \<equiv> do {
+  scores <- compute_scores A p;
+  pluralityparam A scores (scoremax A scores)
+}"
+
+context voting_session
+begin
+
+definition "max_comp_spec_plurality \<equiv> 
+(SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0)))"
+
+lemma datarefplurality:
+  shows "(pluralityparam A ((\<lambda>a. Some (win_count pr a))|`A) (max_comp_spec_plurality), 
+(SPEC (\<lambda> elecres. elecres = plurality A pr))) \<in>
+   \<langle>Id\<rangle>nres_rel"
+  unfolding pluralityparam_def max_comp_spec_plurality_def
+  apply (refine_vcg FOREACH_rule[where I = "
+  (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
+  \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)
+  \<and> d = {} \<and>
+  e \<union> r = (A - it))"] )
+  apply (auto simp add: fina
+    simp del: win_count.simps )
+  using nat_less_le apply blast
+  apply (rename_tac e r alt)
+  using leD apply blast
+   apply (metis UnCI leD)+
+  done
+
+definition "precompute_map_spec = SPEC (\<lambda> map. map = (\<lambda>a. Some (win_count pr a))|`A)"
 
 (* TODO: cleanup in locale *)
 lemma compute_scores_correct:
-  fixes pl:: "'a Profile_List" and A:: "'a set"
-  assumes "finite A" and "profile_l A pl" and "(pl, pr) \<in> profile_rel"
-  shows "(compute_scores A pl, (precompute_map_spec A pr))
+  shows "(compute_scores A pl, (precompute_map_spec))
     \<in> \<langle>Id\<rangle>nres_rel"
-  unfolding compute_scores_def
-  using assms apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e)) |` (A - it))"])
-  apply (auto simp del: win_count.simps)
+  unfolding compute_scores_def precompute_map_spec_def
+  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e)) |` (A - it))"])
+  apply (auto simp add: fina simp del: win_count.simps)
 proof -
   fix x:: 'a
   fix it:: "'a set"
@@ -97,8 +110,10 @@ proof -
                    (\<lambda>e. Some (win_count pr e)) |` (A - (it - {x})))
       = (\<lambda> wc. wc = win_count pr x)"
     by (metis map_upd_eqD1)
-  have "wc_fold pl x \<le> SPEC(\<lambda> scx. scx = win_count pr x)"
-    using assms(3) assms(2) wc_fold_correct by metis
+  from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by auto
+  from profrel have "profile_l A pl" using profile_prop_list by auto 
+  from prel this have "wc_fold pl x \<le> SPEC(\<lambda> scx. scx = win_count pr x)"
+    using wc_fold_correct by auto
   from this mapupdeq show " wc_fold pl x
        \<le> SPEC (\<lambda>scx. ((\<lambda>e. Some (win_count pr e)) |` (A - it))(x \<mapsto> scx) =
                       (\<lambda>e. Some (win_count pr e)) |` (A - (it - {x})))"
@@ -107,114 +122,26 @@ proof -
 qed 
 
 
-lemma scoremax_correct:
-  fixes f:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat"
-  assumes "finite A"
-  shows "scoremax A ((\<lambda>a. Some (f p a))|`A) \<le> SPEC (\<lambda>max. (\<forall>a \<in> A. f p a \<le> max) \<and> ((\<exists>e \<in> A. max = f p e) \<or> max = 0))"
-  unfolding scoremax_def
-  apply (intro FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). f p a \<le> max) \<and> ((\<exists>e \<in> (A - it). max = f p e) \<or> max = 0))"] refine_vcg)
-  using assms apply auto
-  apply (metis Diff_iff leD nle_le order_trans)
-   apply (metis DiffI order_less_imp_le)
-  by (metis DiffI nat_neq_iff)
-
-sepref_register compute_scores
-
-sepref_definition compute_scores_sep is
-  "uncurry (compute_scores)" :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k
-    \<rightarrow>\<^sub>a (hm.assn (nat_assn) (nat_assn))" 
-  unfolding compute_scores_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
-  by sepref
-
-definition "plurint A scores th \<equiv>  
-    FOREACH (A)
-    (\<lambda>x (e,r,d). do {
-      ASSERT (x \<in> dom scores);
-      let scx = the (scores x);
-      sel <- th;
-      (if (scx = sel) then 
-          RETURN (insert x e,r,d) 
-      else 
-          RETURN(e, insert x r,d))
-    }) ({},{},{})"
-
-definition plurality_full :: "'a Electoral_Module_Ref" where
-  "plurality_full A p \<equiv> do {
-    scores \<leftarrow> compute_scores A p;
-    max \<leftarrow> scoremax A scores;
-    FOREACH (A)
-    (\<lambda>x (e,r,d). do {
-      ASSERT (x \<in> dom scores);
-      let scx = the (scores x);
-      (if (scx = max) then 
-          RETURN (insert x e,r,d) 
-      else 
-          RETURN(e, insert x r,d))
-    }) ({},{},{})
-  } "
-
-definition pluralityparam:: "'a Electoral_Module_Ref" where 
-"pluralityparam A p \<equiv> do {
-  scores <- compute_scores A p;
-  plurint A scores (scoremax A scores)
-}"
 
 
-sepref_definition plurality_sepref is
-  "uncurry plurality_full":: 
-    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
-   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
-  unfolding plurality_full_def[abs_def] 
-    compute_scores_def[abs_def] wc_fold_def[abs_def] scoremax_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
-  apply sepref_dbg_keep
-  done
-
-sepref_definition plurality_sepreftest is
-  "uncurry pluralityparam":: 
-    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
-   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
-  unfolding pluralityparam_def[abs_def] plurint_def[abs_def] 
-    compute_scores_def[abs_def] wc_fold_def[abs_def] scoremax_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
-  apply sepref_dbg_keep
-  done
-
-
-definition "max_comp_spec_plurality A pr \<equiv> (SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0)))"
-
-lemma datarefplurality:
-  fixes pr:: "'a Profile" and A:: "'a set"
-  assumes "finite A"
-  shows "(plurint A ((\<lambda>a. Some (win_count pr a))|`A) (max_comp_spec_plurality A pr), 
-(\<lambda>A p. SPEC (\<lambda> elecres. elecres = plurality A p)) A pr ) \<in>
-   \<langle>Id\<rangle>nres_rel"
-  unfolding plurint_def max_comp_spec_plurality_def
-  apply (refine_vcg FOREACH_rule[where I = "
-  (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
-  \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)
-  \<and> d = {} \<and>
-  e \<union> r = (A - it))"] )
-  using assms(1) apply (auto simp add:
-    simp del: win_count.simps )
-  using nat_less_le apply blast
-  apply (rename_tac e r alt)
-  using leD apply blast
-   apply (metis UnCI leD)+
-  done
 
 theorem plurality_refine:
-  fixes A:: "'a set"
-  assumes "finite A"
-  shows "((pluralityparam A), 
-((\<lambda> A p. plurint A ((\<lambda>a. Some (win_count p a))|`A) (max_comp_spec_plurality A p)) A))
-     \<in> ((profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel)"
-  unfolding pluralityparam_def 
-  apply (refine_vcg)
-  using compute_scores_correct scoremax_correct
+  shows "(plurality_init, 
+((\<lambda> A p. pluralityparam A ((\<lambda>a. Some (win_count p a))|`A) (max_comp_spec_plurality A p))))
+     \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ((profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel)"
   oops
+
+end 
+
+sepref_definition plurality_sepreftest is
+  "uncurry plurality_init":: 
+    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
+   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
+  unfolding plurality_init_def[abs_def] pluralityparam_def[abs_def] 
+    compute_scores_def[abs_def] wc_fold_def[abs_def] scoremax_def[abs_def] short_circuit_conv
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
+  apply sepref_dbg_keep
+  done
 
 end
