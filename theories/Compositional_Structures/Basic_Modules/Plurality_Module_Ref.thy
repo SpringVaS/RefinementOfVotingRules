@@ -28,29 +28,12 @@ definition "scoremax A scores \<equiv> do {
     }) (0::nat)
 }"
 
-
-
-
-lemma scoremax_correct:
-  fixes f:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat"
-  assumes "finite A"
-  shows "scoremax A ((\<lambda>a. Some (f p a))|`A) \<le> SPEC (\<lambda>max. (\<forall>a \<in> A. f p a \<le> max) \<and> ((\<exists>e \<in> A. max = f p e) \<or> max = 0))"
-  unfolding scoremax_def
-  apply (intro FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). f p a \<le> max) \<and> ((\<exists>e \<in> (A - it). max = f p e) \<or> max = 0))"] refine_vcg)
-  using assms apply auto
-  apply (metis Diff_iff leD nle_le order_trans)
-   apply (metis DiffI order_less_imp_le)
-  by (metis DiffI nat_neq_iff)
-
-
-
-
-definition "pluralityparam A scores th \<equiv>  
+definition "pluralityparam A scores threshold \<equiv>
     FOREACH (A)
     (\<lambda>x (e,r,d). do {
       ASSERT (x \<in> dom scores);
       let scx = the (scores x);
-      sel <- th;
+      sel \<leftarrow> threshold;
       (if (scx = sel) then 
           RETURN (insert x e,r,d) 
       else 
@@ -63,17 +46,29 @@ definition plurality_init:: "'a Electoral_Module_Ref" where
   pluralityparam A scores (scoremax A scores)
 }"
 
+sepref_definition plurality_sepref is
+  "uncurry plurality_init":: 
+    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
+   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
+  unfolding plurality_init_def[abs_def] pluralityparam_def[abs_def] 
+    compute_scores_def[abs_def] wc_fold_def[abs_def] scoremax_def[abs_def] short_circuit_conv
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
+  apply sepref_dbg_keep
+  done
+
 context voting_session
 begin
+
+definition "precompute_map \<equiv> (\<lambda>a. Some (win_count pr a))|`A"
 
 definition "max_comp_spec_plurality \<equiv> 
 (SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0)))"
 
-lemma datarefplurality:
-  shows "(pluralityparam A ((\<lambda>a. Some (win_count pr a))|`A) (max_comp_spec_plurality), 
-(SPEC (\<lambda> elecres. elecres = plurality A pr))) \<in>
-   \<langle>Id\<rangle>nres_rel"
-  unfolding pluralityparam_def max_comp_spec_plurality_def
+lemma plurality_monadic_correct:
+  shows "pluralityparam A precompute_map max_comp_spec_plurality
+          \<le> (SPEC (\<lambda> elecres. elecres = plurality A pr))"
+  unfolding pluralityparam_def precompute_map_def max_comp_spec_plurality_def
   apply (refine_vcg FOREACH_rule[where I = "
   (\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
   \<and> (\<forall>elem \<in> r.  \<exists>a \<in> A. win_count pr a > win_count pr elem)
@@ -87,13 +82,10 @@ lemma datarefplurality:
    apply (metis UnCI leD)+
   done
 
-definition "precompute_map_spec = SPEC (\<lambda> map. map = (\<lambda>a. Some (win_count pr a))|`A)"
 
-(* TODO: cleanup in locale *)
 lemma compute_scores_correct:
-  shows "(compute_scores A pl, (precompute_map_spec))
-    \<in> \<langle>Id\<rangle>nres_rel"
-  unfolding compute_scores_def precompute_map_spec_def
+  shows "(compute_scores A pl, SPEC (\<lambda> map. map = precompute_map)) \<in> \<langle>Id\<rangle>nres_rel"
+  unfolding compute_scores_def precompute_map_def
   apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it r. r = (\<lambda> e. Some (win_count (pr) e)) |` (A - it))"])
   apply (auto simp add: fina simp del: win_count.simps)
 proof -
@@ -122,26 +114,80 @@ proof -
 qed 
 
 
+lemma scoremax_correct:
+  shows "(scoremax A precompute_map, max_comp_spec_plurality) \<in> \<langle>nat_rel\<rangle>nres_rel"
+  unfolding scoremax_def max_comp_spec_plurality_def precompute_map_def
+  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). win_count pr a \<le> max) \<and> ((\<exists>e \<in> (A - it). max = win_count pr e) \<or> max = 0))"] )
+  apply (auto simp add: fina simp del: win_count.simps)
+  apply (metis Diff_iff leD nle_le order_trans)
+   apply (metis DiffI order_less_imp_le)
+  done
+
+lemma parameterized_refinement: 
+  "(pluralityparam, pluralityparam) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding pluralityparam_def
+  apply (refine_vcg)
+  apply (refine_dref_type)
+  apply (auto simp add: refine_rel_defs)[3]
+  apply clarsimp_all
+  using nres_relD refine_IdD by blast
 
 
+lemma "(pluralityparam A precompute_map, pluralityparam A precompute_map) \<in>
+  \<langle>nat_rel\<rangle>nres_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+ unfolding pluralityparam_def
+  apply refine_vcg
+  apply (refine_dref_type)
+  apply (auto simp add: refine_rel_defs)
+  using nres_relD refine_IdD by blast
 
-theorem plurality_refine:
-  shows "(plurality_init, 
-((\<lambda> A p. pluralityparam A ((\<lambda>a. Some (win_count p a))|`A) (max_comp_spec_plurality A p))))
-     \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ((profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel)"
-  oops
+
+lemma rewritep: "((RETURN precompute_map) \<bind> 
+(\<lambda> map. pluralityparam A map (scoremax A map)), 
+pluralityparam A precompute_map max_comp_spec_plurality)
+  \<in> \<langle>Id\<rangle>nres_rel"
+  apply clarsimp
+  apply refine_vcg
+proof -
+  have refi: "scoremax A precompute_map \<le> \<Down> Id max_comp_spec_plurality"
+    using scoremax_correct nres_relD by blast
+  have "(A,A) \<in> \<langle>Id\<rangle>set_rel"
+    by simp 
+  show "pluralityparam A precompute_map (scoremax A precompute_map)
+    \<le> \<Down> Id (pluralityparam A precompute_map max_comp_spec_plurality)"
+    unfolding pluralityparam_def
+    apply refine_vcg
+    apply (refine_dref_type)
+    apply (auto simp add: refine_rel_defs)
+    using refi refine_IdD by blast
+qed
+  
+
+lemma score_compute: "compute_scores A pl \<le> (RETURN precompute_map)" 
+  using compute_scores_correct
+  by (metis SPEC_eq_is_RETURN(2) nres_relD refine_IdD)
+
+lemma scores_param: "(compute_scores A pl \<bind> (\<lambda> map. pluralityparam A map 
+  (scoremax A map)), pluralityparam A precompute_map max_comp_spec_plurality)
+  \<in> \<langle>Id\<rangle>nres_rel"
+  using rewritep score_compute in_nres_rel_iff
+  by (metis (no_types, lifting) BNF_Greatest_Fixpoint.IdD Collect_cong Id_refine 
+SPEC_eq_is_RETURN(2) bind_refine compute_scores_correct conc_trans_additional(5)) 
+  
+
+lemma plurality_init_refine:
+  shows "plurality_init A pl \<le> \<Down> Id (pluralityparam A precompute_map max_comp_spec_plurality)"
+  unfolding plurality_init_def 
+  using scores_param nres_relD by blast 
+
+theorem plurality_init_correct:
+  shows "plurality_init A pl \<le> (SPEC (\<lambda> elecres. elecres = plurality A pr))"
+  using ref_two_step[OF plurality_init_refine plurality_monadic_correct] refine_IdD 
+  by blast
+
 
 end 
 
-sepref_definition plurality_sepreftest is
-  "uncurry plurality_init":: 
-    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
-   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
-  unfolding plurality_init_def[abs_def] pluralityparam_def[abs_def] 
-    compute_scores_def[abs_def] wc_fold_def[abs_def] scoremax_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
-  apply sepref_dbg_keep
-  done
+
 
 end
