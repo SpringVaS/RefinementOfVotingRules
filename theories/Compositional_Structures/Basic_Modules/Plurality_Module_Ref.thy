@@ -68,8 +68,8 @@ definition "max_comp_spec_plurality \<equiv>
 (SPEC (\<lambda>max. (\<forall>a \<in> A. win_count pr a \<le> max) \<and> ((\<exists>e \<in> A. max = win_count pr e) \<or> max = 0)))"
 
 lemma plurality_monadic_correct:
-  shows "pluralityparam A precompute_map max_comp_spec_plurality
-          \<le> (SPEC (\<lambda> elecres. elecres = plurality A pr))"
+  shows "(pluralityparam A precompute_map max_comp_spec_plurality
+           ,(SPEC (\<lambda> elecres. elecres = plurality A pr))) \<in> \<langle>Id\<rangle>nres_rel "
   unfolding pluralityparam_def precompute_map_def max_comp_spec_plurality_def
   apply (refine_vcg FOREACH_rule[where I = 
         "(\<lambda>it (e,r,d). (\<forall>elem \<in> e.  \<forall>a \<in> A. win_count pr a \<le> win_count pr elem)
@@ -155,33 +155,30 @@ proof -
     apply (auto simp add: refine_rel_defs)
     using refi refine_IdD by blast
 qed
-  
 
-lemma score_compute: "compute_scores A pl \<le> (RETURN precompute_map)" 
-  using compute_scores_correct
-  by (metis SPEC_eq_is_RETURN(2) nres_relD refine_IdD)
 
 lemma scores_param: "(compute_scores A pl \<bind> (\<lambda> map. pluralityparam A map 
   (scoremax A map)), pluralityparam A precompute_map max_comp_spec_plurality)
   \<in> \<langle>Id\<rangle>nres_rel"
-  using rewritep score_compute in_nres_rel_iff
+  using rewritep compute_scores_correct in_nres_rel_iff
   by (metis (no_types, lifting) BNF_Greatest_Fixpoint.IdD Collect_cong Id_refine 
-SPEC_eq_is_RETURN(2) bind_refine compute_scores_correct conc_trans_additional(5)) 
+SPEC_eq_is_RETURN(2) bind_refine conc_trans_additional(5)) 
   
 
 lemma plurality_init_refine:
-  shows "plurality_init A pl \<le> \<Down> Id (pluralityparam A precompute_map max_comp_spec_plurality)"
+  shows "(plurality_init A pl, (pluralityparam A precompute_map max_comp_spec_plurality))
+      \<in> \<langle>Id\<rangle>nres_rel"
   unfolding plurality_init_def 
   using scores_param nres_relD by blast 
 
 theorem plurality_init_correct:
-  shows "plurality_init A pl \<le> (SPEC (\<lambda> elecres. elecres = plurality A pr))"
-  using ref_two_step[OF plurality_init_refine plurality_monadic_correct] refine_IdD 
-  by blast
-
-
+  shows "(plurality_init A pl, (SPEC (\<lambda> elecres. elecres = plurality A pr)))
+     \<in> \<langle>Id\<rangle>nres_rel"
+  apply(rule nres_relI) 
+  using ref_two_step[OF plurality_init_refine[unfolded fref_def, THEN nres_relD ] 
+            plurality_monadic_correct [unfolded fref_def, THEN nres_relD]] 
+  by auto
+   
 end 
-
-
 
 end
