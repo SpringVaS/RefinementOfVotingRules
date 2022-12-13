@@ -3,6 +3,7 @@ section \<open>Elimination Module\<close>
 theory Elimination_Module_Ref
   imports Verified_Voting_Rule_Construction.Evaluation_Function
           Verified_Voting_Rule_Construction.Electoral_Module
+Refine_Imperative_HOL.IICF
 begin
 
 text \<open>

@@ -3,7 +3,7 @@ theory Plurality_Module_Ref
         "Verified_Voting_Rule_Construction.Plurality_Module"
         "Component_Types/Social_Choice_Types/Counting_Functions_Code"
         "Component_Types/Electoral_Module_Ref"
-    HOL.Finite_Set
+    
 begin
 
 
@@ -40,6 +40,8 @@ definition "pluralityparam A scores threshold \<equiv>
           RETURN(e, insert x r,d))
     }) ({},{},{})"
 
+(* TODO: think about creating a locale like Kruskal AFP 
+  where the precompute map monad can be an assumption *)
 definition plurality_init:: "'a Electoral_Module_Ref" where 
 "plurality_init A p \<equiv> do {
   scores <- compute_scores A p;
@@ -56,6 +58,8 @@ sepref_definition plurality_sepref is
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)+
   apply sepref_dbg_keep
   done
+
+thm plurality_sepref.refine
 
 export_code plurality_sepref in Scala_imp
 
@@ -171,13 +175,23 @@ lemma plurality_init_refine:
   unfolding plurality_init_def 
   using scores_param nres_relD by blast 
 
+lemmas plurality_init_refspec = plurality_init_refine[FCOMP plurality_monadic_correct]
+
 theorem plurality_init_correct:
   shows "(plurality_init A pl, (SPEC (\<lambda> elecres. elecres = plurality A pr)))
      \<in> \<langle>Id\<rangle>nres_rel"
   apply(rule nres_relI) 
+  using ref_two_step[OF plurality_init_refine[THEN nres_relD] 
+            plurality_monadic_correct [THEN nres_relD]] refine_IdD
+  by fastforce
+
+theorem plurality_init_dataref:
+  shows "(uncurry plurality_init, (\<lambda> (A, p). SPEC (\<lambda> elec. elec = (plurality) A p )))
+     \<in> \<langle>Id\<rangle>set_rel \<times>\<^sub>r (profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  apply(refine_vcg) 
   using ref_two_step[OF plurality_init_refine[unfolded fref_def, THEN nres_relD ] 
             plurality_monadic_correct [unfolded fref_def, THEN nres_relD]] 
-  by auto
+  oops
    
 end 
 

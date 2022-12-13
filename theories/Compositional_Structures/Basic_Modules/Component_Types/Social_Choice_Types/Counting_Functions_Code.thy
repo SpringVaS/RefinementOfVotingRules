@@ -104,9 +104,7 @@ qed
 
 lemma rank_mon_refine:
   shows "(rank_mon, (\<lambda> ballot a. RETURN (rank_l ballot a)))\<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply (refine_vcg rank_mon_correct)
-  apply simp
-  done
+  by (refine_vcg rank_mon_correct, simp)
 
 sepref_definition rank_imp_sep
   is "uncurry rank_mon" :: "((array_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn)"
@@ -352,7 +350,7 @@ lemma innerf_eq:
   assumes "(l,r) \<in> ballot_rel"
   shows "f_inner_list a l n \<le> \<Down> nat_rel (f_inner_rel a r n)"
   unfolding f_inner_list_def f_inner_rel_def
-  apply (refine_vcg rankref)
+  apply (refine_vcg)
   using assms rankeq
   by (metis in_br_conv)
 
@@ -522,6 +520,57 @@ definition pc_foreach:: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarr
   RETURN ac
 }"
 
+
+definition pc_foldli:: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
+"pc_foldli p a b \<equiv>
+ nfoldli p (\<lambda>_.True)  
+     (\<lambda>x (ac).
+     if (b \<preceq>\<^sub>x a) then RETURN (ac+1) else RETURN (ac)
+    ) (0::nat)"
+
+lemma pc_foldli_correct:
+  shows "pc_foldli p a b \<le> SPEC (\<lambda> wc. wc = prefer_count p a b)"
+  unfolding pc_foldli_def
+  apply (intro nfoldli_rule[where I="\<lambda> proc xs ac. 
+    ac = card {i::nat. i < length proc \<and> (let r = (p!i) in (b \<preceq>\<^sub>r a))}"]  refine_vcg)
+  apply (auto)
+proof (-)
+  fix l1:: "'a Profile"
+  fix l2:: "'a Profile"
+  fix x:: "'a Preference_Relation"
+  assume "p = l1 @ x # l2"
+  assume blpa: "(b, a) \<in> x" 
+  have pnemp: "l1 @ x # l2 \<noteq> []" by simp
+  have xatl1: "(l1 @ x # l2) ! (length l1) = x"
+    by simp
+  from xatl1 blpa have stone: "{i. i \<le>(length l1) \<and> (b, a) \<in> (l1 @ x # l2) ! i} 
+        = {i. i < length l1 \<and> (b, a) \<in> (l1 @ x # l2) ! i} \<union> 
+        {length l1}"
+    by fastforce
+  from this have "{i. i < Suc (length l1) \<and> (b, a) \<in> (l1 @ x # l2) ! i} =
+  ({i. i < length l1 \<and> (b, a) \<in> (l1 @ x # l2) ! i} \<union> {length l1})"
+    using less_Suc_eq_le
+    by blast 
+  from this show "Suc(card {i. i < length l1 \<and> (b, a) \<in> (l1 @ x # l2) ! i}) =
+      card {i. i < Suc (length l1) \<and> (b, a) \<in> (l1 @ x # l2) ! i}"
+    by fastforce
+next
+  fix l1:: "'a Profile"
+  fix l2:: "'a Profile"
+  fix x:: "'a Preference_Relation"
+  assume "p = l1 @ x # l2"
+  assume blpa: "(b, a) \<notin> x" 
+  have pnemp: "l1 @ x # l2 \<noteq> []" by simp
+  have xatl1: "(l1 @ x # l2) ! (length l1) = x"
+    by simp
+  from xatl1 blpa have stone: "{i. i < Suc (length l1) \<and> (b, a) \<in> (l1 @ x # l2) ! i} 
+        = {i. i < length l1 \<and> (b, a) \<in> (l1 @ x # l2) ! i}"
+    using less_Suc_eq_le order_le_less by blast
+  thus "card {i. i < length l1 \<and> (b, a) \<in> (l1 @ x # l2) ! i} =
+       card {i. i < Suc (length l1) \<and> (b, a) \<in> (l1 @ x # l2) ! i}"
+    by fastforce
+qed
+
 lemma pc_foreach_correct:
   shows "pc_foreach p a b \<le> SPEC (\<lambda> wc. wc = prefer_count p a b)"
   unfolding pc_foreach_def pc_invar_fe_def
@@ -608,30 +657,28 @@ next
     using less_Suc_eq by metis    
 qed  
 
+text \<open> Data refinement \<close>
 
-definition prefer_count_mon_list :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where
-  "prefer_count_mon_list p x y \<equiv> do {
-   (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
-    ASSERT (i < length p);
-    let b = (p!i);
-    let ac = ac + (if y \<lesssim>\<^sub>b x then 1 else 0);
-    let i = i + 1;
-    RETURN (i, ac)
-  })(0,0);
-  RETURN ac
-}"
 
-lemma prefer_count_mon_list_refine:
-  assumes "(pl,pr)\<in>profile_rel"
-  shows "prefer_count_mon_list pl a b \<le> \<Down>Id (prefer_count_mon pr a b)"
-    using assms unfolding prefer_count_mon_list_def prefer_count_mon_def
-  apply (refine_rcg)
-  apply (refine_dref_type) \<comment> \<open>Type-based heuristics to instantiate data 
-    refinement goals\<close>
-    unfolding well_formed_pl_def
-  apply (auto simp add: refine_rel_defs list_all2_lengthD   simp del: is_less_preferred_than_l.simps)
-    unfolding pl_\<alpha>_def 
-  by (simp_all add: list_all2_conv_all_nth)
-  
+
+definition pc_foldli_list:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
+"pc_foldli_list p a b \<equiv> 
+  nfoldli p (\<lambda>_.True)  
+     (\<lambda>x (ac).
+     if (b \<lesssim>\<^sub>x a) then RETURN (ac+1) else RETURN (ac)
+    ) (0::nat)"
+
+
+lemma pc_foreach_list_list_refine:
+  shows "(pc_foldli_list, pc_foldli)
+    \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  apply (auto simp del : is_less_preferred_than.simps)
+  apply (rename_tac pl pr a b)
+  unfolding pc_foldli_list_def pc_foldli_def
+  apply (refine_vcg nfoldli_rule)
+  apply (auto simp del : is_less_preferred_than_l.simps is_less_preferred_than.simps)
+  apply (rename_tac l r)
+  apply (metis in_br_conv less_preffered_l_rel_eq)+
+  done
 
 end
