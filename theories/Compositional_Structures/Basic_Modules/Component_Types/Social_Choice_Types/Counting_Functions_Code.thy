@@ -5,6 +5,13 @@ theory Counting_Functions_Code
   RefinementList
 begin
 
+(* TODO Refactor to List base Profile Type *)
+
+definition win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" where
+  "win_count_l p a = foldli p (\<lambda>_. True) (\<lambda>x ac. 
+     if (x!0 = a) then (ac+1) else (ac)) 0"
+
+
 text \<open> Monadic definition of ballot properties \<close>
 
 definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
@@ -200,22 +207,6 @@ next
         card {i. i < Suc (length p) - length xs \<and> above (p ! i) a = {a}}"
     by (metis Suc_diff_le diff_le_self headr length_drop less_Suc_eq)
 qed
-  
-
-definition "win_count_fold p a =
-   foldl
-    (\<lambda>(ac::nat) x. 
-     if (above x a = {a}) then (ac+1) else (ac)) 
-    0 p"
-
-
-lemma "win_count_fold p a = win_count p a"
-  unfolding win_count_fold_def
-  apply (induction p)
-   apply (clarsimp_all, safe)
-
-  oops
-
 
 schematic_goal wc_code_aux: "RETURN ?wc_code \<le> wc_foreach p a"
   unfolding wc_foreach_def FOREACH_body_def FOREACH_cond_def
@@ -257,7 +248,6 @@ definition wc_foreach_rank:: "'a Profile \<Rightarrow> 'a \<Rightarrow> nat nres
     (FOREACH_body (f_inner_rel a)) (p,0::nat);
   RETURN ac
 }"
-
 
 lemma wc_foreach_rank_refine:
   assumes prof: "profile A p"
@@ -659,14 +649,32 @@ qed
 
 text \<open> Data refinement \<close>
 
+find_theorems "fold"
 
+fun prefer_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat" where
+  "prefer_count_l p a b = fold (\<lambda> x ac. (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac))) p 0"
+
+fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
+  "wins_l x p y =
+    (prefer_count_l p x y > prefer_count_l p y x)"
+
+thm List.fold_invariant
+
+lemma "(prefer_count_l, prefer_count) \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> nat_rel"
+  apply (auto)
+  oops
+  
 
 definition pc_foldli_list:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "pc_foldli_list p a b \<equiv> 
   nfoldli p (\<lambda>_.True)  
-     (\<lambda>x (ac).
-     if (b \<lesssim>\<^sub>x a) then RETURN (ac+1) else RETURN (ac)
-    ) (0::nat)"
+      (\<lambda> x ac. RETURN  (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac)))
+     (0::nat)"
+
+lemma "RETURN (prefer_count_l p a b) = pc_foldli_list p a b"
+  unfolding  pc_foldli_list_def
+  using fold_eq_nfoldli
+  by fastforce
 
 
 lemma pc_foreach_list_list_refine:
