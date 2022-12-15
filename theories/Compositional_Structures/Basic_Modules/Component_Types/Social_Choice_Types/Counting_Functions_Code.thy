@@ -480,36 +480,6 @@ text \<open>
   pref count
 \<close>
 
-definition  "prefer_count_invariant p x y \<equiv> \<lambda>(r, ac).
-      r \<le> length p \<and>
-      ac = card {i::nat. i < r \<and> (let r = (p!i) in (y \<preceq>\<^sub>r x))}"
-
-definition "pc_invar_fe p0 a b \<equiv> \<lambda>(xs,ac).
-  xs = drop (length p0 - length xs) p0 \<and>
-  ac = card {i::nat. i < (length p0 - length xs) \<and> (let r = (p0!i) in (b \<preceq>\<^sub>r a))}"
-
-definition prefer_count_mon :: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where
-  "prefer_count_mon p x y \<equiv> do {
-   (i, ac) \<leftarrow> WHILET (\<lambda>(i, _). i < length p) (\<lambda>(i, ac). do {
-    ASSERT (i < length p);
-    let b = (p!i);
-    let ac = ac + (if y \<preceq>\<^sub>b x then 1 else 0);
-    let i = i + 1;
-    RETURN (i, ac)
-  })(0,0);
-  RETURN ac
-}"
-
-
-definition pc_foreach:: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
-"pc_foreach p a b \<equiv> do {
-  (xs,ac) \<leftarrow> WHILEIT (pc_invar_fe p a b) (FOREACH_cond (\<lambda>_.True)) 
-    (FOREACH_body (\<lambda>x (ac).
-     if (b \<preceq>\<^sub>x a) then RETURN (ac+1) else RETURN (ac)
-    )) (p,0);
-  RETURN ac
-}"
-
 
 definition pc_foldli:: "'a Profile \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "pc_foldli p a b \<equiv>
@@ -523,8 +493,7 @@ lemma pc_foldli_correct:
   unfolding pc_foldli_def
   apply (intro nfoldli_rule[where I="\<lambda> proc xs ac. 
     ac = card {i::nat. i < length proc \<and> (let r = (p!i) in (b \<preceq>\<^sub>r a))}"]  refine_vcg)
-  apply (auto)
-proof (-)
+proof (clarsimp_all)
   fix l1:: "'a Profile"
   fix l2:: "'a Profile"
   fix x:: "'a Preference_Relation"
@@ -561,92 +530,6 @@ next
     by fastforce
 qed
 
-lemma pc_foreach_correct:
-  shows "pc_foreach p a b \<le> SPEC (\<lambda> wc. wc = prefer_count p a b)"
-  unfolding pc_foreach_def pc_invar_fe_def
-  FOREACH_cond_def FOREACH_body_def
-  apply (intro WHILEIT_rule[where R="measure (\<lambda>(xs,_). length xs)"] FOREACHoi_rule refine_vcg)
-  apply (auto)
-     apply (metis Suc_diff_le diff_le_self drop_Suc length_drop tl_drop)
-  proof (-)
-    fix aa:: "'a Profile"
-    assume last: "aa = drop (length p - length aa) p"
-  assume pnemp: "aa \<noteq> []"
-  assume hdr: "(b, a) \<in> hd aa"
-  from last pnemp have hdidx: "hd aa = (p!(length p - length aa))"
-    by (metis drop_eq_Nil hd_drop_conv_nth linorder_not_less)
-  from hdidx hdr have aba: "(b, a) \<in> (p!(length p - length aa))" by simp
-  from pnemp aba have prep: 
-         "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
-        = {i. i < length p - length aa \<and> (b, a) \<in> p ! i} \<union> {(length p) - length aa}"
-    by fastforce
-  from last have "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
-        = {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}"
-    by (metis Suc_diff_le diff_le_self length_drop less_Suc_eq_le)
-  from this prep have "{i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i} 
-        = ({i. i < length p - length aa \<and> (b, a) \<in> p ! i} \<union> 
-          {(length p - length aa)})" by simp
-  from pnemp this show "Suc (card {i. i < length p - length aa \<and> (b, a) \<in> p ! i}) =
-          card {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}"
-    by fastforce
-next
-  fix xs:: "'a Profile"
-  fix alt:: "'a"
-  assume headr: "xs = drop (length p - length xs) p"
-  show "tl xs = drop (Suc (length p) - length xs) p"
-    by (metis Suc_diff_le diff_le_self drop_Suc headr length_drop tl_drop)
-next
-  fix aa:: "'a Profile"
-  assume last: "aa = drop (length p - length aa) p"
-  assume pnemp: "aa \<noteq> []"
-  assume hdr: "(b, a) \<notin> hd aa"
-  from last pnemp have hdidx: "hd aa = (p!(length p - length aa))"
-    by (metis drop_eq_Nil hd_drop_conv_nth linorder_not_less)
-  from hdidx hdr have aba: "(b, a) \<notin> (p!(length p - length aa))" by simp
-  from pnemp aba have prep: 
-         "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
-        = {i. i < length p - length aa \<and> (b, a) \<in> p ! i}"
-    using order_le_less by blast   
-  from last have "{i. i \<le> (length p) - length aa \<and> (b, a) \<in> p ! i} 
-        = {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}"
-    by (metis Suc_diff_le diff_le_self length_drop less_Suc_eq_le)
-  from this prep have "{i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i} 
-        = ({i. i < length p - length aa \<and> (b, a) \<in> p ! i})" by simp
-  from this show " card {i. i < length p - length aa \<and> (b, a) \<in> p ! i} =
-          card {i. i < Suc (length p) - length aa \<and> (b, a) \<in> p ! i}" 
-    by simp
-qed
-
-lemma prefer_count_mon_correct:
-  shows "prefer_count_mon p a b \<le> SPEC (\<lambda> wc. wc = prefer_count p a b)"
-  unfolding prefer_count_mon_def prefer_count.simps
-  apply (intro WHILET_rule[where I="(prefer_count_invariant p a b)"
-        and R="measure (\<lambda>(r,_). (length p) - r)"] refine_vcg)
-  unfolding prefer_count_invariant_def
-      apply (simp_all)
-   apply refine_vcg
-  apply (erule subst)
-  apply (simp)
-proof (simp_all)
-  fix r
-  assume ir: "r < length p"
-  assume blpa: "(b, a) \<in> p!r"
-  with blpa have prep: 
-         "{i. i < Suc r \<and> (b, a) \<in> p ! i} 
-        = {i. i < r \<and> (b, a) \<in> p ! i} \<union> {r}"
-    by fastforce
-  thus "Suc (card {i. i < r \<and> (b, a) \<in> p ! i}) = card {i. i < Suc r \<and> (b, a) \<in> p ! i}"
-    by fastforce
-next
-  fix r
-  assume ir: "r < length p"
-  assume bnlpa: "(b, a) \<notin> p!r"
-  with bnlpa ir show prep: 
-         "card {i. i < r \<and> (b, a) \<in> p ! i} 
-        = card {i. i < Suc r \<and> (b, a) \<in> p ! i} "
-    using less_Suc_eq by metis    
-qed  
-
 text \<open> Data refinement \<close>
 
 find_theorems "fold"
@@ -660,10 +543,7 @@ fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> b
 
 thm List.fold_invariant
 
-lemma "(prefer_count_l, prefer_count) \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> nat_rel"
-  apply (auto)
-  oops
-  
+
 
 definition pc_foldli_list:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "pc_foldli_list p a b \<equiv> 
@@ -677,7 +557,7 @@ lemma "RETURN (prefer_count_l p a b) = pc_foldli_list p a b"
   by fastforce
 
 
-lemma pc_foreach_list_list_refine:
+lemma pc_foldli_list_refine:
   shows "(pc_foldli_list, pc_foldli)
     \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   apply (auto simp del : is_less_preferred_than.simps)
@@ -688,5 +568,27 @@ lemma pc_foreach_list_list_refine:
   apply (rename_tac l r)
   apply (metis in_br_conv less_preffered_l_rel_eq)+
   done
+
+lemma pc_foldli_listt_correct:
+  shows "(pc_foldli_list, (\<lambda> p a b. SPEC (\<lambda> wc. wc = prefer_count p a b)))
+    \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  apply(refine_vcg) 
+  apply (clarsimp_all simp del: prefer_count.simps)
+  apply (rename_tac pl pr a b)
+proof -
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix a :: 'a
+  fix b :: 'a
+  assume profr: "(pl, pr) \<in> profile_rel"
+  note ref_two_step[OF pc_foldli_list_refine[THEN fun_relD, THEN fun_relD,
+          THEN fun_relD, THEN nres_relD]
+            pc_foldli_correct, where x5 = pl and p1=pr and x4 = a and a1 = a
+             and x3 = b and b1 = b] 
+refine_IdD
+  from profr this show "pc_foldli_list pl a b \<le> RES {prefer_count pr a b}"
+    by fastforce
+qed
+  
 
 end

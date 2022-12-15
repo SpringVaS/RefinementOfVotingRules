@@ -183,16 +183,15 @@ theorem plurality_init_correct:
   apply(rule nres_relI) 
   using ref_two_step[OF plurality_init_refine[THEN nres_relD] 
             plurality_monadic_correct [THEN nres_relD]] refine_IdD
-  by fastforce
+  by fastforce   
+end 
 
 theorem plurality_init_dataref:
-  shows "(uncurry plurality_init, (\<lambda> (A, p). SPEC (\<lambda> elec. elec = (plurality) A p )))
-     \<in> \<langle>Id\<rangle>set_rel \<times>\<^sub>r (profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply(refine_vcg) 
-  using ref_two_step[OF plurality_init_refine[unfolded fref_def, THEN nres_relD ] 
-            plurality_monadic_correct [unfolded fref_def, THEN nres_relD]] 
+  shows "(plurality_init, (\<lambda> Alts p. SPEC (\<lambda> elec. elec = (plurality) Alts p)))
+     \<in> (\<langle>Id\<rangle>set_rel O (br (\<lambda> x. x) finite)) \<rightarrow> (profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel"
+
+  apply (auto simp del: plurality.simps)
   oops
-   
-end 
+  
 
 end
