@@ -187,8 +187,8 @@ theorem plurality_init_correct:
 end 
 
 theorem plurality_init_dataref:
-  shows "(plurality_init, (\<lambda> Alts p. SPEC (\<lambda> elec. elec = (plurality) Alts p)))
-     \<in> (\<langle>Id\<rangle>set_rel O (br (\<lambda> x. x) finite)) \<rightarrow> (profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  shows "(plurality_init A, (\<lambda> Alts p. SPEC (\<lambda> elec. elec = (plurality) Alts p)) A)
+     \<in> (profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel"
 
   apply (auto simp del: plurality.simps)
   oops

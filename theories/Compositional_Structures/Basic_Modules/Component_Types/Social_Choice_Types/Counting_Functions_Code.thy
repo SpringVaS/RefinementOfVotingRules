@@ -551,7 +551,8 @@ definition pc_foldli_list:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \
       (\<lambda> x ac. RETURN  (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac)))
      (0::nat)"
 
-lemma "RETURN (prefer_count_l p a b) = pc_foldli_list p a b"
+lemma pc_fold_monad_eq: 
+  shows "RETURN (prefer_count_l p a b) = pc_foldli_list p a b"
   unfolding  pc_foldli_list_def
   using fold_eq_nfoldli
   by fastforce
@@ -569,7 +570,7 @@ lemma pc_foldli_list_refine:
   apply (metis in_br_conv less_preffered_l_rel_eq)+
   done
 
-lemma pc_foldli_listt_correct:
+lemma pc_foldli_list_correct:
   shows "(pc_foldli_list, (\<lambda> p a b. SPEC (\<lambda> wc. wc = prefer_count p a b)))
     \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   apply(refine_vcg) 
@@ -589,6 +590,59 @@ refine_IdD
   from profr this show "pc_foldli_list pl a b \<le> RES {prefer_count pr a b}"
     by fastforce
 qed
-  
 
+find_theorems RES
+
+lemma prefer_count_l_correct:
+  shows "(prefer_count_l, prefer_count)
+    \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> nat_rel"
+  apply (auto simp del: prefer_count_l.simps prefer_count.simps)
+  apply (rename_tac pl pr)
+proof (standard, standard, rename_tac a b)
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix a:: 'a and b:: 'a
+  assume "(pl, pr) \<in> profile_rel"
+  from this have meq: "RETURN (prefer_count_l pl a b) = RETURN (prefer_count pr a b)"
+    using pc_fold_monad_eq[where p = pl and a=a and b=b]
+        pc_foldli_list_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD, 
+        where x3 = pl and x'3=pr and x2 = a and x'2 = a
+             and x1 = b and x'1 = b]
+    by (metis (full_types) RETURN_ref_SPECD pair_in_Id_conv)
+  have "nofail (RETURN (prefer_count_l pl a b))"
+    by (metis nofail_simps(3))
+  from meq show "prefer_count_l pl a b = prefer_count pr a b"
+    by simp
+qed
+
+lemma wins_l_correct:
+  shows "(wins_l, wins)
+    \<in> Id \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> bool_rel"
+  apply(refine_vcg)
+proof (clarsimp simp del: prefer_count_l.simps prefer_count.simps, rename_tac a pl pr b, safe)
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix a:: 'a and b:: 'a
+  assume a1: "(pl, pr) \<in> profile_rel"
+  assume a2: "prefer_count_l pl b a < prefer_count_l pl a b"
+  note eq = prefer_count_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD, 
+        where x2= pl and x'2=pr]
+  from eq a1 have "\<forall> alt1 alt2. prefer_count_l pl alt1 alt2 = prefer_count pr alt1 alt2 "
+    by blast   
+  from a2 this show  "prefer_count pr b a < prefer_count pr a b"
+    by fastforce
+next 
+fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix a:: 'a and b:: 'a
+  assume a1: "(pl, pr) \<in> profile_rel"
+  assume a2: "prefer_count pr b a < prefer_count pr a b"
+  note eq = prefer_count_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD, 
+        where x2= pl and x'2=pr]
+  from eq a1 have "\<forall> alt1 alt2. prefer_count_l pl alt1 alt2 = prefer_count pr alt1 alt2 "
+    by blast   
+  from a2 this show  "prefer_count_l pl b a < prefer_count_l pl a b"
+    by fastforce
+qed
+    
 end
