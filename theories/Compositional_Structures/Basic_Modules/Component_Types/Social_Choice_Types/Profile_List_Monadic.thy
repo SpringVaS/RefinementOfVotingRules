@@ -1,4 +1,4 @@
-theory Counting_Functions_Code
+theory Profile_List_Monadic
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
   Refine_Imperative_HOL.IICF
@@ -596,8 +596,6 @@ refine_IdD
     by fastforce
 qed
 
-find_theorems RES
-
 lemma prefer_count_l_correct:
   shows "(prefer_count_l, prefer_count)
     \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> nat_rel"
@@ -720,6 +718,35 @@ lemma cond_winner_l_unique:
   using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
       where x2 = A and x'2 = A and x1 = pl and x'1 = pr] 
     cond_winner_unique[where A = A and p = pr and c = c and w = w]
+  assms by blast
+
+lemma cond_winner_l_unique2:
+  fixes A:: "'a set" 
+  fixes pl :: "'a Profile_List"
+  fixes pr :: "'a Profile"
+  fixes x :: 'a and w :: 'a
+  assumes
+    prel:     "(pl, pr) \<in> profile_rel"    and
+    winner: "condorcet_winner_l A pl w" and
+    not_w:  "x \<noteq> w"
+  shows "\<not> condorcet_winner_l A pl x"
+  using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr] 
+    cond_winner_unique2[where A = A and p = pr and x = x and w = w]
+  assms by blast
+
+lemma cond_winner_unique3_l:
+  fixes A:: "'a set" 
+  fixes pl :: "'a Profile_List"
+  fixes pr :: "'a Profile"
+  fixes w :: 'a
+  assumes
+    prel:     "(pl, pr) \<in> profile_rel"    and
+    wcond:    "condorcet_winner_l A pl w"
+  shows "{a \<in> A. condorcet_winner_l A pl a} = {w}"
+  using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr] 
+    cond_winner_unique3[where A = A and p = pr and w = w]
   assms by blast
 
 

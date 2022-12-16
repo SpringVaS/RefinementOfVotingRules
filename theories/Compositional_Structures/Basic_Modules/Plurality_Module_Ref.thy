@@ -184,14 +184,19 @@ theorem plurality_init_correct:
   using ref_two_step[OF plurality_init_refine[THEN nres_relD] 
             plurality_monadic_correct [THEN nres_relD]] refine_IdD
   by fastforce   
-end 
 
 theorem plurality_init_dataref:
-  shows "(plurality_init A, (\<lambda> Alts p. SPEC (\<lambda> elec. elec = (plurality) Alts p)) A)
-     \<in> (profile_on_A_rel A) \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  shows "(plurality_init, (\<lambda> Alts p. SPEC (\<lambda> elec. elec = (plurality) Alts p)))
+     \<in> \<langle>Id\<rangle>set_rel \<rightarrow> (profile_rel) \<rightarrow> \<langle>Id\<rangle>nres_rel"
 
-  apply (auto simp del: plurality.simps)
-  oops
+  sorry
+
+lemmas pluralitysep_correct= "plurality_sepref.refine[FCOMP plurality_init_dataref]"
+
+end
+
+
+
   
 
 end

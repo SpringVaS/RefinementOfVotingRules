@@ -20,7 +20,7 @@ directories
 theories
 (* "Social-Choice Types" *)
   "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/RefinementList"
-  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Counting_Functions_Code"
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Profile_List_Monadic"
 	
 
 (* "Refined Component Types" *)
