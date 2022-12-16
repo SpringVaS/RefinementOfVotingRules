@@ -12,7 +12,7 @@ definition win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" w
      if (x!0 = a) then (ac+1) else (ac)) 0"
 
 
-text \<open> Monadic definition of ballot properties \<close>
+text \<open> Monadic definition of profile functions \<close>
 
 definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
     (i \<le> List_Index.index ballot a)
@@ -541,6 +541,11 @@ fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> b
   "wins_l x p y =
     (prefer_count_l p x y > prefer_count_l p y x)"
 
+fun condorcet_winner_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
+  "condorcet_winner_l A p w =
+      (finite A \<and> profile_l A p \<and>  w \<in> A \<and> (\<forall> x \<in> A - {w} . wins_l w p x))"
+
+
 thm List.fold_invariant
 
 
@@ -632,7 +637,7 @@ proof (clarsimp simp del: prefer_count_l.simps prefer_count.simps, rename_tac a 
   from a2 this show  "prefer_count pr b a < prefer_count pr a b"
     by fastforce
 next 
-fix pl :: "'a Profile_List"
+  fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
   fix a:: 'a and b:: 'a
   assume a1: "(pl, pr) \<in> profile_rel"
@@ -644,5 +649,63 @@ fix pl :: "'a Profile_List"
   from a2 this show  "prefer_count_l pl b a < prefer_count_l pl a b"
     by fastforce
 qed
-    
+
+lemma condorcet_winner_l_correct:
+  shows "(condorcet_winner_l, condorcet_winner)
+    \<in> Id \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> bool_rel"
+  apply (refine_vcg)
+  apply (clarsimp simp del : wins_l.simps wins.simps)
+proof (rename_tac A pl pr alt, safe)
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix A:: "'a set" and alt:: 'a
+  assume a1: "(pl, pr) \<in> profile_rel"
+  assume a2: "profile_l A pl"
+  note winc = wins_l_correct[unfolded fref_def, THEN fun_relD, THEN fun_relD,THEN fun_relD,
+      where x2 = alt and x'2 = alt and x1 = pl and x'1 = pr]
+  note profr = profileref[THEN fun_relD, THEN fun_relD,
+      where x1 = A and x'1 = A and x = pl and x' = pr]
+  from a1 a2 profr show "(profile A pr)"
+    by simp
+next
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix A:: "'a set" and alt:: 'a
+  fix con:: 'a
+  assume a1: "(pl, pr) \<in> profile_rel"
+  assume a2: "con \<in> A"
+  assume a3: "\<not> wins alt pr con"
+  assume altwins: "\<forall>x\<in>A - {alt}. wins_l alt pl x"
+  note winc = wins_l_correct[unfolded fref_def, THEN fun_relD, THEN fun_relD,THEN fun_relD,
+      where x2 = alt and x'2 = alt and x1 = pl and x'1 = pr]
+  from a1 a3 winc have "\<not> wins_l alt pl con" by blast
+  from altwins a2 this show "con = alt" by blast
+next
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix A:: "'a set" and alt:: 'a
+  assume a1: "(pl, pr) \<in> profile_rel"
+  assume a2: "profile A pr"
+  note winc = wins_l_correct[unfolded fref_def, THEN fun_relD, THEN fun_relD,THEN fun_relD,
+      where x2 = alt and x'2 = alt and x1 = pl and x'1 = pr]
+  note profr = profileref[THEN fun_relD, THEN fun_relD,
+      where x1 = A and x'1 = A and x = pl and x' = pr]
+  from a1 a2 profr show "(profile_l A pl)"
+    by simp
+next
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix A:: "'a set" and alt:: 'a
+  fix con:: 'a
+  assume a1: "(pl, pr) \<in> profile_rel"
+  assume a2: "con \<in> A"
+  assume a3: "\<not> wins_l alt pl con"
+  assume altwins: "\<forall>x\<in>A - {alt}. wins alt pr x"
+  note winc = wins_l_correct[unfolded fref_def, THEN fun_relD, THEN fun_relD,THEN fun_relD,
+      where x2 = alt and x'2 = alt and x1 = pl and x'1 = pr]
+  from a1 a3 winc have "\<not> wins alt pr con" by blast
+  from altwins a2 this show "con = alt" by blast
+qed
+
+
 end
