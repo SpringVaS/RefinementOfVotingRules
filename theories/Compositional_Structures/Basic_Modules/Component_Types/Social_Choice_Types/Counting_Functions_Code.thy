@@ -701,11 +701,26 @@ next
   assume a2: "con \<in> A"
   assume a3: "\<not> wins_l alt pl con"
   assume altwins: "\<forall>x\<in>A - {alt}. wins alt pr x"
-  note winc = wins_l_correct[unfolded fref_def, THEN fun_relD, THEN fun_relD,THEN fun_relD,
+  note winc = wins_l_correct[THEN fun_relD, THEN fun_relD,THEN fun_relD,
       where x2 = alt and x'2 = alt and x1 = pl and x'1 = pr]
   from a1 a3 winc have "\<not> wins alt pr con" by blast
   from altwins a2 this show "con = alt" by blast
 qed
+
+lemma cond_winner_l_unique:
+  fixes A:: "'a set" 
+  fixes pl :: "'a Profile_List"
+  fixes pr :: "'a Profile"
+  fixes c :: 'a and w :: 'a
+  assumes
+    prel:     "(pl, pr) \<in> profile_rel"    and
+    winner_c: "condorcet_winner_l A pl c" and
+    winner_w: "condorcet_winner_l A pl w"
+  shows "w = c"
+  using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr] 
+    cond_winner_unique[where A = A and p = pr and c = c and w = w]
+  assms by blast
 
 
 end
