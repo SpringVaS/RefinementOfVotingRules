@@ -2,7 +2,7 @@ section \<open>Elimination Module\<close>
 
 theory Elimination_Module_Ref
   imports Evaluation_Function_Ref
-          Verified_Voting_Rule_Construction.Electoral_Module
+          Electoral_Module_Ref
 Refine_Imperative_HOL.IICF
 begin
 
@@ -19,6 +19,10 @@ type_synonym Threshold_Value = nat
 
 type_synonym Threshold_Relation = "nat \<Rightarrow> nat \<Rightarrow> bool"
 
+type_synonym 'a Scores_Map = "('a \<rightharpoonup> nat)"
+
+type_synonym 'a Threshold_Compute = "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nres"
+
 type_synonym 'a Electoral_Set_Ref = "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a set nres"
 
 definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
@@ -30,14 +34,26 @@ definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
       RETURN (m(x\<mapsto>scx))
   }) (Map.empty)"
 
+definition scoremax :: "'a Threshold_Compute" where 
+ "scoremax A scores \<equiv> do {
+  FOREACH (A)
+    (\<lambda>x max. do {
+      ASSERT (x \<in> dom scores);
+      let scx = the (scores x);
+      (if (scx > max) then 
+          RETURN (scx) 
+      else 
+          RETURN(max))
+    }) (0::nat)
+}"
 
-definition eliminate:: "'a Evaluation_Function_Ref \<Rightarrow> Threshold_Value \<Rightarrow>
+definition eliminate:: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
                             Threshold_Relation \<Rightarrow> 
                           'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a set \<times> 'a set) nres" where
- "eliminate evaf t r A p \<equiv> do {
+ "eliminate scoremap t r A p \<equiv> do {
    FOREACH (A)
     (\<lambda>x (rej, def). do {
-      scx <- evaf x A p;
+      let scx = the (scoremap x);
       (if (r scx t) then 
           RETURN (insert x rej, def) 
       else 
@@ -45,26 +61,35 @@ definition eliminate:: "'a Evaluation_Function_Ref \<Rightarrow> Threshold_Value
     }) ({}, {})
 }"
 
-definition elimination_module :: "'a Evaluation_Function \<Rightarrow> Threshold_Value \<Rightarrow>
-                            Threshold_Relation \<Rightarrow> 'a Electoral_Module" where
-  "elimination_module e t r A p \<equiv>
-      (if (elimination_set e t r A p) \<noteq> A
-        then ({}, (elimination_set e t r A p), A - (elimination_set e t r A p))
-        else ({},{},A))"
+definition elimination_module_ref :: 
+"'a Evaluation_Function_Ref \<Rightarrow> 'a Threshold_Compute \<Rightarrow>
+   Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref " 
+  where
+  "elimination_module_ref e tc r A p \<equiv> do {
+    scores <- pre_compute_scores e A p;
+    threshold <- tc A scores;
+    (rej, def) <- eliminate scores threshold r A p;
+    (if (rej \<noteq> A) 
+      then RETURN ({},rej,def) 
+      else RETURN ({},{},A))
+  }"
+
+
 
 subsection \<open>Common Eliminators\<close>
 
-fun less_eliminator :: "'a Evaluation_Function \<Rightarrow> Threshold_Value \<Rightarrow>
-                            'a Electoral_Module" where
-  "less_eliminator e t A p = elimination_module e t (<) A p"
+fun less_eliminator_ref :: "'a Evaluation_Function_Ref \<Rightarrow> 'a Threshold_Compute \<Rightarrow>
+                            'a Electoral_Module_Ref" where
+  "less_eliminator_ref e tc A p = elimination_module_ref e tc (<) A p"
 
-fun max_eliminator :: "'a Evaluation_Function \<Rightarrow> 'a Electoral_Module" where
-  "max_eliminator e A p =
-    less_eliminator e (Max {e x A p | x. x \<in> A}) A p"
+fun max_eliminator_ref ::  "'a Evaluation_Function_Ref \<Rightarrow>
+                            'a Electoral_Module_Ref" where
+  "max_eliminator_ref e A p =
+    less_eliminator_ref e (scoremax) A p"
 
-fun leq_eliminator :: "'a Evaluation_Function \<Rightarrow> Threshold_Value \<Rightarrow>
-                            'a Electoral_Module" where
-  "leq_eliminator e t A p = elimination_module e t (\<le>) A p"
+fun leq_eliminator_ref :: "'a Evaluation_Function_Ref \<Rightarrow> 'a Threshold_Compute \<Rightarrow>
+                            'a Electoral_Module_Ref" where
+  "leq_eliminator_ref e t A p = elimination_module_ref e t (\<le>) A p"
 
 fun min_eliminator :: "'a Evaluation_Function \<Rightarrow> 'a Electoral_Module" where
   "min_eliminator e A p =
