@@ -1,15 +1,15 @@
 theory Profile_List_Monadic
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
-  Refine_Imperative_HOL.IICF
-  RefinementList
+    RefinementList
+    Refine_Imperative_HOL.IICF
+  
 begin
 
-(* TODO Refactor to List base Profile Type *)
 
-definition win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" where
-  "win_count_l p a = foldli p (\<lambda>_. True) (\<lambda>x ac. 
-     if (x!0 = a) then (ac+1) else (ac)) 0"
+fun win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" where
+  "win_count_l p a = fold (\<lambda>x ac. 
+     if (0 < length x \<and> x!0 = a) then (ac+1) else (ac)) p 0"
 
 
 text \<open> Monadic definition of profile functions \<close>
@@ -455,14 +455,14 @@ definition wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres"
   where "wc_fold l a \<equiv> 
    nfoldli l (\<lambda>_. True) 
     (\<lambda>x (ac). 
-     if ((length x > 0) \<and> (x!0 = a))then RETURN (ac+1) else RETURN (ac)
+     RETURN (if ((length x > 0) \<and> (x!0 = a))then (ac+1) else  (ac))
     ) 
     (0)"
 
 lemma wc_fold_refine:
   shows "wc_fold pl a \<le> \<Down> Id (wc_foreach_top pl a)"
   unfolding wc_fold_def wc_foreach_top_def
-  by (simp add: nfoldli_while while.WHILET_def)
+  by (simp add: nfoldli_mono(1) while_eq_nfoldli)
 
 theorem wc_fold_correct:
   assumes "(pl, pr) \<in> profile_rel" and "profile_l A pl"
@@ -475,6 +475,31 @@ lemma nfwcc: "nofail (wc_fold p a)"
   apply (induction p rule: rev_induct, simp)
    apply simp
   by (simp add: pw_bind_nofail)
+
+lemma win_count_l_correct:
+  shows "(win_count_l, win_count)
+    \<in> (profile_on_A_rel A) \<rightarrow> Id \<rightarrow> nat_rel"
+  apply (auto simp del: win_count_l.simps win_count.simps)
+  apply (rename_tac pl pr)
+proof (standard, rename_tac a)
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  fix a:: 'a
+  assume prel: "(pl, pr) \<in> (profile_on_A_rel A)"
+  from prel have profrel: "(pl, pr) \<in> profile_rel" using profile_type_ref by fastforce
+  from prel have profprop: "profile_l A pl" using profile_prop_list by fastforce
+  have  "RETURN (win_count_l pl a) = (wc_fold pl a)"
+  unfolding  wc_fold_def win_count_l.simps
+  using fold_eq_nfoldli[where l = pl and f = "(\<lambda>x ac. if (0 < length x \<and> x ! 0 = a)
+       then ac + 1 else ac)" and s = 0]
+  by fastforce
+  from this profrel profprop have meq: "RETURN (win_count_l pl a) = RETURN (win_count pr a)"
+  using wc_fold_correct[where pl=pl and pr = pr and A = A and a = a]
+    by (metis mem_Collect_eq nres_order_simps(21))
+  from meq show "win_count_l pl a = win_count pr a"
+    by simp
+qed
+  
 
 text \<open>
   pref count
@@ -612,8 +637,6 @@ proof (standard, standard, rename_tac a b)
         where x3 = pl and x'3=pr and x2 = a and x'2 = a
              and x1 = b and x'1 = b]
     by (metis (full_types) RETURN_ref_SPECD pair_in_Id_conv)
-  have "nofail (RETURN (prefer_count_l pl a b))"
-    by (metis nofail_simps(3))
   from meq show "prefer_count_l pl a b = prefer_count pr a b"
     by simp
 qed
@@ -650,7 +673,7 @@ qed
 
 lemma condorcet_winner_l_correct:
   shows "(condorcet_winner_l, condorcet_winner)
-    \<in> Id \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> bool_rel"
+    \<in> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> bool_rel"
   apply (refine_vcg)
   apply (clarsimp simp del : wins_l.simps wins.simps)
 proof (rename_tac A pl pr alt, safe)
@@ -715,8 +738,8 @@ lemma cond_winner_l_unique:
     winner_c: "condorcet_winner_l A pl c" and
     winner_w: "condorcet_winner_l A pl w"
   shows "w = c"
-  using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
-      where x2 = A and x'2 = A and x1 = pl and x'1 = pr] 
+  using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD, THEN fun_relD,
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr] set_rel_id_simp
     cond_winner_unique[where A = A and p = pr and c = c and w = w]
   assms by blast
 
@@ -731,7 +754,7 @@ lemma cond_winner_l_unique2:
     not_w:  "x \<noteq> w"
   shows "\<not> condorcet_winner_l A pl x"
   using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
-      where x2 = A and x'2 = A and x1 = pl and x'1 = pr] 
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr]  set_rel_id_simp
     cond_winner_unique2[where A = A and p = pr and x = x and w = w]
   assms by blast
 
@@ -745,7 +768,7 @@ lemma cond_winner_unique3_l:
     wcond:    "condorcet_winner_l A pl w"
   shows "{a \<in> A. condorcet_winner_l A pl a} = {w}"
   using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
-      where x2 = A and x'2 = A and x1 = pl and x'1 = pr] 
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr]  set_rel_id_simp
     cond_winner_unique3[where A = A and p = pr and w = w]
   assms by blast
 

@@ -12,7 +12,7 @@ type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_List \<R
 locale voting_session =
   fixes A:: "'a set"
   fixes pl:: "'a Profile_List" and pr:: "'a Profile"
-  assumes fina: "finite A"
+  assumes fina: "finite A" and nempa: "A \<noteq> {}"
     and profrel: "(pl, pr) \<in> profile_on_A_rel A"
 
 lemma em_corres:

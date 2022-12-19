@@ -23,9 +23,29 @@ subsection \<open>Definition\<close>
 
 type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres"
 
-abbreviation "evalf_rel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> Id"
+abbreviation "evalf_rel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
-subsection \<open>Property\<close>
+
+lemma evalfeq:   
+  fixes A:: "'a set" 
+  fixes pr :: "'a Profile"
+  fixes pl :: "'a Profile_List"
+  assumes 
+     pref: "(pl, pr) \<in> profile_rel" and
+     evalref: "((\<lambda> a A pl . refn a A pl), (\<lambda> a A pr. RETURN (efn a A pr))) \<in> evalf_rel" and
+     refnt: "nofail (refn a A pl)"
+  shows "refn a A pl = RETURN (efn a A pr)"
+proof -
+  have nfret: "nofail (RETURN (efn a A pr))" using nofail_simps(3) by simp
+  note pref 
+    evalref[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD,
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr]
+    set_rel_id_simp refine_IdD 
+  from this have "refn a A pl \<le> RETURN (efn a A pr)" by simp
+  from this refnt nfret show ?thesis
+    oops
+  
+  subsection \<open>Property\<close>
 
 text \<open>
   An Evaluation function is Condorcet-rating iff the following holds:
@@ -37,8 +57,27 @@ definition condorcet_rating_ref :: "'a Evaluation_Function_Ref \<Rightarrow> boo
     \<forall> A p w . condorcet_winner_l A p w \<longrightarrow>
       (\<forall> l \<in> A . l \<noteq> w \<longrightarrow> f l A p < f w A p)"
 
-(*lemma "(condorcet_rating_ref,  condorcet_rating) \<in> evalf_rel \<rightarrow> bool_rel"*)
-
+lemma cratref:
+  fixes refn :: "'a Evaluation_Function_Ref"
+  fixes efn  :: "'a Evaluation_Function"
+  fixes A:: "'a set" and pr :: "'a Profile" and pl :: "'a Profile_List" fixes w:: 'a
+  assumes pref: "(pl, pr) \<in> profile_rel"
+  assumes evalref: "((\<lambda> a. refn a A pl), (\<lambda> a . RETURN (efn a A pr))) \<in> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  shows "condorcet_rating_ref refn = condorcet_rating efn"
+proof (safe, unfold condorcet_rating_ref_def condorcet_rating_def)
+  assume rthes: "\<forall>A p w. condorcet_winner_l A p w \<longrightarrow> (\<forall>l\<in>A. l \<noteq> w \<longrightarrow> refn l A p < refn w A p)"
+  note pref condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+      where x2 = A and x'2 = A and x1 = pl and x'1 = pr]
+  from this have ceq: "condorcet_winner_l A pl w = condorcet_winner A pr w"
+    by (metis pair_in_Id_conv set_relI)
+ (* from this evalref have "\<forall>A p w. condorcet_winner A p w \<longrightarrow> (\<forall>l\<in>A. l \<noteq> w \<longrightarrow> efn l A p < efn w A p)"*)
+  from  evalref[THEN fun_relD, THEN nres_relD] refine_IdD 
+  have "(efn l A pr < efn w A pr) \<longrightarrow> (refn l A pl < refn w A pl)"
+  
+  
+  oops
+ 
+         
 subsection \<open>Theorems\<close>
 
 text \<open>
