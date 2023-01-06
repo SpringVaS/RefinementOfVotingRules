@@ -25,27 +25,18 @@ type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow
 
 abbreviation "evalf_rel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
-
 lemma evalfeq:   
   fixes A:: "'a set" 
   fixes pr :: "'a Profile"
   fixes pl :: "'a Profile_List"
   assumes 
      pref: "(pl, pr) \<in> profile_rel" and
-     evalref: "((\<lambda> a A pl . refn a A pl), (\<lambda> a A pr. RETURN (efn a A pr))) \<in> evalf_rel" and
-     refnt: "nofail (refn a A pl)"
-  shows "refn a A pl = RETURN (efn a A pr)"
-proof -
-  have nfret: "nofail (RETURN (efn a A pr))" using nofail_simps(3) by simp
-  note pref 
-    evalref[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD,
-      where x2 = A and x'2 = A and x1 = pl and x'1 = pr]
-    set_rel_id_simp refine_IdD 
-  from this have "refn a A pl \<le> RETURN (efn a A pr)" by simp
-  from this refnt nfret show ?thesis
-    oops
+     evalref: "((\<lambda> a A pl . refn a A pl), (\<lambda> a A pr. RETURN (efn a A pr))) \<in> evalf_rel"
+  shows "refn a A pl \<le> RETURN (efn a A pr)"
+  using assms(1) assms(2)[THEN fun_relD, THEN fun_relD,THEN fun_relD, THEN nres_relD]
+  by auto
   
-  subsection \<open>Property\<close>
+  subsection \<open>Refined Condorcet Property\<close>
 
 text \<open>
   An Evaluation function is Condorcet-rating iff the following holds:

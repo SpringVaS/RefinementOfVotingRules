@@ -19,7 +19,7 @@ directories
 
 theories
 (* "Social-Choice Types" *)
-  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/RefinementList"
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Ballot_Refinement"
   "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Profile_List_Monadic"
 	
 

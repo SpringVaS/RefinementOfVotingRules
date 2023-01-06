@@ -1,7 +1,7 @@
 theory Profile_List_Monadic
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
-    RefinementList
+    Ballot_Refinement
     Refine_Imperative_HOL.IICF
   
 begin

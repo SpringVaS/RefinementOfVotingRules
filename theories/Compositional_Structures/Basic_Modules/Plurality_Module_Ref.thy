@@ -128,7 +128,8 @@ qed
 lemma scoremax_correct:
   shows "(scoremax A precompute_map, SPEC (\<lambda> th. th =  max_comp_plurality)) \<in> \<langle>nat_rel\<rangle>nres_rel"
   unfolding scoremax_def max_comp_plurality_def precompute_map_def
-  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). win_count pr a \<le> max) \<and> ((\<exists>e \<in> (A - it). max = win_count pr e) \<or> max = 0))"] )
+  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). win_count pr a \<le> max) 
+\<and> ((\<exists>e \<in> (A - it). max = win_count pr e) \<or> max = 0))"] )
   apply (auto simp add: fina simp del: win_count.simps)
   apply (metis Diff_iff leD nle_le order_trans)
     apply (metis DiffI order_less_imp_le)

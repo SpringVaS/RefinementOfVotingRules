@@ -1,6 +1,6 @@
 theory Electoral_Module_Ref                      
   imports "Verified_Voting_Rule_Construction.Profile_List"
-          "Social_Choice_Types/RefinementList"
+          "Social_Choice_Types/Ballot_Refinement"
           "Verified_Voting_Rule_Construction.Electoral_Module"
            Refine_Imperative_HOL.IICF
 begin                            
