@@ -85,8 +85,8 @@ lemma plurality_monadic_correct:
   apply (clarsimp_all simp add: fina
     simp del: win_count.simps )
   subgoal by auto
-  using fina nbmax[where A= A and p = pr and f=win_count]
-  using fina nempa nbexmax[where A= A and p = pr and f=win_count] 
+  using fina score_bounded[where A= A and f=win_count]
+  using fina nempa max_score_in[where A= A and f=win_count] 
   apply (rename_tac e r alt)
   using leD 
    (*apply (metis UnCI leD)+*)
