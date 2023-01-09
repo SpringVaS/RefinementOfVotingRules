@@ -20,33 +20,9 @@ type_synonym Threshold_Value = "nat"
 
 type_synonym Threshold_Relation = "nat \<Rightarrow> nat \<Rightarrow> bool"
 
-type_synonym 'a Scores_Map = "('a \<rightharpoonup> nat)"
 
-type_synonym 'a Threshold_Compute = "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nres"
 
-type_synonym 'a Electoral_Set_Ref = "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a set nres"
 
-definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
- 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
-  where "pre_compute_scores ef A p \<equiv>
-  FOREACH A 
-    (\<lambda>x m. do {
-      scx \<leftarrow> (ef x A p);
-      RETURN (m(x\<mapsto>scx))
-  }) (Map.empty)"
-
-definition scoremax :: "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nres" where 
- "scoremax A scores \<equiv> do {
-  FOREACH (A)
-    (\<lambda>x max. do {
-      ASSERT (x \<in> dom scores);
-      let scx = the (scores x);
-      (if (scx > max) then 
-          RETURN (scx) 
-      else 
-          RETURN(max))
-    }) (0::nat)
-}"
 
 definition eliminate:: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
                             Threshold_Relation \<Rightarrow> 
@@ -81,6 +57,9 @@ Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref "
 
 definition pre_computed_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> ('a \<rightharpoonup> nat)"  where
   "pre_computed_map e Alts pro \<equiv> ((\<lambda>a. Some (e a Alts pro))|`Alts )"
+
+
+
 
 context voting_session
 begin

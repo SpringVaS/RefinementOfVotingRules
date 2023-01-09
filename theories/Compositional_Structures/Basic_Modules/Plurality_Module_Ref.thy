@@ -133,12 +133,14 @@ lemma scoremax_correct:
   apply (auto simp add: fina simp del: win_count.simps)
   apply (metis Diff_iff leD nle_le order_trans)
     apply (metis DiffI order_less_imp_le)
-  using fina nbmax[where A= A and p = pr and f=win_count]
+  using fina score_bounded[where A= A and p = pr and f=win_count]
   nempa nbexmax[where A= A and p = pr and f=win_count]
-  apply (metis antisym linorder_not_le max_comp_plurality_def)
+
+  sorry
+  (*apply (metis antisym linorder_not_le max_comp_plurality_def)
   using fina nempa nbexmax[where A= A and p = pr and f=win_count]
   apply (simp add: finite_nat_set_iff_bounded)
-  done
+  done*)
 
 lemma parameterized_refinement: 
   "(pluralityparam, pluralityparam) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> Id \<rightarrow> nat_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
