@@ -114,7 +114,7 @@ next
   note cc = condorcet_winner_l_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD,
       where x2 = A and x'2 = A  and x'1 = pr and x = w and x' = w]
   from lA wnl winner crref cc show "efn l A pr < efn w A pr"
-    sorry
+    oops
 qed
 
 definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
@@ -201,24 +201,38 @@ text \<open>
   evaluation value.
 \<close>
 
-theorem non_cond_winner_not_max_eval:
+theorem non_cond_winner_not_max_eval_ref:
+ fixes eref :: "'a Evaluation_Function_Ref"
+  and efn :: "'a Evaluation_Function"
+  fixes pl :: "'a Profile_List" and pr :: "'a Profile"
+  assumes profrel : "(pl, pr) \<in> profile_rel"
+  assumes evalfref: "(eref, (\<lambda> a Alts pro. RETURN (efn a Alts pro))) \<in> evalf_rel"
   assumes
-    rating: "condorcet_rating e" and
-    f_prof: "finite_profile A p" and
-    winner: "condorcet_winner A p w" and
+    rating: "condorcet_rating efn" and
+    fina: "finite A" and profl: "profile_l A pl" and
+    winnerl: "condorcet_winner_l A pl w" and
     linA: "l \<in> A" and
     loser: "w \<noteq> l"
-  shows "e l A p < Max {e a A p | a. a \<in> A}"
+  shows "do {sl <- eref l A pl; RETURN (sl < Max {efn a A pr | a. a \<in> A})} \<le> RETURN True"  
 proof -
-  have "e l A p < e w A p"
-    using linA loser rating winner
-    unfolding condorcet_rating_def
-    by metis
-  also have "e w A p = Max {e a A p |a. a \<in> A}"
-    using cond_winner_imp_max_eval_val f_prof rating winner
-    by fastforce
-  finally show ?thesis
+   note efeq = evalfref[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
+  from this have efref: "eref w A pl \<le> RETURN (efn w A pr)"
+    using profrel refine_IdD
     by simp
+  from fina profl profrel have f_prof: "finite_profile A pr" 
+    using profileref[THEN fun_relD, THEN fun_relD]
+    by fastforce
+  from winnerl condorcet_winner_l_correct[THEN fun_relD, THEN fun_relD,THEN fun_relD]
+  profrel
+  have winner: "condorcet_winner A pr w"
+    by (metis pair_in_Id_conv set_rel_id)
+  from f_prof winner rating linA loser have lt: "efn l A pr < Max {efn a A pr | a. a \<in> A}"
+    using non_cond_winner_not_max_eval[where A= A and l = l and e = efn and w = w and p = pr]
+    by simp
+  from profrel efeq have "eref l A pl \<le> RETURN (efn l A pr)"
+    by auto
+  from this lt show ?thesis
+    by (smt (verit, ccfv_threshold) RETURN_SPEC_conv pw_ords_iff(1) specify_left)
 qed
 
 end
