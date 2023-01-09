@@ -119,6 +119,26 @@ sepref_definition rank_imp_sep
   by sepref
 
 
+definition is_less_preferred_than_mon :: "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
+"is_less_preferred_than_mon a pl b \<equiv> do {
+  ra <- rank_mon pl a;
+  rb <- rank_mon pl b;
+  RETURN ((ra > 0) \<and> (rb > 0) \<and> (ra \<ge> rb))
+}"
+
+lemma ilpm_list_correct:
+  shows "is_less_preferred_than_mon a pl b \<le> 
+      SPEC (\<lambda> lp. lp =  is_less_preferred_than_l a pl b)" 
+  unfolding is_less_preferred_than_mon_def is_less_preferred_than_l.simps 
+  apply (refine_vcg rank_mon_correct)
+  by (auto simp add: in_set_member)
+
+sepref_definition ilp_sep
+  is "uncurry2 is_less_preferred_than_mon" :: 
+    "(nat_assn\<^sup>k *\<^sub>a (array_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+  unfolding is_less_preferred_than_mon_def rank_mon_def[abs_def] index_mon_def[abs_def]
+  by sepref
+
 section \<open>Monadic implementation of counting functions \<close>
 
 text \<open>
@@ -620,6 +640,29 @@ refine_IdD
   from profr this show "pc_foldli_list pl a b \<le> RES {prefer_count pr a b}"
     by fastforce
 qed
+
+definition pc_foldli_lp_mon:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
+"pc_foldli_lp_mon p a b \<equiv> 
+  nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
+  do {
+    b_less_a <- is_less_preferred_than_mon b x a;
+    RETURN  (if b_less_a then (ac+1) else (ac)) 
+  }) (0::nat)"
+
+lemma pc_foldli_lp_mon_refine:
+  shows "(pc_foldli_lp_mon, pc_foldli_list) \<in> Id \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  unfolding pc_foldli_lp_mon_def pc_foldli_list_def
+  apply (refine_vcg ilpm_list_correct)
+  apply (refine_dref_type)
+  by auto
+
+theorem pc_foldli_lp_mon_correct:
+  assumes "(pl, pr) \<in> profile_rel"
+  shows "pc_foldli_lp_mon pl a b \<le> SPEC (\<lambda> pc. pc = prefer_count pr a b)"
+  using assms(1) ref_two_step[OF pc_foldli_lp_mon_refine [THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD] 
+      pc_foldli_list_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD],
+      where x10 = pl and x5 = pl and x'5 = pr] refine_IdD
+  by (metis IdI)
 
 lemma prefer_count_l_correct:
   shows "(prefer_count_l, prefer_count)

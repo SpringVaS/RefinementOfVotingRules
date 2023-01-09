@@ -115,7 +115,7 @@ next
       where x2 = A and x'2 = A  and x'1 = pr and x = w and x' = w]
   from lA wnl winner crref cc show "efn l A pr < efn w A pr"
     oops
-qed
+
 
 definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
  'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
