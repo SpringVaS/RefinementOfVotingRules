@@ -51,21 +51,28 @@ qed
 
 
 
-lemma plurality_elim_correct:
+theorem plurality_elim_correct:
   shows "plurality_monadic A pl \<le> SPEC (\<lambda> res. res = plurality_mod A pr)"
-  unfolding plurality_monadic_def plurality_mod.simps
-proof -
-  have "pre_compute_scores plur_score_mon A pl \<le> SPEC (\<lambda> map. map = pre_computed_map plur_score A pr)"
-  using compute_scores_correct[THEN nres_relD, THEN refine_IdD]
+proof (unfold plurality_monadic_def plurality_mod.simps)
+  have "pre_compute_scores plur_score_mon A pl 
+          \<le> SPEC (\<lambda> map. map = pre_computed_map plur_score A pr)"
+  using plur_score_refine_weak[where A = A]
+      compute_scores_correct_weak_evalref[THEN nres_relD, THEN refine_IdD]
+  by fastforce 
+  from this show "pre_compute_scores plur_score_mon A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
+    \<le> SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"
+    using max_eliminator_ref_correct[where efn = plur_score]
+    by (metis (full_types) specify_left)
+qed
 
 end
 
 
 sepref_definition plurality_elim_sepref is
-  "uncurry plarility_monadic":: 
+  "uncurry plurality_monadic":: 
     "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
    \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
-  unfolding plarility_monadic_def  max_eliminator_ref.simps plur_score_mon.simps
+  unfolding plurality_monadic_def  max_eliminator_ref.simps plur_score_mon.simps
     less_eliminator_ref.simps  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
   apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
