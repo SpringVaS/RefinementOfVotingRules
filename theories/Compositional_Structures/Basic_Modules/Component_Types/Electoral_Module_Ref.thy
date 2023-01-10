@@ -8,6 +8,11 @@ begin
 
 type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result nres"
 
+abbreviation elec_mod_relb :: "('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" where
+  "elec_mod_relb \<equiv> Id \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+
+abbreviation  "elec_mod_rel \<equiv> \<langle>\<langle>\<langle>Id\<rangle>set_rel, profile_rel\<rangle>fun_rel, \<langle>\<langle>Id\<rangle>set_rel \<times> \<langle>Id\<rangle>set_rel \<times> \<langle>Id\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel"
+
 locale voting_session =
   fixes A:: "'a set"
   fixes pl:: "'a Profile_List" and pr:: "'a Profile"
@@ -17,24 +22,8 @@ locale voting_session =
                       that use Min/Max set operators *) 
     and profrel: "(pl, pr) \<in> profile_on_A_rel A"
 
-lemma em_corres:
-  fixes A :: "'a set" and pa :: "'a Profile_List"
-  assumes "(em_r, em) \<in> (Id \<rightarrow> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id)" 
-      and " (profile_l A pa)"
-  shows "(em_r A pa) = (em A (pl_to_pr_\<alpha> pa))"
-using assms proof (-)
-  assume p: "profile_l A pa"
-  assume "(em_r, em) \<in> Id \<rightarrow> br pl_to_pr_\<alpha> (profile_l A) \<rightarrow> Id"
-  from p this show "em_r A pa = em A (pl_to_pr_\<alpha> pa)"
-    by (metis (no_types, opaque_lifting) in_br_conv pair_in_Id_conv tagged_fun_relD_none)
-qed
 
-lemma em_onA:
-  fixes A :: "'a set" 
-  assumes "(em_r A, em A) \<in> (br pl_to_pr_\<alpha> (profile_l A)) \<rightarrow> Id" 
-    and " (profile_l A pa)"
-  shows "(em_r A pa) = (em A (pl_to_pr_\<alpha> pa))"
-  by (metis assms(1) assms(2) brI pair_in_Id_conv tagged_fun_relD_rhs)
+
 
 
 end

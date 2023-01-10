@@ -20,7 +20,29 @@ type_synonym Threshold_Value = "nat"
 
 type_synonym Threshold_Relation = "nat \<Rightarrow> nat \<Rightarrow> bool"
 
+type_synonym 'a Scores_Map = "('a \<rightharpoonup> nat)"
 
+definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
+ 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
+  where "pre_compute_scores ef A p \<equiv>
+  FOREACH A 
+    (\<lambda>x m. do {
+      scx \<leftarrow> (ef x A p);
+      RETURN (m(x\<mapsto>scx))
+  }) (Map.empty)"
+
+definition scoremax :: "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nres" where 
+ "scoremax A scores \<equiv> do {
+  FOREACH (A)
+    (\<lambda>x max. do {
+      ASSERT (x \<in> dom scores);
+      let scx = the (scores x);
+      (if (scx > max) then 
+          RETURN (scx) 
+      else 
+          RETURN(max))
+    }) (0::nat)
+}"
 
 
 
@@ -57,9 +79,6 @@ Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref "
 
 definition pre_computed_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> ('a \<rightharpoonup> nat)"  where
   "pre_computed_map e Alts pro \<equiv> ((\<lambda>a. Some (e a Alts pro))|`Alts )"
-
-
-
 
 context voting_session
 begin
@@ -99,8 +118,6 @@ proof -
     by presburger 
 qed 
 
-
-
 lemma scoremax_correct:
   fixes e :: "'a Evaluation_Function"
   assumes "(eref, (\<lambda> a Alts pro. RETURN (e a Alts pro))) \<in> evalf_rel"
@@ -124,8 +141,7 @@ proof -
   from eq this show " Max {e a A pr |a. a \<in> A} = 0"
     by simp
 qed
-  
-
+ 
 end
 
 
@@ -162,29 +178,4 @@ fun leq_average_eliminator :: "'a Evaluation_Function \<Rightarrow>
                                 'a Electoral_Module" where
   "leq_average_eliminator e A p = leq_eliminator e (average e A p) A p"
 
-fun plur_score :: "'a Evaluation_Function_Ref" where
-  "plur_score x A p = (wc_fold p x)"
-
-definition plur_test :: "'a Electoral_Module_Ref" where
-  "plur_test A pl \<equiv> do {
-   scores <- (pre_compute_scores plur_score A pl);
-   max_eliminator_ref scores A pl
-}"
-
-sepref_definition plurality_elim_sepref is
-  "uncurry plur_test":: 
-    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
-   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
-  unfolding plur_test_def  max_eliminator_ref.simps plur_score.simps
-    less_eliminator_ref.simps  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
-    pre_compute_scores_def[abs_def] scoremax_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
-
-  apply sepref_dbg_keep
-  done
- 
+end

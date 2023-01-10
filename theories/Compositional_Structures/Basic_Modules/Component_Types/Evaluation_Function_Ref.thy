@@ -23,7 +23,6 @@ subsection \<open>Definition\<close>
 
 type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres"
 
-type_synonym 'a Scores_Map = "('a \<rightharpoonup> nat)"
 
 
 abbreviation "evalf_rel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
@@ -46,9 +45,9 @@ text \<open>
   If a Condorcet Winner w exists, w and only w has the highest value.
 \<close>
 
-definition condorcet_rating_ref_aux :: "'a Evaluation_Function_Ref
+definition condorcet_rating_mon_aux :: "'a Evaluation_Function_Ref
   \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
-  "condorcet_rating_ref_aux f A p w \<equiv>
+  "condorcet_rating_mon_aux f A p w \<equiv>
   FOREACH A (\<lambda> x b.
       if (x = w) then RETURN b
       else do {
@@ -56,19 +55,26 @@ definition condorcet_rating_ref_aux :: "'a Evaluation_Function_Ref
       sl <- f x A p;
       RETURN (b \<and> (sl < sw))}) (True)"
 
-definition condorcet_rating_ref :: "'a Evaluation_Function_Ref \<Rightarrow> bool" where
-  "condorcet_rating_ref f \<equiv> 
+definition condorcet_rating_mon :: "'a Evaluation_Function_Ref \<Rightarrow> bool" where
+  "condorcet_rating_mon f \<equiv> 
        \<forall> A p w . 
       (condorcet_winner_l A p w \<longrightarrow>  
     (\<forall> l \<in> A . l \<noteq> w \<longrightarrow> do { sw <- f w A p;
       sl <- f l A p; RETURN (sl < sw)} \<le> RETURN (True)))"
 
+definition refines_cond_rating :: "'a Evaluation_Function_Ref \<Rightarrow> bool" where
+  "refines_cond_rating eref \<equiv> \<exists> efn:: 'a Evaluation_Function . 
+      (eref, (\<lambda> a Alts pro. RETURN (efn a Alts pro))) \<in> evalf_rel
+      \<and> condorcet_rating efn
+    "
+  
+
 lemma condorcet_rating_ref_refine:
   fixes eref :: "'a Evaluation_Function_Ref"
   and e :: "'a Evaluation_Function"
   assumes evalfref: "(eref, (\<lambda> a Alts pro. RETURN (efn a Alts pro))) \<in> evalf_rel"
-  shows "condorcet_rating efn \<longleftrightarrow> condorcet_rating_ref eref"
-proof (unfold condorcet_rating_ref_def condorcet_rating_def condorcet_rating_ref_aux_def, safe)
+  shows "condorcet_rating efn \<longleftrightarrow> condorcet_rating_mon eref"
+proof (unfold condorcet_rating_mon_def condorcet_rating_def condorcet_rating_mon_aux_def, safe)
   fix A :: "'a set"
   fix pl:: "'a Profile_List"
   fix w :: 'a
@@ -115,43 +121,6 @@ next
       where x2 = A and x'2 = A  and x'1 = pr and x = w and x' = w]
   from lA wnl winner crref cc show "efn l A pr < efn w A pr"
     oops
-
-
-definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
- 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
-  where "pre_compute_scores ef A p \<equiv>
-  FOREACH A 
-    (\<lambda>x m. do {
-      scx \<leftarrow> (ef x A p);
-      RETURN (m(x\<mapsto>scx))
-  }) (Map.empty)"
-
-definition scoremax :: "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nres" where 
- "scoremax A scores \<equiv> do {
-  FOREACH (A)
-    (\<lambda>x max. do {
-      ASSERT (x \<in> dom scores);
-      let scx = the (scores x);
-      (if (scx > max) then 
-          RETURN (scx) 
-      else 
-          RETURN(max))
-    }) (0::nat)
-}"
-
-definition fnctn_max :: "'a Evaluation_Function_Ref \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres" where 
- "fnctn_max evalf A p \<equiv> do {
-  scores <- pre_compute_scores evalf A p;
-  FOREACH (A)
-    (\<lambda>x max. do {
-      ASSERT (x \<in> dom scores);
-      let scx = the (scores x);
-      (if (scx > max) then 
-          RETURN (scx) 
-      else 
-          RETURN(max))
-    }) (0::nat)
-}"
 
 
          
