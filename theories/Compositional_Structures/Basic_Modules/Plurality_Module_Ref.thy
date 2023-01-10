@@ -7,11 +7,32 @@ begin
 fun plur_score_mon :: "'a Evaluation_Function_Ref" where
   "plur_score_mon x A p = (wc_fold p x)"
 
-definition plarility_monadic :: "'a Electoral_Module_Ref" where
-  "plarility_monadic A pl \<equiv> do {
+definition plurality_monadic :: "'a Electoral_Module_Ref" where
+  "plurality_monadic A pl \<equiv> do {
    scores <- (pre_compute_scores plur_score_mon A pl);
    max_eliminator_ref scores A pl
 }"
+
+lemma plur_score_refine_weak:
+  shows "((\<lambda> x. plur_score_mon x A), (\<lambda> x p. RETURN ( plur_score x A p)))
+    \<in> evalf_profA_rel A"
+  apply refine_vcg
+proof (unfold plur_score_mon.simps plur_score.simps, rename_tac x' x ppl ppr)
+  fix  x':: 'a 
+  fix x:: 'a 
+  fix ppl ppr
+  assume altid: "(x', x) \<in> Id"
+  from this have alteq: "x' = x" by simp
+  assume profrel: "(ppl, ppr) \<in> profile_on_A_rel A"
+  from profrel have profl: "profile_l A ppl" using profile_prop_list
+    by blast
+  from profrel have prel: "(ppl, ppr) \<in> profile_rel" 
+    using profile_type_ref by blast
+  from  profl prel alteq wc_fold_correct 
+  show "wc_fold ppl x' \<le> SPEC (\<lambda>c. (c, win_count ppr x) \<in> nat_rel)"
+    by fastforce
+qed
+
 
 context voting_session
 begin
@@ -28,13 +49,14 @@ proof (unfold plur_score_mon.simps plur_score.simps)
     by fastforce
 qed
 
-lemma plurality_elim_correct:
-  shows "plarility_monadic A pl \<le> SPEC (\<lambda> res. res = plurality_mod A pr)"
-  unfolding plarility_monadic_def max_eliminator_ref.simps less_eliminator_ref.simps  
-  elimination_module_ref_def eliminate_def
-proof (refine_vcg, unfold plurality_mod.simps)
 
-  oops
+
+lemma plurality_elim_correct:
+  shows "plurality_monadic A pl \<le> SPEC (\<lambda> res. res = plurality_mod A pr)"
+  unfolding plurality_monadic_def plurality_mod.simps
+proof -
+  have "pre_compute_scores plur_score_mon A pl \<le> SPEC (\<lambda> map. map = pre_computed_map plur_score A pr)"
+  using compute_scores_correct[THEN nres_relD, THEN refine_IdD]
 
 end
 
