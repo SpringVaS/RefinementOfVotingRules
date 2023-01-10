@@ -14,6 +14,7 @@ definition plurality_monadic :: "'a Electoral_Module_Ref" where
 }"
 
 lemma plur_score_refine_weak:
+  fixes A :: "'a set"
   shows "((\<lambda> x. plur_score_mon x A), (\<lambda> x p. RETURN ( plur_score x A p)))
     \<in> evalf_profA_rel A"
   apply refine_vcg
@@ -37,20 +38,6 @@ qed
 context voting_session
 begin
 
-lemma plur_score_refine:
-  shows "plur_score_mon x A pl \<le> SPEC (\<lambda> ps. ps =  plur_score x A pr)"
-proof (unfold plur_score_mon.simps plur_score.simps)
-  from profrel have profl: "profile_l A pl" using profile_prop_list
-    by blast
-  from profrel have prel: "(pl, pr) \<in> profile_rel" 
-    using profile_type_ref by blast
-  from  profl prel wc_fold_correct 
-  show "wc_fold pl x \<le> SPEC (\<lambda>ps. ps = win_count pr x)"
-    by fastforce
-qed
-
-
-
 theorem plurality_elim_correct:
   shows "plurality_monadic A pl \<le> SPEC (\<lambda> res. res = plurality_mod A pr)"
 proof (unfold plurality_monadic_def plurality_mod.simps)
@@ -61,8 +48,12 @@ proof (unfold plurality_monadic_def plurality_mod.simps)
   by fastforce 
   from this show "pre_compute_scores plur_score_mon A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
     \<le> SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"
-    using max_eliminator_ref_correct[where efn = plur_score]
-    by (metis (full_types) specify_left)
+    using max_eliminator_ref_correct[where efn = plur_score] 
+      specify_left[where m = "pre_compute_scores plur_score_mon A pl"
+          and \<Phi> = "(\<lambda>map. map = pre_computed_map plur_score A pr)"
+          and f = "(\<lambda>scores. max_eliminator_ref scores A pl)"
+          and M = "SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"]
+    by fastforce
 qed
 
 end

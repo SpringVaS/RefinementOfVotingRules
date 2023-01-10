@@ -142,7 +142,7 @@ qed
 lemma compute_scores_correct:
   fixes eref :: "'a Evaluation_Function_Ref"
   and e :: "'a Evaluation_Function"
-  assumes "(eref, (\<lambda> a Alts pro. RETURN (e a Alts pro))) \<in> evalf_rel"
+assumes "((\<lambda> a pro. eref a A pro), (\<lambda> a pro. RETURN (e a A pro))) \<in> evalf_rel"
   shows "(pre_compute_scores eref A pl, SPEC (\<lambda> map. map = pre_computed_map e A pr)) \<in> 
     \<langle>Id\<rangle>nres_rel"
   unfolding pre_compute_scores_def pre_computed_map_def
@@ -164,9 +164,9 @@ proof -
       = (\<lambda> wc. wc = (e x A pr))"
     by (metis map_upd_eqD1)
   from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by auto
-  from prel assms(1)[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
-    this have "(eref x A pl) \<le> SPEC(\<lambda> scx. scx = (e x A pr))"
-    by (metis IdI SPEC_eq_is_RETURN(2) refine_IdD set_rel_id_simp) 
+  from prel assms(1)[THEN fun_relD, THEN fun_relD, THEN nres_relD]
+    have "(eref x A pl) \<le> SPEC(\<lambda> scx. scx = (e x A pr))"
+      by (metis IdI RETURN_SPEC_conv refine_IdD)
   from this mapupdeq show " (eref x A pl)
        \<le> SPEC (\<lambda>scx. ((\<lambda>a. Some (e a A pr)) |` (A - it))(x \<mapsto> scx) =
                       (\<lambda>a. Some (e a A pr)) |` (A - (it - {x})))"

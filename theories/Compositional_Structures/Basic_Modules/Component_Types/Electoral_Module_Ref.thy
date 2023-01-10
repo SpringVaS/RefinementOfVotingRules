@@ -21,9 +21,4 @@ locale voting_session =
     nempa: "A \<noteq> {}" (* This precondition is necessary to refine Elimination Modules
                       that use Min/Max set operators *) 
     and profrel: "(pl, pr) \<in> profile_on_A_rel A"
-
-
-
-
-
 end

@@ -641,25 +641,25 @@ refine_IdD
     by fastforce
 qed
 
-definition pc_foldli_lp_mon:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
-"pc_foldli_lp_mon p a b \<equiv> 
+definition prefer_count_monadic_imp:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
+"prefer_count_monadic_imp p a b \<equiv> 
   nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
   do {
     b_less_a <- is_less_preferred_than_mon b x a;
     RETURN  (if b_less_a then (ac+1) else (ac)) 
   }) (0::nat)"
 
-lemma pc_foldli_lp_mon_refine:
-  shows "(pc_foldli_lp_mon, pc_foldli_list) \<in> Id \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
-  unfolding pc_foldli_lp_mon_def pc_foldli_list_def
+lemma prefer_count_monadic_imp_refine:
+  shows "(prefer_count_monadic_imp, pc_foldli_list) \<in> Id \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  unfolding prefer_count_monadic_imp_def pc_foldli_list_def
   apply (refine_vcg ilpm_list_correct)
   apply (refine_dref_type)
   by auto
 
-theorem pc_foldli_lp_mon_correct:
+theorem prefer_count_monadic_imp_correct:
   assumes "(pl, pr) \<in> profile_rel"
-  shows "pc_foldli_lp_mon pl a b \<le> SPEC (\<lambda> pc. pc = prefer_count pr a b)"
-  using assms(1) ref_two_step[OF pc_foldli_lp_mon_refine [THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD] 
+  shows "prefer_count_monadic_imp pl a b \<le> SPEC (\<lambda> pc. pc = prefer_count pr a b)"
+  using assms(1) ref_two_step[OF prefer_count_monadic_imp_refine [THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD] 
       pc_foldli_list_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD],
       where x10 = pl and x5 = pl and x'5 = pr] refine_IdD
   by (metis IdI)
