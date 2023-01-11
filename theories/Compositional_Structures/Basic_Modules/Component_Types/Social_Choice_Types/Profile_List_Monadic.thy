@@ -590,11 +590,6 @@ fun condorcet_winner_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a
   "condorcet_winner_l A p w =
       (finite A \<and> profile_l A p \<and>  w \<in> A \<and> (\<forall> x \<in> A - {w} . wins_l w p x))"
 
-
-thm List.fold_invariant
-
-
-
 definition pc_foldli_list:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "pc_foldli_list p a b \<equiv> 
   nfoldli p (\<lambda>_.True)  
