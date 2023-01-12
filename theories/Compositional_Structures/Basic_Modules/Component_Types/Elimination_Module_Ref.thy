@@ -27,6 +27,7 @@ definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
       RETURN (m(x\<mapsto>scx))
   }) (Map.empty)"
 
+
 definition scoremax :: "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nres" where 
  "scoremax A scores \<equiv> do {
   FOREACH (A)
@@ -90,6 +91,53 @@ lemma eliminate_correct:
   by (auto simp add: fina)
 
 
+lemma compute_scores_correct:
+  shows "(pre_compute_scores, (\<lambda> e A pr. RETURN(pre_computed_map e A pr))) \<in> 
+   efunrel \<rightarrow> \<langle>Id\<rangle>fset_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding pre_compute_scores_def pre_computed_map_def
+proof (refine_vcg, rename_tac eref efun A' A pl pr )
+  fix eref :: "'a Evaluation_Function_Ref" 
+  fix efun :: "'a Evaluation_Function"
+  fix A' A:: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume eref_refine: "(eref, efun) \<in> efunrel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>fset_rel"
+  assume profrel: " (pl, pr) \<in> profile_rel"
+  from arel have aeq: "A' = A" by (auto simp add: fset_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: fset_rel_def in_br_conv)
+  show " FOREACH A' (\<lambda>x m. eref x A' pl \<bind> (\<lambda>scx. RETURN (m(x \<mapsto> scx)))) Map.empty
+       \<le> SPEC (\<lambda>c. (c, (\<lambda>a. Some (efun a A pr)) |` A) \<in> Id)"
+  proof (refine_vcg FOREACH_rule[where I = 
+        "(\<lambda>it r. r = (\<lambda> a. Some (efun a A pr))|`(A - it))"], auto simp add: aeq)
+    from fina aeq  show "finite A" by (simp)
+  next       
+  fix x:: 'a
+  fix it:: "'a set"
+  assume xit: "x \<in> it"
+  assume itA: "it \<subseteq> A"
+  from xit itA have xiA: "x \<in> A" by fastforce
+  from xit itA have wcr: "((\<lambda>a. Some (efun a A pr)) |` (A - it))(x \<mapsto> (efun x A pr)) =
+                      (\<lambda>a. Some (efun a A pr)) |` (A - (it - {x}))"
+      using it_step_insert_iff restrict_map_insert
+      by metis
+  from this have mapupdeq: "(\<lambda>scx. ((\<lambda>a. Some (efun a A pr)) |` (A - it))(x \<mapsto> scx) =
+                   (\<lambda>a. Some (efun a A pr)) |` (A - (it - {x})))
+      = (\<lambda> wc. wc = (efun x A pr))"
+    by (metis map_upd_eqD1)
+  from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by auto
+  from prel fina aeq  eref_refine evalfeq
+    have "(eref x A pl) \<le> SPEC(\<lambda> scx. scx = (efun x A pr))"
+      using RETURN_SPEC_conv by metis
+  from this mapupdeq show " eref x A pl
+       \<le> SPEC (\<lambda>scx. ((\<lambda>a. Some (efun a A pr)) |` (A - it))(x \<mapsto> scx) =
+                      (\<lambda>a. Some (efun a A pr)) |` (A - (it - {x})))"
+    using SPEC_cons_rule it_step_insert_iff restrict_map_insert
+    by presburger 
+qed 
+qed
+
+
 context voting_session
 begin
 
@@ -142,7 +190,7 @@ qed
 lemma compute_scores_correct:
   fixes eref :: "'a Evaluation_Function_Ref"
   and e :: "'a Evaluation_Function"
-assumes "((\<lambda> a pro. eref a A pro), (\<lambda> a pro. RETURN (e a A pro))) \<in> evalf_rel"
+  assumes eref_refine: "(eref, e) \<in> efunrel"
   shows "(pre_compute_scores eref A pl, SPEC (\<lambda> map. map = pre_computed_map e A pr)) \<in> 
     \<langle>Id\<rangle>nres_rel"
   unfolding pre_compute_scores_def pre_computed_map_def
@@ -164,9 +212,9 @@ proof -
       = (\<lambda> wc. wc = (e x A pr))"
     by (metis map_upd_eqD1)
   from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by auto
-  from prel assms(1)[THEN fun_relD, THEN fun_relD, THEN nres_relD]
+  from prel fina eref_refine evalfeq
     have "(eref x A pl) \<le> SPEC(\<lambda> scx. scx = (e x A pr))"
-      by (metis IdI RETURN_SPEC_conv refine_IdD)
+      by (metis RETURN_SPEC_conv)
   from this mapupdeq show " (eref x A pl)
        \<le> SPEC (\<lambda>scx. ((\<lambda>a. Some (e a A pr)) |` (A - it))(x \<mapsto> scx) =
                       (\<lambda>a. Some (e a A pr)) |` (A - (it - {x})))"

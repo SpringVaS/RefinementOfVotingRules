@@ -23,21 +23,37 @@ subsection \<open>Definition\<close>
 
 type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres"
 
-abbreviation "evalf_rel \<equiv> Id  \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+definition fset_rel where fset_rel_def_internal:
+  "fset_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) finite)"
+
+lemma fset_rel_def[refine_rel_defs]: 
+  "\<langle>R\<rangle>fset_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) finite)"
+  by (simp add: fset_rel_def_internal relAPP_def)
+
+abbreviation "evalf_rel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>fset_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
 abbreviation "evalf_profA_rel A \<equiv> Id \<rightarrow> profile_on_A_rel A \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
+definition efunrel ::
+    "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" where
+"efunrel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. RETURN (e a A pro))) \<in> Id \<rightarrow> \<langle>Id\<rangle>fset_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
 
 lemma evalfeq:   
   fixes A:: "'a set" 
   fixes pr :: "'a Profile"
   fixes pl :: "'a Profile_List"
   assumes 
+    fina: "finite A" and
      pref: "(pl, pr) \<in> profile_rel" and
-     evalref: "((\<lambda> a pl . refn a A pl), (\<lambda> a pr. RETURN (efn a A pr))) \<in> evalf_rel"
-  shows "refn a A pl \<le> RETURN (efn a A pr)"
-  using pref evalref[THEN fun_relD,THEN fun_relD, THEN nres_relD]
-  by auto
+     evalref: "(refn, efn) \<in> efunrel"
+   shows "refn a A pl \<le> RETURN (efn a A pr)"
+proof (-)
+  from evalref have efrel: "(refn, (\<lambda> a A pro. RETURN (efn a A pro))) \<in> evalf_rel"
+  unfolding efunrel_def by simp
+  from fina have "(A, A) \<in> \<langle>Id\<rangle>fset_rel" by (auto simp add: refine_rel_defs)
+  from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD] show ?thesis 
+    by fastforce
+qed
   
   subsection \<open>Refined Condorcet Property\<close>
 
@@ -69,17 +85,16 @@ theorem cond_winner_imp_max_eval_val_ref:
   and efn :: "'a Evaluation_Function"
   fixes pl :: "'a Profile_List" and pr :: "'a Profile"
   assumes profrel : "(pl, pr) \<in> profile_rel"
-  assumes evalfref: "((\<lambda> a pro. eref a A pro), (\<lambda> a  pro. RETURN (efn a A pro))) \<in> evalf_rel"
+  assumes evalfref: "(eref, efn) \<in> efunrel"
   assumes
     rating: "condorcet_rating efn" and
     fina: "finite A" and profl: "profile_l A pl" and
     winnerl: "condorcet_winner_l A pl w"
   shows "eref w A pl \<le> RETURN (Max {efn a A pr | a. a \<in> A})"
 proof -
-  note efeq = evalfref[THEN fun_relD, THEN fun_relD, THEN nres_relD]
-  from this have efref: "eref w A pl \<le> RETURN (efn w A pr)"
-    using profrel refine_IdD
-    by simp
+  from evalfref profrel fina have efref: "eref w A pl \<le> RETURN (efn w A pr)"
+    using  evalfeq
+    by fastforce
   from fina profl profrel have f_prof: "finite_profile A pr" 
     using profileref[THEN fun_relD, THEN fun_relD]
     by fastforce
@@ -87,7 +102,6 @@ proof -
   profrel
   have winner: "condorcet_winner A pr w"
     by (metis pair_in_Id_conv set_rel_id)
-  note efi = efeq[where x2 = w and x'2 = w and x1 = pl and x'1 = pr]
   from rating f_prof winner
   have "efn w A pr = Max {efn a A pr |a. a \<in> A}" using cond_winner_imp_max_eval_val
     by (metis (mono_tags, lifting))
@@ -107,7 +121,7 @@ theorem non_cond_winner_not_max_eval_ref:
   and efn :: "'a Evaluation_Function"
   fixes pl :: "'a Profile_List" and pr :: "'a Profile"
   assumes profrel : "(pl, pr) \<in> profile_rel"
-  assumes evalfref: "((\<lambda> a pro. eref a A pro), (\<lambda> a pro. RETURN (efn a A pro))) \<in> evalf_rel"
+  assumes evalfref: "(eref, efn) \<in> efunrel"
   assumes
     rating: "condorcet_rating efn" and
     fina: "finite A" and profl: "profile_l A pl" and
@@ -116,9 +130,8 @@ theorem non_cond_winner_not_max_eval_ref:
     loser: "w \<noteq> l"
   shows "do {sl <- eref l A pl; RETURN (sl < Max {efn a A pr | a. a \<in> A})} \<le> RETURN True"  
 proof -
-   note efeq = evalfref[THEN fun_relD, THEN fun_relD, THEN nres_relD]
-  from this have efref: "eref w A pl \<le> RETURN (efn w A pr)"
-    using profrel refine_IdD
+  from evalfref have efref: "eref w A pl \<le> RETURN (efn w A pr)"
+    using profrel fina evalfeq refine_IdD
     by simp
   from fina profl profrel have f_prof: "finite_profile A pr" 
     using profileref[THEN fun_relD, THEN fun_relD]
@@ -130,8 +143,8 @@ proof -
   from f_prof winner rating linA loser have lt: "efn l A pr < Max {efn a A pr | a. a \<in> A}"
     using non_cond_winner_not_max_eval[where A= A and l = l and e = efn and w = w and p = pr]
     by simp
-  from profrel efeq have "eref l A pl \<le> RETURN (efn l A pr)"
-    by auto
+  from profrel evalfref fina have "eref l A pl \<le> RETURN (efn l A pr)" using evalfeq
+    by fastforce
   from this lt show ?thesis
     by (smt (verit, ccfv_threshold) RETURN_SPEC_conv pw_ords_iff(1) specify_left)
 qed

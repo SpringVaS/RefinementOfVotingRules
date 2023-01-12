@@ -110,7 +110,7 @@ qed
 
 
 lemma rank_mon_refine:
-  shows "(rank_mon, (\<lambda> ballot a. RETURN (rank_l ballot a)))\<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  shows "(rank_mon, (\<lambda> ballot a. RETURN (rank_l ballot a)))\<in> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   by (refine_vcg rank_mon_correct, simp)
 
 sepref_definition rank_imp_sep

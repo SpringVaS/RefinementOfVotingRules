@@ -14,7 +14,7 @@ abbreviation elec_mod_relb :: "('a Electoral_Module_Ref \<times> ('a set \<Right
 abbreviation  "elec_mod_rel \<equiv> \<langle>\<langle>\<langle>Id\<rangle>set_rel, profile_rel\<rangle>fun_rel, \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel"
 
 locale voting_session =
-  fixes A:: "'a set"
+  fixes A:: "'a::hashable set"
   fixes pl:: "'a Profile_List" and pr:: "'a Profile"
   assumes 
     fina: "finite A" and 
