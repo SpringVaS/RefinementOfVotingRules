@@ -58,10 +58,10 @@ proof (unfold borda_score_mon.simps, rename_tac x A' A pl pr)
   fix x :: 'a
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>fset_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
   assume prel: "(pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: fset_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: fset_rel_def in_br_conv)
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
   from this 
   show "FOREACH A' (\<lambda>y sc. prefer_count_monadic_imp pl x y \<bind> (\<lambda>pcx. RETURN (sc + pcx))) 0
        \<le> SPEC (\<lambda>c. (c, borda_score x A pr) \<in> nat_rel)"
@@ -87,17 +87,17 @@ qed
 
 lemma bcseptest:
   shows "(borda_monadic, (\<lambda> A p. SPEC( \<lambda> em. em = (borda A p)))) \<in>
-    (\<langle>Id\<rangle>fset_rel) \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+    (\<langle>Id\<rangle>alt_set_rel) \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
   apply (refine_vcg)
 proof (unfold borda_monadic_def borda.simps, rename_tac Al' Al ppl ppr)
   fix Al' Al :: "'a set"
   fix ppl :: "'a Profile_List"
   fix ppr :: "'a Profile"
   assume prel: "(ppl, ppr) \<in> profile_rel"
-  assume arel: "(Al', Al) \<in> \<langle>Id\<rangle>fset_rel"
+  assume arel: "(Al', Al) \<in> \<langle>Id\<rangle>alt_set_rel"
   from this have Alid: "(Al', Al) \<in> Id"
-    by (simp add: fset_rel_def in_br_conv)
-  from arel have fina: "finite Al'"  by (simp add: fset_rel_def in_br_conv)
+    by (simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite Al'"  by (simp add: alt_set_rel_def in_br_conv)
   from Alid have Ale: "Al' = Al" by auto
   from this  have "pre_compute_scores borda_score_mon Al' ppl 
           \<le> SPEC (\<lambda> map. map = pre_computed_map borda_score Al' ppr)"
@@ -108,12 +108,11 @@ proof (unfold borda_monadic_def borda.simps, rename_tac Al' Al ppl ppr)
   from this show "pre_compute_scores borda_score_mon Al' ppl \<bind> (\<lambda>scores. max_eliminator_ref scores Al' ppl)
        \<le> SPEC (\<lambda>em. em = max_eliminator borda_score Al ppr)"
  using max_eliminator_ref_correct[where efn = borda_score] 
-      specify_left[where m = "pre_compute_scores borda_score_mon A pl"
-          and \<Phi> = "(\<lambda>map. map = pre_computed_map borda_score A pr)"
-          and f = "(\<lambda>scores. max_eliminator_ref scores A pl)"
-          and M = "SPEC (\<lambda>res. res = max_eliminator borda_score A pr)"]
-    by fastforce
-
+      specify_left[where m = "pre_compute_scores borda_score_mon Al' ppl"
+          and \<Phi> = "(\<lambda>map. map = pre_computed_map borda_score Al ppr)"
+          and f = "(\<lambda>scores. max_eliminator_ref scores Al' ppl)"
+          and M = "SPEC (\<lambda>res. res = max_eliminator borda_score Al ppr)"]
+   
   oops
 
 
