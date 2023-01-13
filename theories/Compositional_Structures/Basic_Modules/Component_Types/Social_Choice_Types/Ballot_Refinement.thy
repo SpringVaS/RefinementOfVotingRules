@@ -9,6 +9,18 @@ theory Ballot_Refinement
 
 begin
 
+
+definition alt_set_rel where alt_set_rel_def_internal:
+  "alt_set_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
+
+lemma alt_set_rel_def[refine_rel_defs]: 
+  "\<langle>R\<rangle>alt_set_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
+  by (simp add: alt_set_rel_def_internal relAPP_def)
+
+lemma finite_alts:
+  assumes "(a, a') \<in> \<langle>Id\<rangle>alt_set_rel"
+  shows "finite a" using assms by (simp add: alt_set_rel_def in_br_conv)
+
 abbreviation "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
 
 abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"

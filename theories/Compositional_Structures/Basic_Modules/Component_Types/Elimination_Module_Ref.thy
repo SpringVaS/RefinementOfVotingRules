@@ -43,8 +43,8 @@ definition scoremax :: "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nre
 
 definition eliminate:: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
                             Threshold_Relation \<Rightarrow> 
-                          'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a set \<times> 'a set) nres" where
- "eliminate scoremap t r A p \<equiv> do {
+                          'a set \<Rightarrow> ('a set \<times> 'a set) nres" where
+ "eliminate scoremap t r A \<equiv> do {
   FOREACH (A)
     (\<lambda>x (rej, def). do {
       ASSERT (x \<in> dom scoremap);
@@ -63,7 +63,7 @@ definition elimination_module_ref ::
 Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref " 
   where
   "elimination_module_ref scores threshold r A p \<equiv> do {
-    (rej, def) <- eliminate scores threshold r A p;
+    (rej, def) <- eliminate scores threshold r A;
    if (def = {}) then
        \<comment> \<open>Here rej will be a copy of A\<close>
      RETURN ({},{},rej)
@@ -75,19 +75,15 @@ Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref "
 definition pre_computed_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> ('a \<rightharpoonup> nat)"  where
   "pre_computed_map e Alts pro \<equiv> ((\<lambda>a. Some (e a Alts pro))|`Alts )"
 
-locale profile_complete = set_of_alternatives + 
-  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
-  assumes 
-     profrel: "(pl, pr) \<in> profile_on_A_rel A"
+context set_of_alternatives
 
+begin
 
 lemma eliminate_correct:
   fixes e :: "'a Evaluation_Function"
-  and A :: "'a set"
   and t :: "Threshold_Value"
   and r :: "Threshold_Relation"
-  assumes fina: "finite A"
-  shows "(eliminate (pre_computed_map e A pr) t r A pl \<le> 
+  shows "(eliminate (pre_computed_map e A pr) t r A  \<le> 
     SPEC (\<lambda> (rej,def). (rej,def) = ((elimination_set e t r A pr), A - (elimination_set e t r A pr))))"
   unfolding pre_computed_map_def eliminate_def
   apply (refine_vcg FOREACH_rule
@@ -95,6 +91,7 @@ lemma eliminate_correct:
                 \<and> def = (A - it) - (elimination_set e t r (A) pr)"])
   by (auto simp add: fina)
 
+end
 
 lemma compute_scores_correct:
   shows "(pre_compute_scores, (\<lambda> e A pr. SPEC(\<lambda> map. map = (pre_computed_map e A pr)))) \<in> 
@@ -142,20 +139,47 @@ proof (refine_vcg, rename_tac eref efun A' A pl pr )
 qed 
 qed
 
+context set_of_alternatives
+begin
+
 theorem elimination_module_ref_correct:
-  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
   and t :: "Threshold_Value"
   and r :: "Threshold_Relation"
-  assumes fina: "finite A"
-  shows "(elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le>
-            SPEC (\<lambda> em. em = (elimination_module efn t r A pr)))"
-  unfolding  elimination_module_ref_def
-  apply (refine_vcg eliminate_correct)
-  by (auto simp add: fina)
+shows "(elimination_module_ref (pre_computed_map efn A (map pl_\<alpha> p)) t r)"
 
 
-context voting_session
+lemma scoremax_correct:
+  shows "(scoremax A (pre_computed_map e A pr) 
+\<le> SPEC (\<lambda> max. max = Max {(e a A pr) | a. a \<in> A}))"
+  unfolding scoremax_def pre_computed_map_def
+  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (e a A pr) \<le> max) 
+      \<and> ((\<exists>a \<in> (A - it). max = (e a A pr)) \<or> max = 0))"] )
+  apply (auto simp add: fina)
+  subgoal by (metis Diff_iff leD nle_le order_trans)
+  subgoal by (metis DiffI order_less_imp_le)
+  using max_score_in[where A= A and f = "(\<lambda> x. e x A pr)"] fina nempa
+            score_bounded[where A= A and f = "(\<lambda> x. e x A pr)"]
+  subgoal by (metis (mono_tags, lifting) order_antisym_conv)
+proof -
+  assume "\<forall>a\<in>A. e a A pr = 0"
+  from this have eq: "{e a A pr |a. a \<in> A} = {0}"
+    using nempa Max_singleton by force
+  have "Max {0} = 0"
+    using Max_singleton by blast
+  from eq this show " Max {e a A pr |a. a \<in> A} = 0"
+    by simp
+qed
+
+end
+ 
+
+locale profile_complete = set_of_alternatives + 
+  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
+  assumes 
+     profrel: "(pl, pr) \<in> profile_on_A_rel A"
+
+context profile_complete
 begin
 
 lemma compute_scores_correct_weak_evalref:
@@ -196,32 +220,6 @@ qed
 end
 
 
-lemma scoremax_correct:
-  fixes A :: "'a set"
-  assumes fina: "finite A" and nempa: "A \<noteq> {}"
-  shows "(scoremax A (pre_computed_map e A pr) 
-\<le> SPEC (\<lambda> max. max = Max {(e a A pr) | a. a \<in> A}))"
-  unfolding scoremax_def pre_computed_map_def
-  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (e a A pr) \<le> max) 
-      \<and> ((\<exists>a \<in> (A - it). max = (e a A pr)) \<or> max = 0))"] )
-  apply (auto simp add: fina)
-  subgoal by (metis Diff_iff leD nle_le order_trans)
-  subgoal by (metis DiffI order_less_imp_le)
-  using max_score_in[where A= A and f = "(\<lambda> x. e x A pr)"] fina nempa
-            score_bounded[where A= A and f = "(\<lambda> x. e x A pr)"]
-  subgoal by (metis (mono_tags, lifting) order_antisym_conv)
-proof -
-  assume "\<forall>a\<in>A. e a A pr = 0"
-  from this have eq: "{e a A pr |a. a \<in> A} = {0}"
-    using nempa Max_singleton by force
-  have "Max {0} = 0"
-    using Max_singleton by blast
-  from eq this show " Max {e a A pr |a. a \<in> A} = 0"
-    by simp
-qed
- 
-
-
 subsection \<open>Common Eliminators\<close>
                                    
 fun less_eliminator_ref :: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
@@ -235,26 +233,26 @@ fun max_eliminator_ref ::  "'a Scores_Map \<Rightarrow>
     (less_eliminator_ref e t A p)
  }"
 
+context set_of_alternatives
+begin
+
 lemma less_eliminator_correct:
-  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
   and t :: "Threshold_Value"
-  assumes fina : "finite A"
   shows "(less_eliminator_ref (pre_computed_map efn A pr) t A pl \<le>
             SPEC (\<lambda> em. em = (less_eliminator efn t A pr)))"
   unfolding less_eliminator_ref.simps less_eliminator.simps
-  by (refine_vcg elimination_module_ref_correct, simp add: fina)
+  by (refine_vcg elimination_module_ref_correct)
 
 theorem max_eliminator_ref_correct:
-  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
-assumes fina : "finite A" and nempa: "A \<noteq> {}"
-shows "(max_eliminator_ref (pre_computed_map efn A pr) A pl \<le>
+  shows "(max_eliminator_ref (pre_computed_map efn A pr) A pl \<le>
             SPEC (\<lambda> em. em = max_eliminator efn A pr))"
   unfolding max_eliminator_ref.simps max_eliminator.simps
   apply (refine_vcg scoremax_correct less_eliminator_correct)
   by (auto simp add: fina nempa)
 
+end
 
 fun leq_eliminator_ref :: "'a Scores_Map \<Rightarrow> Threshold_Value \<Rightarrow>
                             'a Electoral_Module_Ref" where

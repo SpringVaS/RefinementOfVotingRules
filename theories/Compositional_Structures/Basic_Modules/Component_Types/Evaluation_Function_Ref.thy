@@ -25,12 +25,6 @@ subsection \<open>Definition\<close>
 
 type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres"
 
-definition alt_set_rel where alt_set_rel_def_internal:
-  "alt_set_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
-
-lemma alt_set_rel_def[refine_rel_defs]: 
-  "\<langle>R\<rangle>alt_set_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
-  by (simp add: alt_set_rel_def_internal relAPP_def)
 
 abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
@@ -38,14 +32,10 @@ abbreviation "evalf_profA_rel A \<equiv> Id \<rightarrow> profile_on_A_rel A \<r
 
 definition evalf_rel ::
     "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
-    where  evalf_rel_def_internal:
+    where  evalf_rel_def:
 "evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. RETURN (e a A pro))) 
   \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
 
-lemma evalf_rel_def[refine_rel_defs]: 
-  "evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. RETURN (e a A pro))) 
-  \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
-  by (simp add: evalf_rel_def_internal)
 
 locale set_of_alternatives =
    fixes A:: "'a set" 
@@ -64,7 +54,7 @@ lemma evalfeq:
 proof (-)
   from evalref have efrel: "(refn, (\<lambda> a A pro. RETURN (efn a A pro))) \<in> efunrel"
   unfolding evalf_rel_def by simp
-  from fina have "(A, A) \<in> \<langle>Id\<rangle>alt_set_rel" by (simp add: nempa alt_set_rel_def in_br_conv)
+  from fina nempa have "(A, A) \<in> \<langle>Id\<rangle>alt_set_rel" by (simp add: alt_set_rel_def in_br_conv)
   from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD] show ?thesis 
     by fastforce
 qed
