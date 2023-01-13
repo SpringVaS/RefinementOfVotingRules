@@ -1,59 +1,75 @@
 (*  File:       Evaluation_Function.thy
-    Copyright   2021  Karlsruhe Institute of Technology (KIT)
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
 *)
-\<^marker>\<open>creator "Stephan Bohr, Karlsruhe Institute of Technology (KIT)"\<close>
+\<^marker>\<open>creator "Valentin, Karlsruhe Institute of Technology (KIT)"\<close>
+\<^marker>\<open>contributor "Stephan Bohr, Karlsruhe Institute of Technology (KIT)"\<close>
 \<^marker>\<open>contributor "Michael Kirsten, Karlsruhe Institute of Technology (KIT)"\<close>
 
-section \<open>Evaluation Function\<close>
+section \<open>Refinement of Evaluation Function\<close>
 
 theory Evaluation_Function_Ref
   imports "Verified_Voting_Rule_Construction.Evaluation_Function"
-    "Verified_Voting_Rule_Construction.Profile_List"
     "Social_Choice_Types/Profile_List_Monadic"
   Refine_Imperative_HOL.IICF
 begin
 
 text \<open>
-  This is the evaluation function. From a set of currently eligible
-  alternatives, the evaluation function computes a numerical value that is then
-  to be used for further (s)election, e.g., by the elimination module.
+  In this section, we refine Evaluation Function from Verified-Voting-Rule-Construction.
+  Evaluation Function are used to instantiate Elimination Modules. Elimination Modules
+  are a way to formalize certain voting rules. Elimination Modules have been defined by
+  Stephan Bohr. They work with a finite non-empty set of alternatives. This precondition
+  is encoded in the refinement relations here.
 \<close>
 
 subsection \<open>Definition\<close>
 
 type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres"
 
-definition fset_rel where fset_rel_def_internal:
-  "fset_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) finite)"
+definition alt_set_rel where alt_set_rel_def_internal:
+  "alt_set_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
 
-lemma fset_rel_def[refine_rel_defs]: 
-  "\<langle>R\<rangle>fset_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) finite)"
-  by (simp add: fset_rel_def_internal relAPP_def)
+lemma alt_set_rel_def[refine_rel_defs]: 
+  "\<langle>R\<rangle>alt_set_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
+  by (simp add: alt_set_rel_def_internal relAPP_def)
 
-abbreviation "evalf_rel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>fset_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
 abbreviation "evalf_profA_rel A \<equiv> Id \<rightarrow> profile_on_A_rel A \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
-definition efunrel ::
-    "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" where
-"efunrel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. RETURN (e a A pro))) \<in> Id \<rightarrow> \<langle>Id\<rangle>fset_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
+definition evalf_rel ::
+    "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
+    where  evalf_rel_def_internal:
+"evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. RETURN (e a A pro))) 
+  \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
+
+lemma evalf_rel_def[refine_rel_defs]: 
+  "evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. RETURN (e a A pro))) 
+  \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
+  by (simp add: evalf_rel_def_internal)
+
+locale set_of_alternatives =
+   fixes A:: "'a set" 
+   assumes 
+     fina: "finite A" and nempa: "A \<noteq> {}"
+
+begin
 
 lemma evalfeq:   
-  fixes A:: "'a set" 
   fixes pr :: "'a Profile"
   fixes pl :: "'a Profile_List"
   assumes 
-    fina: "finite A" and
      pref: "(pl, pr) \<in> profile_rel" and
-     evalref: "(refn, efn) \<in> efunrel"
+     evalref: "(refn, efn) \<in> evalf_rel"
    shows "refn a A pl \<le> RETURN (efn a A pr)"
 proof (-)
-  from evalref have efrel: "(refn, (\<lambda> a A pro. RETURN (efn a A pro))) \<in> evalf_rel"
-  unfolding efunrel_def by simp
-  from fina have "(A, A) \<in> \<langle>Id\<rangle>fset_rel" by (auto simp add: refine_rel_defs)
+  from evalref have efrel: "(refn, (\<lambda> a A pro. RETURN (efn a A pro))) \<in> efunrel"
+  unfolding evalf_rel_def by simp
+  from fina have "(A, A) \<in> \<langle>Id\<rangle>alt_set_rel" by (simp add: nempa alt_set_rel_def in_br_conv)
   from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD] show ?thesis 
     by fastforce
 qed
+
+end
   
   subsection \<open>Refined Condorcet Property\<close>
 
@@ -79,16 +95,18 @@ text \<open>
   If a Condorcet Winner w exists, w has the maximum evaluation value.
 \<close>
 
+context set_of_alternatives
+begin
+
 theorem cond_winner_imp_max_eval_val_ref:
-  fixes A :: "'a set"
   fixes eref :: "'a Evaluation_Function_Ref"
   and efn :: "'a Evaluation_Function"
   fixes pl :: "'a Profile_List" and pr :: "'a Profile"
   assumes profrel : "(pl, pr) \<in> profile_rel"
-  assumes evalfref: "(eref, efn) \<in> efunrel"
+  assumes evalfref: "(eref, efn) \<in> evalf_rel"
   assumes
     rating: "condorcet_rating efn" and
-    fina: "finite A" and profl: "profile_l A pl" and
+    profl: "profile_l A pl" and
     winnerl: "condorcet_winner_l A pl w"
   shows "eref w A pl \<le> RETURN (Max {efn a A pr | a. a \<in> A})"
 proof -
@@ -121,10 +139,10 @@ theorem non_cond_winner_not_max_eval_ref:
   and efn :: "'a Evaluation_Function"
   fixes pl :: "'a Profile_List" and pr :: "'a Profile"
   assumes profrel : "(pl, pr) \<in> profile_rel"
-  assumes evalfref: "(eref, efn) \<in> efunrel"
+  assumes evalfref: "(eref, efn) \<in> evalf_rel"
   assumes
     rating: "condorcet_rating efn" and
-    fina: "finite A" and profl: "profile_l A pl" and
+    profl: "profile_l A pl" and
     winnerl: "condorcet_winner_l A pl w" and
     linA: "l \<in> A" and
     loser: "w \<noteq> l"
@@ -148,5 +166,7 @@ proof -
   from this lt show ?thesis
     by (smt (verit, ccfv_threshold) RETURN_SPEC_conv pw_ords_iff(1) specify_left)
 qed
+
+end
 
 end

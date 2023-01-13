@@ -75,6 +75,11 @@ Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref "
 definition pre_computed_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> ('a \<rightharpoonup> nat)"  where
   "pre_computed_map e Alts pro \<equiv> ((\<lambda>a. Some (e a Alts pro))|`Alts )"
 
+locale profile_complete = set_of_alternatives + 
+  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
+  assumes 
+     profrel: "(pl, pr) \<in> profile_on_A_rel A"
+
 
 lemma eliminate_correct:
   fixes e :: "'a Evaluation_Function"
@@ -92,8 +97,8 @@ lemma eliminate_correct:
 
 
 lemma compute_scores_correct:
-  shows "(pre_compute_scores, (\<lambda> e A pr. RETURN(pre_computed_map e A pr))) \<in> 
-   efunrel \<rightarrow> \<langle>Id\<rangle>fset_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  shows "(pre_compute_scores, (\<lambda> e A pr. SPEC(\<lambda> map. map = (pre_computed_map e A pr)))) \<in> 
+   evalf_rel \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
   unfolding pre_compute_scores_def pre_computed_map_def
 proof (refine_vcg, rename_tac eref efun A' A pl pr )
   fix eref :: "'a Evaluation_Function_Ref" 
@@ -101,13 +106,13 @@ proof (refine_vcg, rename_tac eref efun A' A pl pr )
   fix A' A:: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  assume eref_refine: "(eref, efun) \<in> efunrel"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>fset_rel"
+  assume eref_refine: "(eref, efun) \<in> evalf_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
   assume profrel: " (pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: fset_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: fset_rel_def in_br_conv)
-  show " FOREACH A' (\<lambda>x m. eref x A' pl \<bind> (\<lambda>scx. RETURN (m(x \<mapsto> scx)))) Map.empty
-       \<le> SPEC (\<lambda>c. (c, (\<lambda>a. Some (efun a A pr)) |` A) \<in> Id)"
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  show "       FOREACH A' (\<lambda>x m. eref x A' pl \<bind> (\<lambda>scx. RETURN (m(x \<mapsto> scx)))) Map.empty
+       \<le> SPEC (\<lambda>map. map = (\<lambda>a. Some (efun a A pr)) |` A)"
   proof (refine_vcg FOREACH_rule[where I = 
         "(\<lambda>it r. r = (\<lambda> a. Some (efun a A pr))|`(A - it))"], auto simp add: aeq)
     from fina aeq  show "finite A" by (simp)
@@ -125,10 +130,10 @@ proof (refine_vcg, rename_tac eref efun A' A pl pr )
                    (\<lambda>a. Some (efun a A pr)) |` (A - (it - {x})))
       = (\<lambda> wc. wc = (efun x A pr))"
     by (metis map_upd_eqD1)
-  from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by auto
-  from prel fina aeq  eref_refine evalfeq
-    have "(eref x A pl) \<le> SPEC(\<lambda> scx. scx = (efun x A pr))"
-      using RETURN_SPEC_conv by metis
+  note set_of_alternatives.evalfeq set_of_alternatives_def
+  from profrel fina aeq  eref_refine this profrel  have "(eref x A pl) \<le> SPEC(\<lambda> scx. scx = (efun x A pr))"
+      using RETURN_SPEC_conv
+      by (metis empty_iff xiA) 
   from this mapupdeq show " eref x A pl
        \<le> SPEC (\<lambda>scx. ((\<lambda>a. Some (efun a A pr)) |` (A - it))(x \<mapsto> scx) =
                       (\<lambda>a. Some (efun a A pr)) |` (A - (it - {x})))"
@@ -137,19 +142,21 @@ proof (refine_vcg, rename_tac eref efun A' A pl pr )
 qed 
 qed
 
-
-context voting_session
-begin
-
 theorem elimination_module_ref_correct:
+  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
   and t :: "Threshold_Value"
   and r :: "Threshold_Relation"
-  shows "(elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le> 
+  assumes fina: "finite A"
+  shows "(elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le>
             SPEC (\<lambda> em. em = (elimination_module efn t r A pr)))"
   unfolding  elimination_module_ref_def
   apply (refine_vcg eliminate_correct)
   by (auto simp add: fina)
+
+
+context voting_session
+begin
 
 lemma compute_scores_correct_weak_evalref:
   fixes eref :: "'a Evaluation_Function_Ref"
@@ -186,45 +193,14 @@ proof -
     by presburger 
 qed 
 
+end
 
-lemma compute_scores_correct:
-  fixes eref :: "'a Evaluation_Function_Ref"
-  and e :: "'a Evaluation_Function"
-  assumes eref_refine: "(eref, e) \<in> efunrel"
-  shows "(pre_compute_scores eref A pl, SPEC (\<lambda> map. map = pre_computed_map e A pr)) \<in> 
-    \<langle>Id\<rangle>nres_rel"
-  unfolding pre_compute_scores_def pre_computed_map_def
-  apply (refine_vcg FOREACH_rule[where I = 
-        "(\<lambda>it r. r = (\<lambda> a. Some (e a A pr))|`(A - it))"])
-  apply (auto simp add: fina)
-proof -
-  fix x:: 'a
-  fix it:: "'a set"
-  assume xit: "x \<in> it"
-  assume itA: "it \<subseteq> A"
-  from xit itA have xiA: "x \<in> A" by fastforce
-  from xit itA have wcr: "((\<lambda>a. Some (e a A pr)) |` (A - it))(x \<mapsto> (e x A pr)) =
-                      (\<lambda>a. Some (e a A pr)) |` (A - (it - {x}))"
-      using it_step_insert_iff restrict_map_insert
-      by metis
-  from this have mapupdeq: "(\<lambda>scx. ((\<lambda>a. Some (e a A pr)) |` (A - it))(x \<mapsto> scx) =
-                   (\<lambda>a. Some (e a A pr)) |` (A - (it - {x})))
-      = (\<lambda> wc. wc = (e x A pr))"
-    by (metis map_upd_eqD1)
-  from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by auto
-  from prel fina eref_refine evalfeq
-    have "(eref x A pl) \<le> SPEC(\<lambda> scx. scx = (e x A pr))"
-      by (metis RETURN_SPEC_conv)
-  from this mapupdeq show " (eref x A pl)
-       \<le> SPEC (\<lambda>scx. ((\<lambda>a. Some (e a A pr)) |` (A - it))(x \<mapsto> scx) =
-                      (\<lambda>a. Some (e a A pr)) |` (A - (it - {x})))"
-    using SPEC_cons_rule it_step_insert_iff restrict_map_insert
-    by presburger 
-qed 
 
 lemma scoremax_correct:
-  shows "scoremax A (pre_computed_map e A pr) 
-\<le> SPEC (\<lambda> max. max = Max {(e a A pr) | a. a \<in> A})"
+  fixes A :: "'a set"
+  assumes fina: "finite A" and nempa: "A \<noteq> {}"
+  shows "(scoremax A (pre_computed_map e A pr) 
+\<le> SPEC (\<lambda> max. max = Max {(e a A pr) | a. a \<in> A}))"
   unfolding scoremax_def pre_computed_map_def
   apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (e a A pr) \<le> max) 
       \<and> ((\<exists>a \<in> (A - it). max = (e a A pr)) \<or> max = 0))"] )
@@ -244,7 +220,6 @@ proof -
     by simp
 qed
  
-end
 
 
 subsection \<open>Common Eliminators\<close>
@@ -260,26 +235,26 @@ fun max_eliminator_ref ::  "'a Scores_Map \<Rightarrow>
     (less_eliminator_ref e t A p)
  }"
 
-context voting_session
-begin
-
 lemma less_eliminator_correct:
+  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
   and t :: "Threshold_Value"
+  assumes fina : "finite A"
   shows "(less_eliminator_ref (pre_computed_map efn A pr) t A pl \<le>
             SPEC (\<lambda> em. em = (less_eliminator efn t A pr)))"
   unfolding less_eliminator_ref.simps less_eliminator.simps
-  by (refine_vcg elimination_module_ref_correct)
+  by (refine_vcg elimination_module_ref_correct, simp add: fina)
 
 theorem max_eliminator_ref_correct:
+  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
-  shows "(max_eliminator_ref (pre_computed_map efn A pr) A pl \<le>
+assumes fina : "finite A" and nempa: "A \<noteq> {}"
+shows "(max_eliminator_ref (pre_computed_map efn A pr) A pl \<le>
             SPEC (\<lambda> em. em = max_eliminator efn A pr))"
   unfolding max_eliminator_ref.simps max_eliminator.simps
   apply (refine_vcg scoremax_correct less_eliminator_correct)
-  by auto
+  by (auto simp add: fina nempa)
 
-end
 
 fun leq_eliminator_ref :: "'a Scores_Map \<Rightarrow> Threshold_Value \<Rightarrow>
                             'a Electoral_Module_Ref" where
