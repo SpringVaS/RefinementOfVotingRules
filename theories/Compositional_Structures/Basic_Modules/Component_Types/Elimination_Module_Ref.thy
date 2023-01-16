@@ -161,18 +161,24 @@ theorem elimination_module_ref_correct:
   assumes "(pl, pr) \<in> profile_rel"
 shows "(\<lambda> A. (elimination_module_ref (pre_computed_map efn A pr) t r A pl),
         (\<lambda> A. SPEC (\<lambda> em. em = (elimination_module efn t r A pr))))
-      \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+      \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
   unfolding em_rel_def
   unfolding elimination_module_ref_def
 proof (clarify, rename_tac A' A)
   fix A' A :: "'a set"
   assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
-  from arel show " (eliminate (pre_computed_map efn A' pr) t r A' \<bind>
+  note elimalg = eliminate_correct[THEN fun_relD, THEN nres_relD, THEN refine_IdD,
+          where x2=A' and x'2 = A]
+  from arel have " (eliminate (pre_computed_map efn A' pr) t r A' \<bind>
         (\<lambda>(rej, def). if def = {} then RETURN ({}, {}, rej) else RETURN ({}, rej, def)),
         SPEC (\<lambda>em. em = elimination_module efn t r A pr))
        \<in> \<langle>Id\<rangle>nres_rel"
-    by (refine_vcg eliminate_correct[THEN fun_relD, THEN nres_relD, THEN refine_IdD, 
-          where x2=A' and x'2 = A], auto)
+    by (refine_vcg elimalg, auto)
+  from this show "(eliminate (pre_computed_map efn A' pr) t r A' \<bind>
+        (\<lambda>(rej, def). if def = {} then RETURN ({}, {}, rej) else RETURN ({}, rej, def)),
+        SPEC (\<lambda>em. em = elimination_module efn t r A pr))
+       \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+    by simp
 qed
 
 lemma scoremax_correct:
@@ -312,14 +318,14 @@ lemma less_eliminator_correct:
   assumes prel: "(pl, pr) \<in> profile_rel"
   shows "((\<lambda> A. less_eliminator_ref (pre_computed_map efn A pr) t A pl),
             (\<lambda> A. SPEC (\<lambda> em. em = (less_eliminator efn t A pr))))
-          \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+          \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
   unfolding less_eliminator_ref.simps less_eliminator.simps
 proof (clarify, rename_tac A' A)
   fix A' A :: "'a set"
   assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
   from arel prel show "(elimination_module_ref (pre_computed_map efn A' pr) t (<) A' pl,
         SPEC (\<lambda>em. em = elimination_module efn t (<) A pr))
-       \<in> \<langle>Id\<rangle>nres_rel"
+       \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
     by (refine_vcg elimination_module_ref_correct[THEN fun_relD])
 qed
 
@@ -330,28 +336,33 @@ theorem max_eliminator_ref_correct:
   assumes prel: "(pl, pr) \<in> profile_rel"
   shows "((\<lambda> A. max_eliminator_ref (pre_computed_map efn A pr) A pl),
            ((\<lambda> A.  SPEC (\<lambda> em. em = max_eliminator efn A pr))))
- \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+ \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow>  \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
   unfolding max_eliminator_ref.simps max_eliminator.simps
 proof (clarify, rename_tac A' A)
   fix A' A :: "'a set"
   assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
-  note lec = less_eliminator_correct[THEN fun_relD, THEN nres_relD,
-        THEN refine_IdD, where x2= A' and x'2 = A
-      and pl3 = pl and pr3 = pr and t3=  "Max {efn a A pr |a. a \<in> A}"
-      and efn3 = efn
-      ]
-  show "(scoremax A' (pre_computed_map efn A' pr) \<bind>
+  note lec = less_eliminator_correct[where efn = efn and t = "Max {efn x A pr |x. x \<in> A}",
+      THEN fun_relD, where x = A' and x' = A
+      and pl1 = pl and pr1 = pr, THEN nres_relD, THEN nres_relI]
+  from arel prel this have elim: "(less_eliminator_ref (pre_computed_map efn A' pr) (Max {efn x A pr |x. x \<in> A}) A' pl,
+   SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr))
+  \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel" by simp
+  note sci = scoremax_correct[THEN fun_relD, THEN nres_relD, THEN refine_IdD]
+  from this arel prel have maxs: "scoremax A' (pre_computed_map efn A' pr) 
+    \<le> SPEC (\<lambda> maxs. maxs = (Max {efn x A pr |x. x \<in> A}))"
+    by blast
+  from elim maxs show "(scoremax A' (pre_computed_map efn A' pr) \<bind>
         (\<lambda>t. less_eliminator_ref (pre_computed_map efn A' pr) t A' pl),
         SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr))
-       \<in> \<langle>Id\<rangle>nres_rel"
-  proof (refine_vcg arel  scoremax_correct[THEN fun_relD, THEN nres_relD, THEN refine_IdD, where
-          x2= A' and x'2 = A and pr3=pr and e3=efn])
-    fix maxscore :: nat
-    assume mxdef: "maxscore = Max {efn a A pr |a. a \<in> A}"
-    from arel prel mxdef show " less_eliminator_ref (pre_computed_map efn A' pr) maxscore A' pl
-         \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr)"
-      using lec by blast
-  qed
+       \<in>  \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+    using specify_left[where M = 
+        "\<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
+  (SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr))"
+        and m = "scoremax A' (pre_computed_map efn A' pr)"
+        and \<Phi> = "(\<lambda>maxs. maxs = Max {efn x A pr |x. x \<in> A})"
+        and f ="(\<lambda> x. less_eliminator_ref (pre_computed_map efn A' pr) x A' pl)"]
+  nres_relI nres_relD by blast
+
 qed
   
 
