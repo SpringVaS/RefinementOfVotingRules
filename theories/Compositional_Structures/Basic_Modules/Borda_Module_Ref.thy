@@ -47,7 +47,7 @@ proof (-)
 qed
 
 
-lemma borda_score_evalf_rel:
+lemma borda_score_correct:
   shows "(borda_score_mon, borda_score)
     \<in> evalf_rel"
   apply (auto simp add: evalf_rel_def simp del: borda_score_mon.simps
@@ -85,82 +85,43 @@ proof (unfold borda_score_mon.simps, rename_tac x A' A pl pr)
   qed
 qed
 
-lemma bcseptest:
-  shows "(borda_monadic, (\<lambda> A p. SPEC( \<lambda> em. em = (borda A p)))) \<in>
-    (\<langle>Id\<rangle>alt_set_rel) \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply (refine_vcg)
-proof (unfold borda_monadic_def borda.simps, rename_tac Al' Al ppl ppr)
-  fix Al' Al :: "'a set"
-  fix ppl :: "'a Profile_List"
-  fix ppr :: "'a Profile"
-  assume prel: "(ppl, ppr) \<in> profile_rel"
-  assume arel: "(Al', Al) \<in> \<langle>Id\<rangle>alt_set_rel"
-  from this have Alid: "(Al', Al) \<in> Id"
-    by (simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite Al'"  by (simp add: alt_set_rel_def in_br_conv)
-  from Alid have Ale: "Al' = Al" by auto
-  from this  have "pre_compute_scores borda_score_mon Al' ppl 
-          \<le> SPEC (\<lambda> map. map = pre_computed_map borda_score Al' ppr)"
-  using arel prel borda_score_evalf_rel
-     compute_scores_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD, 
-          THEN refine_IdD]
-  by fastforce 
-  from this show "pre_compute_scores borda_score_mon Al' ppl \<bind> (\<lambda>scores. max_eliminator_ref scores Al' ppl)
-       \<le> SPEC (\<lambda>em. em = max_eliminator borda_score Al ppr)"
- using max_eliminator_ref_correct[where efn = borda_score] 
-      specify_left[where m = "pre_compute_scores borda_score_mon Al' ppl"
-          and \<Phi> = "(\<lambda>map. map = pre_computed_map borda_score Al ppr)"
-          and f = "(\<lambda>scores. max_eliminator_ref scores Al' ppl)"
-          and M = "SPEC (\<lambda>res. res = max_eliminator borda_score Al ppr)"]
-   
-  oops
-
-
-
-locale sepvs = voting_session 
-
-begin                                       
-
 
 theorem borda_ref_correct:
-  shows "borda_monadic A pl \<le> SPEC (\<lambda> res. res = borda A pr)"
-proof (unfold borda_monadic_def borda.simps)
+  shows "(borda_monadic, borda) \<in> em_rel"
+  unfolding em_rel_def borda_monadic_def borda.simps
+proof (clarify, rename_tac A' A pl pr)
+  fix A' A:: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume prel: " (pl, pr) \<in> profile_rel"
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
   note compute_scores_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD, 
-          THEN refine_IdD]
-  have "pre_compute_scores borda_score_mon A pl 
-          \<le> SPEC (\<lambda> map. map = pre_computed_map borda_score A pr)"
-  using fina borda_score_evalf_rel
-      compute_scores_correct[THEN nres_relD, THEN refine_IdD]
-  by fastforce 
-  from this show "pre_compute_scores borda_score_mon A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
-    \<le> SPEC (\<lambda>res. res = max_eliminator borda_score A pr)"
-    using max_eliminator_ref_correct[where efn = borda_score] 
-      specify_left[where m = "pre_compute_scores borda_score_mon A pl"
-          and \<Phi> = "(\<lambda>map. map = pre_computed_map borda_score A pr)"
-          and f = "(\<lambda>scores. max_eliminator_ref scores A pl)"
-          and M = "SPEC (\<lambda>res. res = max_eliminator borda_score A pr)"]
-    by fastforce
-qed
-
-(*lemma bcseptest:
-  shows "(borda_monadic, (\<lambda> A p. RETURN (borda A p))) \<in>
-    (\<langle>Id\<rangle>set_rel O br (\<lambda>x. x) finite) \<rightarrow> profile_rel \<rightarrow>  \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-  apply (refine_vcg)
-proof (unfold borda_monadic_def borda.simps, rename_tac Al' Al ppl ppr)
-*)
-
-
-
-
-
+          THEN refine_IdD, where x4 = borda_score_mon and x'4 = borda_score]
+  from arel prel this borda_score_correct have 
+    precompborda: "pre_compute_scores borda_score_mon A' pl
+  \<le> SPEC (\<lambda>map. map = pre_computed_map borda_score A pr)" by fastforce
+  note maxelim = max_eliminator_ref_correct[where efn = borda_score, THEN fun_relD,
+       THEN nres_relD, THEN refine_IdD]
+  show "(pre_compute_scores borda_score_mon A' pl \<bind>
+        (\<lambda>scores. max_eliminator_ref scores A' pl),
+        SPEC (\<lambda>res. res = max_eliminator borda_score A pr))
+       \<in> \<langle>Id\<rangle>nres_rel"
+  proof (refine_vcg  precompborda)
+    fix map
+    assume "map = pre_computed_map borda_score A pr"
+    from arel aeq prel this show "max_eliminator_ref map A' pl \<le>
+       SPEC (\<lambda>res. res = max_eliminator borda_score A pr)"
+      using maxelim
+      by (blast) 
+  qed
+qed 
+    
 
 abbreviation "profile_impl_assn \<equiv> (list_assn (array_assn nat_assn))"
 
 abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
-
-
-definition "alts_set_assn 
-    \<equiv> hr_comp alts_set_impl_assn alts_set_rel"
 
 find_theorems id_assn
 

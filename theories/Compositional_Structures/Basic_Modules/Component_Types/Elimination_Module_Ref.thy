@@ -345,12 +345,12 @@ proof (clarify, rename_tac A' A)
         SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr))
        \<in> \<langle>Id\<rangle>nres_rel"
   proof (refine_vcg arel  scoremax_correct[THEN fun_relD, THEN nres_relD, THEN refine_IdD, where
-          x2= A' and x'2 = A and pr3=pr and e3=efn] lec)
+          x2= A' and x'2 = A and pr3=pr and e3=efn])
     fix maxscore :: nat
     assume mxdef: "maxscore = Max {efn a A pr |a. a \<in> A}"
-    from arel mxdef show " less_eliminator_ref (pre_computed_map efn A' pr) maxscore A' pl
+    from arel prel mxdef show " less_eliminator_ref (pre_computed_map efn A' pr) maxscore A' pl
          \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr)"
-      using lec prel by blast
+      using lec by blast
   qed
 qed
   

@@ -35,25 +35,32 @@ proof (unfold plur_score_mon.simps plur_score.simps, rename_tac x' x ppl ppr)
 qed
 
 
-context voting_session
+context profile_complete
 begin
 
 theorem plurality_elim_correct:
   shows "plurality_monadic A pl \<le> SPEC (\<lambda> res. res = plurality_mod A pr)"
 proof (unfold plurality_monadic_def plurality_mod.simps)
-  have "pre_compute_scores plur_score_mon A pl 
+  from fina nempa have arel: "(A, A) \<in> \<langle>Id\<rangle>alt_set_rel" 
+    unfolding alt_set_rel_def using in_br_conv[symmetric]
+    by (simp add: brI)
+  from profrel have prel: " (pl, pr) \<in> profile_rel" using profile_type_ref by blast
+  have prec: "pre_compute_scores plur_score_mon A pl 
           \<le> SPEC (\<lambda> map. map = pre_computed_map plur_score A pr)"
   using plur_score_refine_weak[where A = A]
       compute_scores_correct_weak_evalref[THEN nres_relD, THEN refine_IdD]
   by fastforce 
-  from this show "pre_compute_scores plur_score_mon A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
+ show "pre_compute_scores plur_score_mon A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
     \<le> SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"
-    using max_eliminator_ref_correct[where efn = plur_score] 
-      specify_left[where m = "pre_compute_scores plur_score_mon A pl"
-          and \<Phi> = "(\<lambda>map. map = pre_computed_map plur_score A pr)"
-          and f = "(\<lambda>scores. max_eliminator_ref scores A pl)"
-          and M = "SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"]
-    by fastforce
+  proof (refine_vcg prec)
+    fix x :: "('a \<rightharpoonup> nat)"
+    assume "x = pre_computed_map plur_score A pr"
+    from prel arel this show "max_eliminator_ref x A pl \<le> SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"
+    using max_eliminator_ref_correct[where efn = plur_score, THEN fun_relD, THEN nres_relD,
+        THEN refine_IdD]
+    by blast 
+qed
+   
 qed
 
 end
