@@ -77,7 +77,21 @@ oops
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
 
-find_theorems list_rel
+find_theorems list_all2
+
+lemma profile_rel_imp_map_ballots:
+  fixes pl :: "'a Profile_List"
+  and pr :: "'a Profile"
+  assumes "(pl, pr) \<in> profile_rel"
+  shows "pr = map pl_\<alpha> pl"
+proof (-)
+  from assms have "\<forall> i < length pl. (pl!i, pr!i) \<in> ballot_rel"
+    by (simp add: list_rel_pres_length param_nth)
+  from assms this show " pr = map pl_\<alpha> pl"
+    by (metis in_br_conv  length_map list_rel_pres_length nth_equalityI nth_map) 
+qed
+  
+    
 
 lemma profile_type_ref:
   fixes A:: "'a set"
