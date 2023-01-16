@@ -121,12 +121,14 @@ abbreviation "profile_impl_assn \<equiv> (list_assn (array_assn nat_assn))"
 
 abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
 
+abbreviation "result_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
+
 find_theorems id_assn
 
 sepref_definition borda_elim_sepref is
   "uncurry borda_monadic":: 
     "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
-   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
+   \<rightarrow>\<^sub>a (result_assn)"
   unfolding borda_monadic_def  max_eliminator_ref.simps borda_score_mon.simps
     less_eliminator_ref.simps  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
@@ -176,6 +178,6 @@ proof (clarify, rename_tac A' A pl pr)
 qed 
   
 
-thm borda_elim_sepref.refine[FCOMP borda_sep_aux]
+lemmas borda_sepref_correct =  borda_elim_sepref.refine[FCOMP borda_sep_aux]
 
 end

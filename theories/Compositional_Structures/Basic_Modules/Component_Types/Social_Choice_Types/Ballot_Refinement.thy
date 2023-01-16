@@ -77,8 +77,6 @@ oops
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
 
-find_theorems list_all2
-
 lemma profile_rel_imp_map_ballots:
   fixes pl :: "'a Profile_List"
   and pr :: "'a Profile"
