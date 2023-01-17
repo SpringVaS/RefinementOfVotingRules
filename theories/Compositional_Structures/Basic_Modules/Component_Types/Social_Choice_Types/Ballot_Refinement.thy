@@ -65,14 +65,119 @@ lemma is_less_preferred_than_ref:
   apply (refine_vcg)
   by (auto simp only: refine_rel_defs less_preffered_l_rel_eq)
 
+
 lemma limitref:
-  shows "(limit_l, limit) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ballot_rel \<rightarrow> ballot_rel"
-  apply (refine_vcg)
+  shows "(limit_l, limit) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> ballot_rel \<rightarrow> ballot_rel"
+  apply (refine_vcg, rename_tac A' A bl br)
   apply (auto simp add: refine_rel_defs)
-  unfolding well_formed_pl_def pl_\<alpha>_def
-  apply (simp_all add: member_def)
-   apply clarsimp_all
-oops
+sorry
+(*proof -
+  fix A' A :: "'a set"
+  fix bl :: "'a Preference_List"
+  fix  br :: "'a Preference_Relation"
+  assume brel: "(bl, br) \<in> ballot_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  from brel have wf: "well_formed_pl bl" by (simp add: in_br_conv)
+  have "limit A br = pl_\<alpha> (limit_l A bl)"
+    using brel  apply (induction bl)
+     apply (auto simp add: brel wf)
+
+  (* inductctive proof with case distinction  *) 
+qed*)
+
+definition "limit_monadic_inv A ballot \<equiv> \<lambda> (b, newb).
+  b = drop (length ballot - length b) ballot
+  \<and> (pl_\<alpha> newb) = limit A (pl_\<alpha> (take (length ballot - length b) ballot))"
+
+definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
+"limit_monadic A ballot \<equiv> do {
+  (_,newb) <-  WHILEIT (limit_monadic_inv A ballot) (FOREACH_cond (\<lambda>_.True)) 
+    (FOREACH_body  (\<lambda> x newb. 
+    RETURN  (if x \<in> A then (op_list_append newb x) else (newb)) 
+  )) (ballot,[]); 
+  RETURN newb}"
+
+definition  limit_nfoldli:: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
+"limit_nfoldli A ballot \<equiv> 
+  nfoldli ballot (\<lambda>_.True) 
+    (\<lambda> x newb. 
+    RETURN  (if x \<in> A then ( newb @ [x]) else (newb)) 
+  ) []"
+
+lemma limitnref:
+  shows "(limit_nfoldli, (\<lambda> A br. SPEC(\<lambda> lim. pl_\<alpha> lim = (limit A br)))) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow>
+     ballot_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding limit_nfoldli_def
+  apply (refine_rcg, rename_tac A' A bl br)
+proof -
+  fix A' A :: "'a set"
+  fix bl :: "'a Preference_List"
+  fix  br :: "'a Preference_Relation"
+  assume brel: "(bl, br) \<in> ballot_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  from brel have dis: "distinct bl" using in_br_conv
+    by (metis well_formed_pl_def)
+  show  "nfoldli bl (\<lambda>_. True) (\<lambda>x newb. RETURN (if x \<in> A' then newb @ [x] else newb)) []
+       \<le> SPEC (\<lambda>lim. pl_\<alpha> lim = limit A br)"
+  proof (simp add: aeq, refine_vcg nfoldli_rule[where I = 
+        "(\<lambda> proc xs newb. (pl_\<alpha> newb) = (limit A (pl_\<alpha> proc))
+          \<and> set newb \<subseteq> set proc)"])
+    show "pl_\<alpha> [] = limit A (pl_\<alpha> [])"
+    unfolding pl_\<alpha>_def
+    by (simp add: List.member_def)
+  next
+    fix x :: 'a
+    fix l1 l2 :: "'a Preference_List"
+    fix si :: "'a Preference_List"
+    assume blsep: "bl = l1 @ x # l2"
+    assume " pl_\<alpha> si = limit A (pl_\<alpha> l1) \<and> set si \<subseteq> set l1"
+    from this have sub: "set si \<subseteq> set l1" by simp
+    from sub show "pl_\<alpha> (if x \<in> A then si @ [x] else si) = limit A (pl_\<alpha> (l1 @ [x]))"
+      using pl_\<alpha>_def 
+      apply auto
+      sorry
+  next
+    fix si
+    assume " \<not> True" 
+    thus "pl_\<alpha> si = limit A br" by simp
+  next
+    fix si
+    assume newp: "pl_\<alpha> si = limit A (pl_\<alpha> bl)"
+    from brel have "br = (pl_\<alpha> bl)"
+      by (simp add: in_br_conv)
+    from newp this show "pl_\<alpha> si = limit A br"
+      by simp
+  qed
+qed
+ 
+lemma limitref:
+  shows "(limit_monadic, (\<lambda> A br. SPEC(\<lambda> lim. pl_\<alpha> lim = (limit A br)))) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow>
+     ballot_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding limit_monadic_def
+  apply (refine_rcg, rename_tac A' A bl br)
+proof -
+  fix A' A :: "'a set"
+  fix bl :: "'a Preference_List"
+  fix  br :: "'a Preference_Relation"
+  assume brel: "(bl, br) \<in> ballot_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  have "  WHILE\<^sub>T\<^bsup>limit_monadic_inv A' bl\<^esup> (FOREACH_cond (\<lambda>_. True))
+        (FOREACH_body (\<lambda>x newb. RETURN (if x \<in> A' then op_list_append newb x else newb))) (bl, []) \<bind>
+       (\<lambda>(_, newb). RETURN newb)
+       \<le> SPEC (\<lambda>lim. pl_\<alpha> lim = limit A br) "
+    apply (refine_vcg WHILET_rule)
+  
+
+sepref_definition limit_imp is "uncurry (limit_monadic)" ::
+  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a  (arl_assn nat_assn)"
+  unfolding limit_monadic_def
+  apply (rewrite in "\<hole>" arl.fold_custom_empty)
+  apply sepref_dbg_keep
+  done
 
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"

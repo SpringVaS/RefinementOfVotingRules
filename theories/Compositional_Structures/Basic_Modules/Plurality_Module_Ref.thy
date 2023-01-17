@@ -39,7 +39,8 @@ context profile_complete
 begin
 
 theorem plurality_elim_correct:
-  shows "plurality_monadic A pl \<le> SPEC (\<lambda> res. res = plurality_mod A pr)"
+  shows "(plurality_monadic A pl, (SPEC (\<lambda> em. em = plurality_mod A pr))) 
+  \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
 proof (unfold plurality_monadic_def plurality_mod.simps)
   from fina nempa have arel: "(A, A) \<in> \<langle>Id\<rangle>alt_set_rel" 
     unfolding alt_set_rel_def using in_br_conv[symmetric]
@@ -50,18 +51,19 @@ proof (unfold plurality_monadic_def plurality_mod.simps)
   using plur_score_refine_weak[where A = A]
       compute_scores_correct_weak_evalref[THEN nres_relD, THEN refine_IdD]
   by fastforce 
- show "pre_compute_scores plur_score_mon A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
-    \<le> SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"
-  proof (refine_vcg prec)
-    fix x :: "('a \<rightharpoonup> nat)"
-    assume "x = pre_computed_map plur_score A pr"
-    from prel arel this show "max_eliminator_ref x A pl \<le> SPEC (\<lambda>res. res = max_eliminator plur_score A pr)"
-    using max_eliminator_ref_correct[where efn = plur_score, THEN fun_relD, THEN nres_relD,
-        THEN refine_IdD]
-    by blast 
+  from arel prel show "(pre_compute_scores plur_score_mon A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl),
+     SPEC (\<lambda>em. em = max_eliminator plur_score A pr))
+    \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+   using prec max_eliminator_ref_correct[THEN fun_relD] specify_left[where M = 
+        "\<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
+  (SPEC (\<lambda>res. res = max_eliminator plur_score A pr))"
+       and m = "pre_compute_scores plur_score_mon A pl"
+       and \<Phi> = "(\<lambda>map. map = pre_computed_map plur_score A pr)"
+       and f = "(\<lambda>scores. max_eliminator_ref scores A pl)"] 
+  nres_relI nres_relD
+   by blast 
 qed
    
-qed
 
 end
 
@@ -82,6 +84,7 @@ sepref_definition plurality_elim_sepref is
 
   apply sepref_dbg_keep
   done
+
 
 
 end

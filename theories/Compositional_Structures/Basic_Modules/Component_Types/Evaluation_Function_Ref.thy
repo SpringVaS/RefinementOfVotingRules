@@ -33,7 +33,7 @@ abbreviation "evalf_profA_rel A \<equiv> Id \<rightarrow> profile_on_A_rel A \<r
 definition evalf_rel ::
     "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
     where  evalf_rel_def:
-"evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. RETURN (e a A pro))) 
+"evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = e a A pro))) 
   \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
 
 
@@ -44,6 +44,8 @@ locale set_of_alternatives =
 
 begin
 
+find_theorems SPEC
+
 lemma evalfeq:   
   fixes pr :: "'a Profile"
   fixes pl :: "'a Profile_List"
@@ -52,11 +54,14 @@ lemma evalfeq:
      evalref: "(refn, efn) \<in> evalf_rel"
    shows "refn a A pl \<le> RETURN (efn a A pr)"
 proof (-)
-  from evalref have efrel: "(refn, (\<lambda> a A pro. RETURN (efn a A pro))) \<in> efunrel"
+  from evalref have efrel: "(refn, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = efn a A pro))) \<in> efunrel"
   unfolding evalf_rel_def by simp
   from fina nempa have "(A, A) \<in> \<langle>Id\<rangle>alt_set_rel" by (simp add: alt_set_rel_def in_br_conv)
-  from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD] show ?thesis 
-    by fastforce
+  from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD]
+  SPEC_eq_is_RETURN(2)
+  show ?thesis
+    by (metis IdI) 
+    
 qed
 
 end

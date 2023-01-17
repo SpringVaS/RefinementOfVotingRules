@@ -810,5 +810,23 @@ lemma cond_winner_unique3_l:
     cond_winner_unique3[where A = A and p = pr and w = w]
   assms by blast
 
+find_theorems nfoldli
+
+fun limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
+  "limit_profile_l A p = RETURN (map (limit_l A) p)"
+
+(*definition limit_monadic :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
+ "limit_monadic A p \<equiv> 
+ nfoldli p (\<lambda>_.True) (\<lambda> x new_p.
+    RETURN (new_p)) [] "*)
+
+sepref_definition limit_sep is "uncurry (limit_profile_l)" :: 
+  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (array_assn nat_assn))"
+  unfolding limit_profile_l.simps limit_l.simps
+  apply sepref_dbg_keep
+
+lemma "limitp_refine":
+  shows "(limit_profile_l, limit_profile) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> profile_rel"
+  sorry
 
 end
