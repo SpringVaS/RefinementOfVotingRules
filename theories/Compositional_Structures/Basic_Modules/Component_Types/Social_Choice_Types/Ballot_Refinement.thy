@@ -103,28 +103,27 @@ next
 qed*)
 
 
-definition "limit_monadic_inv A ballot \<equiv> \<lambda> (b, newb).
-  b = drop (length ballot - length b) ballot
-  \<and> (pl_\<alpha> newb) = limit A (pl_\<alpha> (take (length ballot - length b) ballot))"
+definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
+  nbal = limit_l A (take i ballot)"
 
 definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
 "limit_monadic A ballot \<equiv> do {
-    ((i, nbal), bal) \<leftarrow> WHILET
-  (\<lambda>((i, nbal), bal). i < length bal) 
-      (\<lambda>((i, nbal), bal). do {
-      ASSERT (i < (length bal));
-      c <- mop_list_get (bal) i;
-      if (c \<in> A) then
-        RETURN ((i + 1,op_list_append nbal c), bal)
+    (i, nbal) \<leftarrow> WHILEIT (limit_monadic_inv A ballot)
+  (\<lambda> (i, nbal). i < length ballot) 
+      (\<lambda> (i, nbal). do {
+      ASSERT (i < (length ballot));
+      let c = (ballot!i);
+      RETURN (if (c \<in> A) then
+         (i + 1, nbal @ [c])
       else
-        RETURN ((i + 1, op_list_copy nbal), bal)
-    })((0, []), ballot);
+        (i + 1, nbal))
+    })((0, []));
     RETURN (nbal)
   }"                          
 
+find_theorems filter
 
-
-lemma limitnref:
+lemma limit_monadic_refine:
   shows "(limit_monadic, (\<lambda> A bl. SPEC(\<lambda> lim. lim = (limit_l A bl)))) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow>
       \<langle>Id\<rangle>list_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
   unfolding limit_monadic_def
@@ -139,20 +138,22 @@ proof -
   from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
   from bid have beq: "bl = br"
     by simp 
-  show  " nfoldli bl (\<lambda>_. True) (\<lambda>x newb. RETURN (if x \<in> A' then (op_list_append newb x) else newb)) []
+  show  " WHILE\<^sub>T\<^bsup>limit_monadic_inv A' bl\<^esup> (\<lambda>(i, nbal). i < length bl)
+        (\<lambda>(i, nbal).
+            ASSERT (i < length bl) \<bind>
+            (\<lambda>_. let c = bl ! i in RETURN (if c \<in> A' then (i + 1, nbal @ [c]) else (i + 1, nbal))))
+        (0, []) \<bind>
+       (\<lambda>(i, nbal). RETURN nbal)
        \<le> SPEC (\<lambda>lim. lim = limit_l A br)"
-    apply (refine_vcg nfoldli_rule[where I =
-        "(\<lambda> proc xs newb. newb = filter (\<lambda>x. x\<in> A) proc)"])
-    unfolding pl_\<alpha>_def
-    by (auto simp add: beq aeq)
-  oops
+    by (refine_vcg WHILEIT_rule[where R = "measure (\<lambda>(i, newb). length bl - i)"],
+        auto simp add: limit_monadic_inv_def pl_\<alpha>_def beq aeq take_Suc_conv_app_nth)
+qed
   
 
 sepref_definition limit_imp is "uncurry (limit_monadic)" ::
   "(hs.assn nat_assn)\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (arl_assn nat_assn)"
   unfolding limit_monadic_def
-  apply (rewrite in "WHILET  _ _ (_, \<hole>)" op_list_copy_def[symmetric])
-  apply (rewrite in "WHILET _ _ \<hole>" arl.fold_custom_empty)
+  apply (rewrite in "WHILEIT _ _ _ \<hole>" arl.fold_custom_empty)
   by sepref
 
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"

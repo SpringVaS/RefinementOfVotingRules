@@ -813,7 +813,11 @@ lemma cond_winner_unique3_l:
 find_theorems nfoldli
 
 fun limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
-  "limit_profile_l A p = RETURN (map (limit_l A) p)"
+  "limit_profile_l A p = 
+    nfoldli p (\<lambda>_. True)
+      (\<lambda> x np. do {
+         newb <- (limit_monadic A x);
+        RETURN (op_list_append np newb)}) []"
 
 (*definition limit_monadic :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
  "limit_monadic A p \<equiv> 
@@ -821,12 +825,15 @@ fun limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Pr
     RETURN (new_p)) [] "*)
 
 sepref_definition limit_sep is "uncurry (limit_profile_l)" :: 
-  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (array_assn nat_assn))"
-  unfolding limit_profile_l.simps limit_l.simps
-  apply sepref_dbg_keep
+  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn nat_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (arl_assn nat_assn))"
+  unfolding limit_profile_l.simps limit_monadic_def
+  apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
+  apply (rewrite in "WHILEIT _ _ _ \<hole>" arl.fold_custom_empty)
+  by sepref
 
 lemma "limitp_refine":
-  shows "(limit_profile_l, limit_profile) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> profile_rel"
+  shows "(limit_profile_l, RETURN oo limit_profile) \<in> 
+      \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
   sorry
 
 end

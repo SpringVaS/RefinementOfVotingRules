@@ -73,21 +73,12 @@ proof (clarify, rename_tac A' A pl pr)
   nres_relI nres_relD by blast
 qed 
 
-abbreviation "profile_impl_assn \<equiv> (list_assn (arl_assn nat_assn))"
-
-abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
-
-abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
-
-definition "alts_assn \<equiv> hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>alt_set_rel)"
-
-definition "profile_assn \<equiv> (list_assn (hr_comp (list_assn nat_assn) ballot_rel))"
-
-abbreviation "result_assn \<equiv> hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>set_rel) \<times>\<^sub>a
-                               hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>set_rel) \<times>\<^sub>a
-                               hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>set_rel)"
-
-
+theorem borda_ref_return:
+  shows "(borda_monadic, RETURN oo borda) \<in> elec_mod_relb"
+  apply (refine_vcg  )
+  using borda_ref_correct[THEN fun_relD, THEN fun_relD, THEN nres_relD]
+    SPEC_eq_is_RETURN(2) push_in_let_conv(2)
+  by (metis relAPP_def set_rel_id_simp)
 
 sepref_definition borda_elim_sepref is
   "uncurry borda_monadic":: 
@@ -109,10 +100,15 @@ sepref_definition borda_elim_sepref is
   apply sepref_dbg_keep
 
   done
-       
+
+term borda_elim_sepref
+
+term "sepref_access.elect_ref borda_monadic"
 
 
 lemmas borda_impl_correct = borda_elim_sepref.refine[FCOMP borda_ref_correct]
-  
+
+
+
 
 end
