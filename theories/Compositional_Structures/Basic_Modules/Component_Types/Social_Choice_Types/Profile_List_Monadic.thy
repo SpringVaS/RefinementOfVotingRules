@@ -114,7 +114,7 @@ lemma rank_mon_refine:
   by (refine_vcg rank_mon_correct, simp)
 
 sepref_definition rank_imp_sep
-  is "uncurry rank_mon" :: "((array_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn)"
+  is "uncurry rank_mon" :: "((arl_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn)"
   unfolding rank_mon_def[abs_def] index_mon_def[abs_def]
   by sepref
 

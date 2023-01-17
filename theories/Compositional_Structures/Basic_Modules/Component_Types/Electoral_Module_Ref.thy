@@ -18,4 +18,34 @@ definition em_rel :: "('a Electoral_Module_Ref \<times> 'a Electoral_Module) set
   "em_rel \<equiv> {(emref,em).(emref, (\<lambda> A pro. SPEC (\<lambda> res. res = (em A pro)))) 
   \<in> elec_mod_relb}"
 
+
+definition elect_ref ::
+  "'a Result \<Rightarrow> 'a set nres" where
+  "elect_ref result \<equiv> do {
+    RETURN (elect_r (result))}
+  "
+
+abbreviation "profile_impl_assn \<equiv> (list_assn (arl_assn nat_assn))"
+
+abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
+
+abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
+
+definition "alts_assn \<equiv> hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>alt_set_rel)"
+
+definition "profile_assn \<equiv> (list_assn (hr_comp (list_assn nat_assn) ballot_rel))"
+
+abbreviation "result_assn \<equiv> hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>set_rel) \<times>\<^sub>a
+                               hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>set_rel) \<times>\<^sub>a
+                               hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>set_rel)"
+
+
+sepref_definition elect_sepref is 
+  "elect_ref" :: 
+   "(result_impl_assn)\<^sup>d \<rightarrow>\<^sub>a (hs.assn nat_assn)"
+  unfolding elect_ref_def
+  apply sepref_dbg_keep
+  done
+
+
 end
