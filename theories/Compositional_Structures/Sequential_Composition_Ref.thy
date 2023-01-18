@@ -6,27 +6,36 @@ begin
 definition sequential_composition_mon :: "'a Electoral_Module_Ref \<Rightarrow> 'a Electoral_Module_Ref \<Rightarrow>
         'a Electoral_Module_Ref" where
 "sequential_composition_mon m n A p = do {
-      let electm = elect_monadic m;
-      let electn = elect_monadic n;
-      let rejectm = reject_monadic m;
-      let rejectn = reject_monadic n;
-      let defm = defer_monadic m;
-      let defn = defer_monadic n;
+      new_A <- (defer_monadic m) A p;
+      new_p <- limit_profile_l A p;  
+
+      electmA  <- (elect_monadic m) A p;
+      electnA' <- (elect_monadic n) new_A new_p;
+      
+      rejectmA  <- (reject_monadic m) A p;
+      rejectnA' <- (reject_monadic n) new_A new_p;
+
+      defernA'  <- (defer_monadic n) new_A new_p;
+
+      RETURN (op_set_union,rejectnA',defernA')}"
+                      
+(*
     
       new_A <- defm A p;
       new_p <- limit_profile_l new_A p;
       
-      electmA <- electm A p;
-      electnA' <- electn new_A new_p;
-      rejectmA <- rejectm A p;
-      rejectnA' <- rejectn new_A new_p;
-      def <- defn new_A new_p;
- 
-      RETURN (rejectmA,rejectmA,electmA)}"
 
-(*      let elec = electmA \<union> electnA';
+      let elec = electmA \<union> electnA';
       let rej = rejectmA \<union> rejectnA';
 *)
+
+
+definition seqt :: 
+   "nat Electoral_Module_Ref \<Rightarrow> nat Electoral_Module_Ref" where
+"seqt m A p = do {
+     electmA <- (elect_monadic m) A p;
+     RETURN(electmA,{},{})
+}"
 
 locale seqcomp_impl =
   fixes m :: "nat Electoral_Module_Ref"
@@ -153,50 +162,20 @@ qed*)
 sepref_register "m" :: "nat Electoral_Module_Ref"
 sepref_register "n" :: "nat Electoral_Module_Ref"
 
-thm n_impl
-
 declare m_impl [sepref_fr_rules]
 declare n_impl [sepref_fr_rules]
 
-sepref_definition electm_imp is
-  "(uncurry (elect_monadic m))" 
-    :: "(alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
-  unfolding elect_monadic_def
-  by sepref
-
-schematic_goal electn_imp:
-  "(uncurry ?c, uncurry (elect_monadic n)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
-  unfolding elect_monadic_def
-  by sepref
-
-definition seqt :: 
-   "nat Electoral_Module_Ref" where
-"seqt A p = do {
-     electmA <- (elect_monadic m) A p;
-     RETURN(electmA,op_hs_empty,op_hs_empty)
-}"
-
-lemma val: shows "sepref_access m m_impl"
-  using m_impl by unfold_locales
-
-lemma elecmsep:
-  shows" (uncurry
- (\<lambda>ai bi.
-     m_impl ai bi \<bind> (\<lambda>x'. return (fst x'))) ,
- uncurry (elect_monadic m))
-\<in> (hs.assn nat_assn)\<^sup>k *\<^sub>a
-   profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a hs.assn nat_assn"
-  using val elect_sep_def elect_sep.refine
-  by auto
-
-declare elecmsep [sepref_fr_rules]
 
 sepref_definition seqt_imp is
-  "(uncurry (seqt))" 
-    :: "alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
-  unfolding seqt_def 
+  "(uncurry (sequential_composition_mon m n))" 
+    :: "alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (result_impl_assn)"
+  unfolding sequential_composition_mon_def elect_monadic_def defer_monadic_def reject_monadic_def
+    limit_profile_l.simps limit_monadic_def
+  apply (rewrite in "WHILEIT _ _ _ (_,\<hole>)" arl.fold_custom_empty )
+   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty )
   apply sepref_dbg_keep
-
+apply sepref_dbg_trans_keep
+  oops
 
 end
 
