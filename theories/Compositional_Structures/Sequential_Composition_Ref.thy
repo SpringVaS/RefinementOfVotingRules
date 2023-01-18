@@ -3,6 +3,39 @@ theory Sequential_Composition_Ref
         "Verified_Voting_Rule_Construction.Sequential_Composition"
 begin
 
+definition custom_mon_set_union :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a set nres" where
+  "custom_mon_set_union A B \<equiv> do {
+  cpA <- aux_set_copy A; 
+  FOREACH B
+     (\<lambda> x (union). RETURN (insert x union)) cpA
+  }"
+
+lemma custom_mon_set_union_correct:
+  fixes A :: "'a set"
+  assumes fina: "finite A"
+   fixes B :: "'a set"
+  assumes finb: "finite B"
+  shows "custom_mon_set_union A B \<le> SPEC (\<lambda> union. union = A \<union> B)"
+  unfolding custom_mon_set_union_def
+  apply (refine_vcg aux_set_copy_correct FOREACH_rule[where I = "\<lambda> it u. u = A \<union> (B-it)"])
+  by (auto simp add: fina finb)
+
+lemma hs_union_aref: 
+  fixes A :: " ('a \<times> 'b) set"
+  shows "((\<union>), op_set_union) \<in> \<langle>A\<rangle>set_rel \<rightarrow> \<langle>A\<rangle>set_rel \<rightarrow> \<langle>A\<rangle>set_rel"
+  unfolding op_set_union_def
+  apply (refine_vcg)
+  by (auto simp add: set_rel_def)
+  
+
+sepref_definition hs_uniondf is 
+  "uncurry custom_mon_set_union" :: "alts_set_impl_assn\<^sup>k *\<^sub>a alts_set_impl_assn\<^sup>k 
+  \<rightarrow>\<^sub>a alts_set_impl_assn"
+  unfolding custom_mon_set_union_def aux_set_copy_def
+  apply (rewrite in "_ \<hole> \<bind> FOREACH _ _" hs.fold_custom_empty )
+  by sepref
+
+
 definition sequential_composition_mon :: "'a Electoral_Module_Ref \<Rightarrow> 'a Electoral_Module_Ref \<Rightarrow>
         'a Electoral_Module_Ref" where
 "sequential_composition_mon m n A p = do {
@@ -16,8 +49,10 @@ definition sequential_composition_mon :: "'a Electoral_Module_Ref \<Rightarrow> 
       rejectnA' <- (reject_monadic n) new_A new_p;
 
       defernA'  <- (defer_monadic n) new_A new_p;
+  
+      elected <- custom_mon_set_union electmA electnA';
 
-      RETURN (op_set_union,rejectnA',defernA')}"
+      RETURN (elected,rejectnA',defernA')}"
                       
 (*
     
@@ -172,7 +207,9 @@ sepref_definition seqt_imp is
   unfolding sequential_composition_mon_def elect_monadic_def defer_monadic_def reject_monadic_def
     limit_profile_l.simps limit_monadic_def
   apply (rewrite in "WHILEIT _ _ _ (_,\<hole>)" arl.fold_custom_empty )
-   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty )
+  apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty )
+  unfolding custom_mon_set_union_def aux_set_copy_def
+  apply (rewrite in "_ \<hole> \<bind> FOREACH _ _" hs.fold_custom_empty )
   apply sepref_dbg_keep
 apply sepref_dbg_trans_keep
   oops

@@ -17,6 +17,21 @@ definition em_rel :: "('a Electoral_Module_Ref \<times> 'a Electoral_Module) set
   "em_rel \<equiv> {(emref,em).(emref, (\<lambda> A pro. SPEC (\<lambda> res. res = (em A pro)))) 
   \<in> elec_mod_relb}"
 
+definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
+  "aux_set_copy A \<equiv>  FOREACH A
+     (\<lambda> x cp. RETURN (insert x cp)) {}"
+
+lemma aux_set_copy_correct:
+  fixes A :: "'a set"
+  assumes fina: "finite A"
+  shows "aux_set_copy A \<le> SPEC(\<lambda> set. set = A)"
+  unfolding aux_set_copy_def
+  apply (refine_vcg FOREACH_rule[where I = "\<lambda>it s. s = A - it"])
+  by (auto simp add: fina)
+
+sepref_decl_op set_copy: replicate :: "A \<rightarrow> A \<rightarrow> \<langle>A\<rangle>set_rel" .
+
+
 abbreviation "ballot_impl_assn \<equiv> (arl_assn nat_assn)"
 
 abbreviation "profile_impl_assn \<equiv> (list_assn ballot_impl_assn)"
