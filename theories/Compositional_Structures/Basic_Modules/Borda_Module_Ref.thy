@@ -103,8 +103,6 @@ sepref_definition borda_elim_sepref is
 
 term borda_elim_sepref
 
-term "sepref_access.elect_ref borda_monadic"
-
 
 lemmas borda_impl_correct = borda_elim_sepref.refine[FCOMP borda_ref_correct]
 

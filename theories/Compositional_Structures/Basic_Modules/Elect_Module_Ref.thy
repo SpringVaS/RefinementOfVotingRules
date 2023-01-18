@@ -35,8 +35,8 @@ qed
   
 
 sepref_definition elect_sepref is 
-  "uncurry elect_module_ref" :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k
-    \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
+  "uncurry elect_module_ref" :: "(alts_set_impl_assn)\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k
+    \<rightarrow>\<^sub>a (result_impl_assn)"
   unfolding elect_module_ref.simps
   apply (rewrite in "\<hole>" hs.fold_custom_empty)+
   by sepref
