@@ -3,11 +3,10 @@ theory Sequential_Composition_Ref
         "Verified_Voting_Rule_Construction.Sequential_Composition"
 begin
 
-definition custom_mon_set_union :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a set nres" where
-  "custom_mon_set_union A B \<equiv> do {
-  cpA <- aux_set_copy A; 
+definition custom_mon_set_uniond :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a set nres" where
+  "custom_mon_set_uniond A B \<equiv> do {
   FOREACH B
-     (\<lambda> x (union). RETURN (insert x union)) cpA
+     (\<lambda> x (union). RETURN (insert x union)) A
   }"
 
 lemma custom_mon_set_union_correct:
@@ -15,9 +14,9 @@ lemma custom_mon_set_union_correct:
   assumes fina: "finite A"
    fixes B :: "'a set"
   assumes finb: "finite B"
-  shows "custom_mon_set_union A B \<le> SPEC (\<lambda> union. union = A \<union> B)"
-  unfolding custom_mon_set_union_def
-  apply (refine_vcg aux_set_copy_correct FOREACH_rule[where I = "\<lambda> it u. u = A \<union> (B-it)"])
+  shows "custom_mon_set_uniond A B \<le> SPEC (\<lambda> union. union = A \<union> B)"
+  unfolding custom_mon_set_uniond_def
+  apply (refine_vcg FOREACH_rule[where I = "\<lambda> it u. u = A \<union> (B-it)"])
   by (auto simp add: fina finb)
 
 lemma hs_union_aref: 
@@ -29,10 +28,9 @@ lemma hs_union_aref:
   
 
 sepref_definition hs_uniondf is 
-  "uncurry custom_mon_set_union" :: "alts_set_impl_assn\<^sup>k *\<^sub>a alts_set_impl_assn\<^sup>k 
+  "uncurry custom_mon_set_uniond" :: "alts_set_impl_assn\<^sup>d *\<^sub>a alts_set_impl_assn\<^sup>k 
   \<rightarrow>\<^sub>a alts_set_impl_assn"
-  unfolding custom_mon_set_union_def aux_set_copy_def
-  apply (rewrite in "_ \<hole> \<bind> FOREACH _ _" hs.fold_custom_empty )
+  unfolding custom_mon_set_uniond_def
   by sepref
 
 
@@ -50,7 +48,7 @@ definition sequential_composition_mon :: "'a Electoral_Module_Ref \<Rightarrow> 
 
       defernA'  <- (defer_monadic n) new_A new_p;
   
-      elected <- custom_mon_set_union electmA electnA';
+      elected <- custom_mon_set_uniond electmA electnA';
 
       RETURN (elected,rejectnA',defernA')}"
                       
@@ -208,8 +206,7 @@ sepref_definition seqt_imp is
     limit_profile_l.simps limit_monadic_def
   apply (rewrite in "WHILEIT _ _ _ (_,\<hole>)" arl.fold_custom_empty )
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty )
-  unfolding custom_mon_set_union_def aux_set_copy_def
-  apply (rewrite in "_ \<hole> \<bind> FOREACH _ _" hs.fold_custom_empty )
+  unfolding custom_mon_set_uniond_def
   apply sepref_dbg_keep
 apply sepref_dbg_trans_keep
   oops
