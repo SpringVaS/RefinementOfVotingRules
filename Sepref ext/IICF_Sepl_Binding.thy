@@ -338,18 +338,7 @@ begin
 
     lemmas hnr_op_empty = hnr_empty_aux[FCOMP op_set_empty.fref[where A="the_pure A"]] 
     lemmas hnr_mop_empty = hnr_op_empty[FCOMP mk_mop_rl0_np[OF mop_set_empty_alt]]
-end  
-                                            
-(* locale bind_set_union = imp_set_union + bind_set
-  begin
-    lemma hnr_union_aux: "(uncurry union, uncurry (RETURN oo op_set_union))\<in>is_set\<^sup>d *\<^sub>a is_set\<^sup>k \<rightarrow>\<^sub>a is_set"
-      apply (solve_sepl_binding) using Un_def
-      
-
-    interpretation bind_set_setup by standard  
-    lemmas hnr_op_insert[sepref_fr_rules] = hnr_insert_aux[THEN APAru,FCOMP op_set_insert.fref[where A="the_pure A"]] 
-    lemmas hnr_mop_insert[sepref_fr_rules] = hnr_op_insert[FCOMP mk_mop_rl2_np[OF mop_set_insert_alt]]
-  end *)
+  end  
 
   locale bind_set_is_empty = imp_set_is_empty + bind_set
   begin
@@ -595,7 +584,24 @@ end
 
     lemmas hnr[sepref_fr_rules] = hnr_aux[FCOMP op_list_tl.fref,of "the_pure A", folded assn_def]
     lemmas hnr_mop[sepref_fr_rules] = hnr[FCOMP mk_mop_rl1[OF mop_list_tl_alt]]
-  end
+end
+
+locale bind_set_union = imp_set_union + bind_set
+  begin
+    lemma hnr_union_aux: "(uncurry union, uncurry (RETURN oo op_set_union))\<in>is_set\<^sup>d *\<^sub>a is_set\<^sup>k \<rightarrow>\<^sub>a is_set"
+      unfolding invalid_assn_def pure_def pure_assn_def hn_refine_def
+      apply (sep_auto 
+      intro!: hfrefI hn_refineI[THEN hn_refine_preI] union_rule) 
+        unfolding invalid_assn_def entails_def
+        apply auto
+        using mod_star_conv by auto
+
+    interpretation bind_set_setup by standard  
+    lemmas hnr_op_union[sepref_fr_rules] = hnr_union_aux[THEN APAru, THEN APAru, 
+        FCOMP op_set_union.fref[where A="the_pure A"]] 
+    lemmas hnr_mop_union[sepref_fr_rules] = hnr_op_union[FCOMP mk_mop_rl2_np[OF mop_set_union_alt]]
+  end 
+
 
   locale bind_list_rotate1 = imp_list_rotate + bind_list
   begin

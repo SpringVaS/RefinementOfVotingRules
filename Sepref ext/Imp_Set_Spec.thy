@@ -17,13 +17,6 @@ locale imp_set_empty = imp_set +
   fixes empty :: "'s Heap"
   assumes empty_rule[sep_heap_rules]: "<emp> empty <is_set {}>\<^sub>t"
 
-locale imp_set_union = imp_set +
-  constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"
-  fixes union :: "'s \<Rightarrow> 's \<Rightarrow> 's Heap"
-  assumes union_rule[sep_heap_rules]: 
-    "<(is_set s p) * (is_set se q)> union p q <is_set (s \<union> se)>\<^sub>t"
-    
-
 locale imp_set_is_empty = imp_set +
   constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"
   fixes is_empty :: "'s \<Rightarrow> bool Heap"
@@ -41,6 +34,12 @@ locale imp_set_ins = imp_set +
   fixes ins :: "'a \<Rightarrow> 's \<Rightarrow> 's Heap"
   assumes ins_rule[sep_heap_rules]: 
     "<is_set s p> ins a p <is_set (Set.insert a s)>\<^sub>t"
+
+locale imp_set_union = imp_set +
+  constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"
+  fixes union :: "'s \<Rightarrow> 's \<Rightarrow> 's Heap"
+  assumes union_rule[sep_heap_rules]: 
+    "<(is_set s p) * (is_set se q)> union p q <\<lambda>r. is_set se q * is_set (s \<union> se) r>\<^sub>t"
     
 locale imp_set_delete = imp_set +
   constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"

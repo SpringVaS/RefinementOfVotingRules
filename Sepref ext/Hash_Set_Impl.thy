@@ -82,6 +82,7 @@ lemma hs_ins_impl: "imp_set_ins is_hashset hs_ins"
   done
 interpretation hs: imp_set_ins is_hashset hs_ins by (rule hs_ins_impl)
 
+
 definition hs_delete
   :: "'a::{heap,hashable} \<Rightarrow> 'a hashset \<Rightarrow> 'a hashset Heap"
   where "hs_delete x ht \<equiv> hm_delete x ht"
@@ -142,6 +143,19 @@ lemma hs_iterate_impl: "imp_set_iterate
 interpretation hs: imp_set_iterate 
   is_hashset hs_is_it hs_it_init hs_it_has_next hs_it_next
   by (rule hs_iterate_impl)
+
+
+definition hs_union:: "('a::{heap,hashable}) hashset \<Rightarrow> ('a::{heap,hashable}) hashset \<Rightarrow> ('a::{heap,hashable}) hashset Heap"
+  where "hs_union a b \<equiv> do { 
+     let hmit = (hs_it_init  a);
+    return a
+    }"
+
+lemma hs_ins_impl: "imp_set_ins is_hashset hs_ins"
+  apply unfold_locales
+  apply (sep_auto heap: hm_update_rule simp: hs_ins_def is_hashset_def)
+  done
+interpretation hs: imp_set_ins is_hashset hs_ins by (rule hs_ins_impl)
 
 export_code hs_new hs_memb hs_ins hs_delete hs_isEmpty hs_size 
   hs_it_init hs_it_has_next hs_it_next
