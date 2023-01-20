@@ -378,7 +378,8 @@ begin
     interpretation bind_set_setup by standard  
     lemmas hnr_op_delete[sepref_fr_rules] = hnr_delete_aux[THEN APAbu,FCOMP op_set_delete.fref[where A="the_pure A"]] 
     lemmas hnr_mop_delete[sepref_fr_rules] = hnr_op_delete[FCOMP mk_mop_rl2_np[OF mop_set_delete_alt]]
-  end  
+end  
+
 
   primrec sorted_wrt' where
     "sorted_wrt' R [] \<longleftrightarrow> True"
@@ -513,7 +514,28 @@ begin
         by (simp add: GEN_ALGO_def to_list_is_to_sorted_list)
 
     end  
+end
+
+locale bind_set_union = imp_set_union +  bind_set +
+assumes is_prime_set_finite: "h \<Turnstile> is_set S x \<Longrightarrow> finite S"
+  begin
+  lemma hnr_union_aux: "(uncurry union, uncurry (RETURN oo op_set_union)) \<in> is_set\<^sup>d *\<^sub>a is_set\<^sup>d \<rightarrow>\<^sub>a is_set"
+    apply (sep_auto intro!: is_prime_set_finite)
+    unfolding invalid_assn_def pure_def pure_assn_def hfref_def
+    apply (solve_sepl_binding) unfolding entails_def apply safe
+    using is_prime_set_finite  pure_def mod_star_conv pure_true mod_starD  pure_assn_def
+     apply auto[1] 
+    using  pure_def mod_star_conv pure_true mod_starD  pure_assn_def
+    apply sep_auto
+    using mod_dist(1) by auto
+
+  interpretation bind_set_setup by standard  
+    lemmas hnr_op_union[sepref_fr_rules] = hnr_union_aux[FCOMP op_set_union.fref[where A="the_pure A"]] 
+    lemmas hnr_mop_union[sepref_fr_rules] = hnr_op_union[FCOMP mk_mop_rl2_np[OF mop_set_union_alt]]
+
   end
+
+
 
   subsubsection \<open>List\<close>
   locale bind_list = imp_list is_list for is_list :: "('ai list) \<Rightarrow> 'm \<Rightarrow> assn" +
@@ -586,21 +608,6 @@ begin
     lemmas hnr_mop[sepref_fr_rules] = hnr[FCOMP mk_mop_rl1[OF mop_list_tl_alt]]
 end
 
-locale bind_set_union = imp_set_union + bind_set
-  begin
-    lemma hnr_union_aux: "(uncurry union, uncurry (RETURN oo op_set_union))\<in>is_set\<^sup>d *\<^sub>a is_set\<^sup>k \<rightarrow>\<^sub>a is_set"
-      unfolding invalid_assn_def pure_def pure_assn_def hn_refine_def
-      apply (sep_auto 
-      intro!: hfrefI hn_refineI[THEN hn_refine_preI] union_rule) 
-        unfolding invalid_assn_def entails_def
-        apply auto
-        using mod_star_conv by auto
-
-    interpretation bind_set_setup by standard  
-    lemmas hnr_op_union[sepref_fr_rules] = hnr_union_aux[THEN APAru, THEN APAru, 
-        FCOMP op_set_union.fref[where A="the_pure A"]] 
-    lemmas hnr_mop_union[sepref_fr_rules] = hnr_op_union[FCOMP mk_mop_rl2_np[OF mop_set_union_alt]]
-  end 
 
 
   locale bind_list_rotate1 = imp_list_rotate + bind_list
@@ -754,7 +761,13 @@ locale bind_set_union = imp_set_union + bind_set
   setup Locale_Code.open_block  
   interpretation hs: bind_set_iterate is_hashset hs_is_it hs_it_init hs_it_has_next hs_it_next for A
     by unfold_locales simp
-  setup Locale_Code.close_block  
+setup Locale_Code.close_block  
+
+  setup Locale_Code.open_block 
+interpretation hs: bind_set_union is_hashset hs_is_it hs_it_init hs_it_has_next hs_it_next hs_union 
+  for A
+    by unfold_locales simp
+setup Locale_Code.close_block  
 
 
   subsection \<open>Open Singly Linked List (osll)\<close>  

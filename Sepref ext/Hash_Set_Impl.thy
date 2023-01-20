@@ -167,7 +167,7 @@ lemma hs_un_it_rule:
     shows "
     < is_it b q it iti * is_set a p> 
       hs_un_it it_has_next it_next set_ins iti p 
-    < \<lambda>r. is_set (a \<union> it) r >\<^sub>t"
+    < \<lambda>r. \<exists>\<^sub>As'. is_set s' r * true * \<up> (s' = a \<union> it) >"
   proof -
     interpret imp_set_iterate is_set is_it it_init it_has_next it_next
         + imp_set_ins is_set set_ins
@@ -178,11 +178,7 @@ lemma hs_un_it_rule:
       case (psubset it)
       show ?case
         apply (subst hs_un_it.simps)
-        apply (sep_auto heap: psubset.IH)
-        unfolding entails_def apply safe
-        apply (metis Un_insert_right insert_Diff)
-        apply (metis (no_types, lifting) assn_times_comm ent_refl_true ent_true_drop(1) return_cons_rule sup_bot_right)
-        done   
+        by (sep_auto heap: psubset.IH)
     qed
   qed
 
@@ -204,7 +200,7 @@ lemma set_union_rule:
     shows "
     <is_set a p * is_set b q>
    union_loop_ins it_init  it_has_next it_next set_ins p q
-    <\<lambda>r. is_set (a \<union> b) r * true>"
+    <\<lambda>r.  \<exists>\<^sub>As'. is_set s' r * true * \<up> (s' = a \<union> b)>"
   proof -
     interpret 
       imp_set_iterate is_set is_it it_init it_has_next it_next
@@ -221,14 +217,20 @@ lemma set_union_rule:
  definition "hs_union 
     \<equiv> union_loop_ins hs_it_init hs_it_has_next hs_it_next hs_ins"
 
+
+
 lemmas hs_union_rule[sep_heap_rules] =
     set_union_rule[OF hs_iterate_impl hs_ins_impl,
     folded hs_union_def] 
 
+lemma hs_union_impl: "imp_set_union 
+is_hashset hs_is_it hs_it_init hs_it_has_next hs_it_next hs_union"
+  apply (unfold_locales)
+  by (sep_auto)
 
-export_code hs_union checking SML_imp
-  
-
+interpretation hs: imp_set_union 
+  is_hashset hs_is_it hs_it_init hs_it_has_next hs_it_next hs_union
+  by (rule hs_union_impl)
 
 
 end

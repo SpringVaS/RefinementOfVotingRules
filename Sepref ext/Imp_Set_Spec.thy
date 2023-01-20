@@ -67,9 +67,9 @@ locale imp_set_iterate = imp_set +
     "is_it s p s' it \<Longrightarrow>\<^sub>A is_set s p * true"
 
 locale imp_set_union = imp_set_iterate +
-  constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"
   fixes union :: "'s \<Rightarrow> 's \<Rightarrow> 's Heap"
   assumes union_rule[sep_heap_rules]: 
-    "<(is_set s p) * (is_set se q)> union p q <\<lambda>r. is_set (s \<union> se) r>\<^sub>t"
+    "finite se \<Longrightarrow> <(is_set s p) * (is_set se q)> union p q <\<lambda>r.  
+    \<exists>\<^sub>As'. is_set s' r * true * \<up> (s' = s \<union> se)>"
 
 end
