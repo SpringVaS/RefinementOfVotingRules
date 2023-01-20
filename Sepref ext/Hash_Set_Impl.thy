@@ -72,12 +72,12 @@ lemma hs_memb_impl: "imp_set_memb is_hashset hs_memb"
     simp: is_hashset_def split: option.split)
   done
 interpretation hs: imp_set_memb is_hashset hs_memb by (rule hs_memb_impl)
-
+             
 definition hs_ins:: "'a::{heap,hashable} \<Rightarrow> 'a hashset \<Rightarrow> 'a hashset Heap"
   where "hs_ins x ht \<equiv> hm_update x () ht"
 
 lemma hs_ins_impl: "imp_set_ins is_hashset hs_ins"
-  apply unfold_locales
+  apply unfold_locales      
   apply (sep_auto heap: hm_update_rule simp: hs_ins_def is_hashset_def)
   done
 interpretation hs: imp_set_ins is_hashset hs_ins by (rule hs_ins_impl)
@@ -140,25 +140,95 @@ lemma hs_iterate_impl: "imp_set_iterate
   apply sep_auto
   apply (sep_auto eintros: hm.quit_iteration)
   done
+
 interpretation hs: imp_set_iterate 
   is_hashset hs_is_it hs_it_init hs_it_has_next hs_it_next
   by (rule hs_iterate_impl)
 
 
-definition hs_union:: "('a::{heap,hashable}) hashset \<Rightarrow> ('a::{heap,hashable}) hashset \<Rightarrow> ('a::{heap,hashable}) hashset Heap"
-  where "hs_union a b \<equiv> do { 
-     let hmit = (hs_it_init  a);
-    return a
+
+partial_function (heap) hs_un_it
+  where [code]: "hs_un_it 
+    it_has_next it_next set_ins it a = do {
+      co \<leftarrow> it_has_next it;
+      if co then do {
+        (x,it') \<leftarrow> it_next it;
+        insx <- set_ins x a;
+        hs_un_it it_has_next it_next set_ins it' (insx) 
+      } else return a
     }"
 
-lemma hs_ins_impl: "imp_set_ins is_hashset hs_ins"
-  apply unfold_locales
-  apply (sep_auto heap: hm_update_rule simp: hs_ins_def is_hashset_def)
-  done
-interpretation hs: imp_set_ins is_hashset hs_ins by (rule hs_ins_impl)
 
-export_code hs_new hs_memb hs_ins hs_delete hs_isEmpty hs_size 
-  hs_it_init hs_it_has_next hs_it_next
-  checking SML_imp
+
+lemma hs_un_it_rule:
+    assumes "imp_set_iterate is_set is_it it_init it_has_next it_next"
+    assumes "imp_set_ins is_set set_ins"
+    assumes FIN: "finite it"
+    shows "
+    < is_it b q it iti * is_set a p> 
+      hs_un_it it_has_next it_next set_ins iti p 
+    < \<lambda>r. is_set (a \<union> it) r >\<^sub>t"
+  proof -
+    interpret imp_set_iterate is_set is_it it_init it_has_next it_next
+        + imp_set_ins is_set set_ins
+      by fact+
+
+    from FIN show ?thesis
+    proof (induction  arbitrary: a p iti rule: finite_psubset_induct)
+      case (psubset it)
+      show ?case
+        apply (subst hs_un_it.simps)
+        apply (sep_auto heap: psubset.IH)
+        unfolding entails_def apply safe
+        apply (metis Un_insert_right insert_Diff)
+        apply (metis (no_types, lifting) assn_times_comm ent_refl_true ent_true_drop(1) return_cons_rule sup_bot_right)
+        done   
+    qed
+  qed
+
+
+ 
+
+definition union_loop_ins  where 
+"union_loop_ins it_init it_has_next it_next set_ins a b \<equiv> do { 
+    it <- (it_init b);
+    hs_un_it it_has_next it_next set_ins it a
+    }"
+
+
+
+lemma set_union_rule:
+    assumes IT: "imp_set_iterate is_set is_it it_init it_has_next it_next"
+    assumes INS: "imp_set_ins is_set set_ins"
+    assumes finb: "finite b"
+    shows "
+    <is_set a p * is_set b q>
+   union_loop_ins it_init  it_has_next it_next set_ins p q
+    <\<lambda>r. is_set (a \<union> b) r * true>"
+  proof -
+    interpret 
+      imp_set_iterate is_set is_it it_init it_has_next it_next
+        + imp_set_ins is_set set_ins
+      by fact+
+
+    note it_aux[sep_heap_rules] = hs_un_it_rule[OF IT INS finb]
+    show ?thesis
+      unfolding union_loop_ins_def
+       apply (sep_auto)
+      done
+  qed
+
+ definition "hs_union 
+    \<equiv> union_loop_ins hs_it_init hs_it_has_next hs_it_next hs_ins"
+
+lemmas hs_union_rule[sep_heap_rules] =
+    set_union_rule[OF hs_iterate_impl hs_ins_impl,
+    folded hs_union_def] 
+
+
+export_code hs_union checking SML_imp
+  
+
+
 
 end

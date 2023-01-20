@@ -35,11 +35,7 @@ locale imp_set_ins = imp_set +
   assumes ins_rule[sep_heap_rules]: 
     "<is_set s p> ins a p <is_set (Set.insert a s)>\<^sub>t"
 
-locale imp_set_union = imp_set +
-  constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"
-  fixes union :: "'s \<Rightarrow> 's \<Rightarrow> 's Heap"
-  assumes union_rule[sep_heap_rules]: 
-    "<(is_set s p) * (is_set se q)> union p q <\<lambda>r. is_set se q * is_set (s \<union> se) r>\<^sub>t"
+
     
 locale imp_set_delete = imp_set +
   constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"
@@ -69,5 +65,11 @@ locale imp_set_iterate = imp_set +
     "<is_it s p s' it> it_has_next it <\<lambda>r. is_it s p s' it * \<up>(r\<longleftrightarrow>s'\<noteq>{})>\<^sub>t"
   assumes quit_iteration:
     "is_it s p s' it \<Longrightarrow>\<^sub>A is_set s p * true"
+
+locale imp_set_union = imp_set_iterate +
+  constrains is_set :: "'a set \<Rightarrow> 's \<Rightarrow> assn"
+  fixes union :: "'s \<Rightarrow> 's \<Rightarrow> 's Heap"
+  assumes union_rule[sep_heap_rules]: 
+    "<(is_set s p) * (is_set se q)> union p q <\<lambda>r. is_set (s \<union> se) r>\<^sub>t"
 
 end
