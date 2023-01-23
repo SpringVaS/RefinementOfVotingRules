@@ -14,7 +14,7 @@ abbreviation elec_mod_relb :: "('a Electoral_Module_Ref \<times> ('a set \<Right
 
 definition em_rel :: "('a Electoral_Module_Ref \<times> 'a Electoral_Module) set" 
   where em_rel_def:
-  "em_rel \<equiv> {(emref,em).(emref, (\<lambda> A pro. SPEC (\<lambda> res. res = (em A pro)))) 
+  "em_rel \<equiv> {(emref,em).(emref, RETURN oo em) 
   \<in> elec_mod_relb}"
 
 definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
@@ -61,7 +61,7 @@ shows "(elect_monadic, (\<lambda> e A p. SPEC (\<lambda> rem. rem = (elect e A p
   apply clarify
   oops
 
-locale sepref_access =
+locale parameter_module =
   fixes mod1 :: "nat Electoral_Module_Ref"
   fixes mod1_impl :: "(nat, unit) hashtable
       \<Rightarrow> (nat array \<times> nat) list
@@ -72,7 +72,7 @@ locale sepref_access =
 
 begin
 
-  lemma this_loc: "sepref_access mod1 mod1_impl" by unfold_locales
+  lemma this_loc: "parameter_module mod1 mod1_impl" by unfold_locales
 
 
 sepref_register "mod1" :: "nat Electoral_Module_Ref"
@@ -84,7 +84,7 @@ schematic_goal elect_impl:
   unfolding elect_monadic_def
   by sepref
 
-concrete_definition (in -) elect_sep uses sepref_access.elect_impl
+concrete_definition (in -) elect_sep uses parameter_module.elect_impl
   prepare_code_thms (in -) elect_sep_def
 lemmas elect_impl_refine = elect_sep.refine[OF this_loc]
 
@@ -93,7 +93,7 @@ schematic_goal defer_impl:
   unfolding defer_monadic_def
   by sepref
 
-concrete_definition (in -) defer_sep uses sepref_access.defer_impl
+concrete_definition (in -) defer_sep uses parameter_module.defer_impl
   prepare_code_thms (in -) defer_sep_def
   lemmas defer_impl_refine = defer_sep.refine[OF this_loc]
 
@@ -102,7 +102,7 @@ schematic_goal reject_impl:
   unfolding reject_monadic_def
   by sepref
 
-concrete_definition (in -) reject_sep uses sepref_access.reject_impl
+concrete_definition (in -) reject_sep uses parameter_module.reject_impl
   prepare_code_thms (in -) reject_sep_def
   lemmas reject_impl_refine = reject_sep.refine[OF this_loc]
 

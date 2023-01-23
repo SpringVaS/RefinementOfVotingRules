@@ -43,7 +43,7 @@ proof (clarify, refine_rcg, unfold borda_score_mon.simps borda_score.simps,
 qed
 
 
-theorem borda_ref_correct:          
+lemma borda_ref_correct:          
   shows "(borda_monadic,(\<lambda> A p. SPEC (\<lambda> em. em = borda A p))) \<in> elec_mod_relb"
   unfolding borda_monadic_def borda.simps
 proof (clarify, rename_tac A' A pl pr)
@@ -74,11 +74,20 @@ proof (clarify, rename_tac A' A pl pr)
 qed 
 
 theorem borda_ref_return:
-  shows "(borda_monadic, RETURN oo borda) \<in> elec_mod_relb"
-  apply (refine_vcg  )
+  shows "(borda_monadic,borda) \<in> em_rel"
+  unfolding em_rel_def
+proof (clarify,refine_vcg, rename_tac A' A pl pr)
+  fix A' A:: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume prel: " (pl, pr) \<in> profile_rel"
+  from arel prel show " borda_monadic A' pl \<le> \<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
+        ((RETURN \<circ>\<circ> borda) A pr)"
   using borda_ref_correct[THEN fun_relD, THEN fun_relD, THEN nres_relD]
     SPEC_eq_is_RETURN(2) push_in_let_conv(2)
   by (metis relAPP_def set_rel_id_simp)
+qed
 
 sepref_definition borda_elim_sepref is
   "uncurry borda_monadic":: 

@@ -3,36 +3,6 @@ theory Sequential_Composition_Ref
         "Verified_Voting_Rule_Construction.Sequential_Composition"
 begin
 
-definition custom_mon_set_uniond :: "'a set \<Rightarrow> 'a set \<Rightarrow> 'a set nres" where
-  "custom_mon_set_uniond A B \<equiv> do {
-  FOREACH B
-     (\<lambda> x (union). RETURN (insert x union)) A
-  }"
-
-lemma custom_mon_set_union_correct:
-  fixes A :: "'a set"
-  assumes fina: "finite A"
-   fixes B :: "'a set"
-  assumes finb: "finite B"
-  shows "custom_mon_set_uniond A B \<le> SPEC (\<lambda> union. union = A \<union> B)"
-  unfolding custom_mon_set_uniond_def
-  apply (refine_vcg FOREACH_rule[where I = "\<lambda> it u. u = A \<union> (B-it)"])
-  by (auto simp add: fina finb)
-
-lemma hs_union_aref: 
-  fixes A :: " ('a \<times> 'b) set"
-  shows "((\<union>), op_set_union) \<in> \<langle>A\<rangle>set_rel \<rightarrow> \<langle>A\<rangle>set_rel \<rightarrow> \<langle>A\<rangle>set_rel"
-  unfolding op_set_union_def
-  apply (refine_vcg)
-  by (auto simp add: set_rel_def)
-  
-
-sepref_definition hs_uniondf is 
-  "uncurry custom_mon_set_uniond" :: "alts_set_impl_assn\<^sup>d *\<^sub>a alts_set_impl_assn\<^sup>k 
-  \<rightarrow>\<^sub>a alts_set_impl_assn"
-  unfolding custom_mon_set_uniond_def
-  by sepref
-
 
 definition sequential_composition_mon :: "'a Electoral_Module_Ref \<Rightarrow> 'a Electoral_Module_Ref \<Rightarrow>
         'a Electoral_Module_Ref" where
@@ -59,12 +29,12 @@ definition sequential_composition_mon :: "'a Electoral_Module_Ref \<Rightarrow> 
 *)
 
 
-definition seqt :: 
-   "nat Electoral_Module_Ref \<Rightarrow> nat Electoral_Module_Ref" where
-"seqt m A p = do {
-     electmA <- (elect_monadic m) A p;
-     RETURN(electmA,{},{})
-}"
+abbreviation sequence_ref ::
+  "'a Electoral_Module_Ref \<Rightarrow> 'a Electoral_Module_Ref \<Rightarrow> 'a Electoral_Module_Ref"
+     (infix "\<triangleright>r" 50) where
+  "m \<triangleright>r n \<equiv> sequential_composition_mon m n"
+
+
 
 locale seqcomp_impl =
   fixes m :: "nat Electoral_Module_Ref"
@@ -105,8 +75,9 @@ sepref_definition seqt_imp is
 
 thm seqt_imp_def
 
-end
 
+
+end
 
 
 end

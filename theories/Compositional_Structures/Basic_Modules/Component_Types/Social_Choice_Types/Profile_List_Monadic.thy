@@ -454,11 +454,10 @@ definition wc_foreach_top:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat 
 
 lemma wc_foreach_top_refine_os: 
   fixes A:: "'a set"
-  assumes "profile_l A pl"
   shows "wc_foreach_top pl a \<le> \<Down> Id (wc_foreach_list_rank pl a)"
   unfolding wc_foreach_list_rank_def f_inner_list_def wc_foreach_top_def 
   FOREACH_cond_def FOREACH_body_def
-  using assms apply (refine_vcg wc_foreach_list_rank_refine initrel)
+  apply (refine_vcg wc_foreach_list_rank_refine initrel)
   apply (simp_all only: refine_rel_defs pl_to_pr_\<alpha>_def)
   apply refine_dref_type
   apply auto
