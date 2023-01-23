@@ -7,10 +7,6 @@ begin
  \<comment> \<open>The elect module should not return just the reference to all alternatives
   but a deep copy\<close>
 
-
-
-
-
 fun elect_module_ref :: "'a Electoral_Module_Ref" where
   "elect_module_ref A p = do {
    B <- aux_set_copy A;
@@ -19,7 +15,7 @@ fun elect_module_ref :: "'a Electoral_Module_Ref" where
 
 lemma elect_module_ref_correct:
   shows "(elect_module_ref, (\<lambda> A p. SPEC (\<lambda> res. res= elect_module A p)))
-      \<in> elec_mod_relb"
+      \<in> elec_mod_relb Id"
   unfolding elect_module_ref.simps elect_module.simps aux_set_copy_def
   apply (intro fun_relI)
 proof (rename_tac A' A pl pr)

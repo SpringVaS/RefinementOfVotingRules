@@ -61,7 +61,7 @@ definition eliminate:: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarro
 definition elimination_module_ref :: 
 "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
 Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref " 
-  where
+  where                              
   "elimination_module_ref scores threshold r A p \<equiv> do {
     (rej, def) <- eliminate scores threshold r A;
    if (def = {}) then

@@ -44,7 +44,7 @@ qed
 
 
 lemma borda_ref_correct:          
-  shows "(borda_monadic,(\<lambda> A p. SPEC (\<lambda> em. em = borda A p))) \<in> elec_mod_relb"
+  shows "(borda_monadic,(\<lambda> A p. SPEC (\<lambda> em. em = borda A p))) \<in> elec_mod_relb Id"
   unfolding borda_monadic_def borda.simps
 proof (clarify, rename_tac A' A pl pr)
   fix A' A:: "'a set"
@@ -74,7 +74,7 @@ proof (clarify, rename_tac A' A pl pr)
 qed 
 
 theorem borda_ref_return:
-  shows "(borda_monadic,borda) \<in> em_rel"
+  shows "(borda_monadic,borda) \<in> \<langle>Id\<rangle>em_rel"
   unfolding em_rel_def
 proof (clarify,refine_vcg, rename_tac A' A pl pr)
   fix A' A:: "'a set"

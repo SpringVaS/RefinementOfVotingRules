@@ -882,7 +882,7 @@ lemma cond_winner_unique3_l:
 
 find_theorems nfoldli
 
-fun limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
+definition limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
   "limit_profile_l A p = 
     nfoldli p (\<lambda>_. True)
       (\<lambda> x np. do {
@@ -896,12 +896,12 @@ fun limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Pr
 
 sepref_definition limit_sep is "uncurry (limit_profile_l)" :: 
   "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn nat_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (arl_assn nat_assn))"
-  unfolding limit_profile_l.simps limit_monadic_def
+  unfolding limit_profile_l_def limit_monadic_def
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
   apply (rewrite in "WHILEIT _ _ _ \<hole>" arl.fold_custom_empty)
   by sepref
 
-lemma "limitp_refine":
+lemma "limitp_correct":
   shows "(limit_profile_l, RETURN oo limit_profile) \<in> 
       \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
   sorry

@@ -1,6 +1,7 @@
 theory Sequential_Composition_Ref
   imports "Basic_Modules/Component_Types/Electoral_Module_Ref"
-        "Verified_Voting_Rule_Construction.Sequential_Composition"
+        Verified_Voting_Rule_Construction.Sequential_Composition
+        Refine_Imperative_HOL.Sepref
 begin
 
 
@@ -34,7 +35,13 @@ abbreviation sequence_ref ::
      (infix "\<triangleright>r" 50) where
   "m \<triangleright>r n \<equiv> sequential_composition_mon m n"
 
-
+lemma sequence_ref_correct:
+  shows "(sequence_ref, sequence) \<in> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel"
+  apply (refine_vcg)
+  unfolding em_rel_def sequential_composition_mon_def
+  apply (auto)
+  apply (refine_vcg)
+  using  limitp_correct  elect_monadic_correct reject_monadic_correct defer_monadic_correct
 
 locale seqcomp_impl =
   fixes m :: "nat Electoral_Module_Ref"
@@ -64,20 +71,32 @@ declare m_impl [sepref_fr_rules]
 declare n_impl [sepref_fr_rules]
 
 
-sepref_definition seqt_imp is
-  "(uncurry (sequential_composition_mon m n))" 
-    :: "alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (result_impl_assn)"
+
+
+
+schematic_goal seqt_imp:
+  "(uncurry ?c, (uncurry (sequential_composition_mon m n))) 
+    \<in> alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (result_impl_assn)"
   unfolding sequential_composition_mon_def elect_monadic_def defer_monadic_def reject_monadic_def
     limit_profile_l.simps limit_monadic_def
   apply (rewrite in "WHILEIT _ _ _ (_,\<hole>)" arl.fold_custom_empty )
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty )
   by sepref
 
+
+concrete_definition (in -) seqt_imp uses seqcomp_impl.seqt_imp
+  prepare_code_thms (in -) seqt_imp_def
+lemmas seqt_imp_refine = seqt_imp.refine[OF this_loc]
+
+term "\<langle>\<langle>A\<rangle>em_rel,\<langle>\<langle>A\<rangle>em_rel, \<langle>A\<rangle>em_rel\<rangle>fun_rel\<rangle>fun_rel"
+
+
 thm seqt_imp_def
 
 
+end 
 
-end
-
+thm "seqt_imp_def"
+thm "seqt_imp.refine"
 
 end
