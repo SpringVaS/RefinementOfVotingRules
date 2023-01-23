@@ -103,6 +103,8 @@ sepref_definition seqt_imp is
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty )
   by sepref
 
+thm seqt_imp_def
+
 end
 
 

@@ -29,26 +29,7 @@ lemma aux_set_copy_correct:
   apply (refine_vcg FOREACH_rule[where I = "\<lambda>it s. s = A - it"])
   by (auto simp add: fina)
 
-sepref_decl_op set_copy: replicate :: "A \<rightarrow> A \<rightarrow> \<langle>A\<rangle>set_rel" .
 
-
-abbreviation "ballot_impl_assn \<equiv> (arl_assn nat_assn)"
-
-abbreviation "profile_impl_assn \<equiv> (list_assn ballot_impl_assn)"
-
-abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
-
-abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
-
-definition "alts_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>nat_rel\<rangle>alt_set_rel)"
-
-definition "ballot_assn \<equiv> (hr_comp ballot_impl_assn ballot_rel)"
-
-definition "profile_assn \<equiv> (list_assn ballot_assn)"
-
-abbreviation "result_assn \<equiv> alts_assn \<times>\<^sub>a
-                              alts_assn \<times>\<^sub>a
-                               alts_assn"
 
 definition elect_monadic ::
   "'a Electoral_Module_Ref \<Rightarrow> 'a set \<Rightarrow> 'a  Profile_List \<Rightarrow> 'a set nres" where

@@ -586,6 +586,8 @@ fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> b
   "wins_l x p y =
     (prefer_count_l p x y > prefer_count_l p y x)"
 
+
+
 fun condorcet_winner_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
   "condorcet_winner_l A p w =
       (finite A \<and> profile_l A p \<and>  w \<in> A \<and> (\<forall> x \<in> A - {w} . wins_l w p x))"
@@ -659,6 +661,24 @@ theorem prefer_count_monadic_imp_correct:
       where x10 = pl and x5 = pl and x'5 = pr] refine_IdD
   by (metis IdI)
 
+lemma prefer_count_monadic_correct_rel:
+  shows "(prefer_count_monadic_imp, RETURN ooo prefer_count)
+    \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  apply (refine_vcg)
+  apply clarify
+  using  prefer_count_monadic_imp_correct SPEC_eq_is_RETURN(2) comp_apply refine_IdI
+  by (metis)
+  
+  
+
+definition wins_monadic :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
+  "wins_monadic x p y \<equiv> do {
+    pxy <- prefer_count_monadic_imp p x y;
+    pyx <- prefer_count_monadic_imp p y x;
+    RETURN (pxy > pyx)
+}"
+
+
 lemma prefer_count_l_correct:
   shows "(prefer_count_l, prefer_count)
     \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> nat_rel"
@@ -678,6 +698,20 @@ proof (standard, standard, rename_tac a b)
   from meq show "prefer_count_l pl a b = prefer_count pr a b"
     by simp
 qed
+
+lemma wins_monadic_correct:
+  shows "(wins_monadic, RETURN ooo wins) \<in> Id \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding wins_monadic_def wins.simps
+  apply (clarsimp simp del: prefer_count.simps)
+  apply (refine_vcg prefer_count_monadic_imp_correct)
+  by (auto)  
+
+sepref_definition wins_imp is "uncurry2 wins_monadic" ::
+  "(nat_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
+  unfolding wins_monadic_def prefer_count_monadic_imp_def is_less_preferred_than_mon_def
+  rank_mon_def index_mon_def
+  apply sepref_dbg_keep
+  done
 
 lemma wins_l_correct:
   shows "(wins_l, wins)
@@ -766,6 +800,43 @@ next
   from altwins a2 this show "con = alt" by blast
 qed
 
+definition condorcet_winner_monadic :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
+  "condorcet_winner_monadic A p w \<equiv>
+    FOREACH A
+        (\<lambda> x b. do {
+         winswx <- wins_monadic w p x;
+         RETURN (b \<and> ((x = w) \<or> winswx))
+        }) True"
+
+sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic" 
+  :: "(alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+  unfolding condorcet_winner_monadic_def wins_monadic_def prefer_count_monadic_imp_def 
+    is_less_preferred_than_mon_def
+  rank_mon_def index_mon_def 
+  apply sepref_dbg_keep
+  done
+
+lemma condorcet_winner_monadic_correct:
+  shows "(condorcet_winner_monadic, RETURN ooo condorcet_winner) 
+  \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel"
+  unfolding condorcet_winner_monadic_def
+  apply (refine_vcg FOREACHc_rule[where I = "\<lambda> it b. b = condorcet_winner (A - it) p w"])
+proof (clarsimp simp del: wins.simps, rename_tac A' A pl pr winner)
+  fix A' A :: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"  
+  fix winner :: 'a
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume prel: "(pl, pr) \<in> profile_rel"
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  show "FOREACH A'  (\<lambda>x b. wins_monadic winner pl x \<bind> (\<lambda>winswx. RETURN (b \<and> (x = winner \<or> winswx)))) True
+       \<le> RETURN (finite A \<and> profile A pr \<and> winner \<in> A \<and> (\<forall>x\<in>A - {winner}. wins winner pr x))"
+    apply (refine_vcg FOREACH_rule[where I = "\<lambda> it b. b = condorcet_winner (A - it) pr winner"])
+        apply (simp add: fina)
+      apply (auto simp add: aeq fina)[1]
+    oops
+    
 lemma cond_winner_l_unique:
   fixes A:: "'a set" 
   fixes pl :: "'a Profile_List"
