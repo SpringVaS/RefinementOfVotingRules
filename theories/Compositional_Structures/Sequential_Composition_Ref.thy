@@ -29,74 +29,168 @@ definition sequential_composition_mon :: "'a Electoral_Module_Ref \<Rightarrow> 
 
 *)
 
+find_theorems Id
 
-abbreviation sequence_ref ::
-  "'a Electoral_Module_Ref \<Rightarrow> 'a Electoral_Module_Ref \<Rightarrow> 'a Electoral_Module_Ref"
-     (infix "\<triangleright>r" 50) where
-  "m \<triangleright>r n \<equiv> sequential_composition_mon m n"
 
 lemma sequence_ref_correct:
-  shows "(sequence_ref, sequence) \<in> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel"
+  shows "(sequential_composition_mon, sequential_composition) \<in> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel"
   apply (refine_vcg)
-  unfolding em_rel_def sequential_composition_mon_def
-  apply (auto)
-  apply (refine_vcg)
-  using  limitp_correct  elect_monadic_correct reject_monadic_correct defer_monadic_correct
+  unfolding  sequential_composition_mon_def sequential_composition.simps
+  apply (rename_tac m_ref m n_ref n)
+proof (-)
+  fix m_ref n_ref :: "'a Electoral_Module_Ref"
+  fix m n :: "'a Electoral_Module"
+  assume m_refine: "(m_ref, m) \<in> \<langle>Id\<rangle>em_rel"
+  assume n_refine: "(n_ref, n) \<in> \<langle>Id\<rangle>em_rel"
+  show "((\<lambda>A p. defer_monadic m_ref A p \<bind>
+               (\<lambda>new_A.
+                   limit_profile_l A p \<bind>
+                   (\<lambda>new_p.
+                       elect_monadic m_ref A p \<bind>
+                       (\<lambda>electmA.
+                           elect_monadic n_ref new_A new_p \<bind>
+                           (\<lambda>electnA'.
+                               reject_monadic m_ref A p \<bind>
+                               (\<lambda>rejectmA.
+                                   reject_monadic n_ref new_A new_p \<bind>
+                                   (\<lambda>rejectnA'.
+                                       defer_monadic n_ref new_A new_p \<bind>
+                                       (\<lambda>defernA'.
+                                           RETURN
+                                            (electmA \<union> electnA', rejectmA \<union> rejectnA', defernA')))))))),
+        \<lambda>A p. let new_A = defer m A p; new_p = limit_profile new_A p
+               in (elect m A p \<union> elect n new_A new_p, reject m A p \<union> reject n new_A new_p,
+                   defer n new_A new_p))
+       \<in> \<langle>Id\<rangle>em_rel)"
+
+  proof (unfold em_rel_def, (clarsimp simp del: limit_profile.simps), refine_vcg, rename_tac A' A pl pr)
+     fix A' A :: "'a set"
+     fix pl :: "'a Profile_List"
+     fix pr :: "'a Profile"
+     assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+     assume prel: "(pl, pr) \<in> profile_rel"
+     from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+     from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+     from m_refine arel prel  have "defer_monadic m_ref A' pl \<le> SPEC (\<lambda> defset. defset = defer m A pr)"
+       using defer_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD,
+           where x3 = m_ref and x'3 = m and x2 = A' and x'2 = A and x1 = pl and x'1 = pr]
+               set_rel_id_simp comp_apply SPEC_eq_is_RETURN(2)[symmetric] refine_IdD
+       by metis
+       
+     from arel prel m_refine n_refine show "defer_monadic m_ref A' pl
+       \<le> SPEC (\<lambda>new_A.
+                   limit_profile_l A' pl \<bind>
+                   (\<lambda>new_p.
+                       elect_monadic m_ref A' pl \<bind>
+                       (\<lambda>electmA.
+                           elect_monadic n_ref new_A new_p \<bind>
+                           (\<lambda>electnA'.
+                               reject_monadic m_ref A' pl \<bind>
+                               (\<lambda>rejectmA.
+                                   reject_monadic n_ref new_A new_p \<bind>
+                                   (\<lambda>rejectnA'.
+                                       defer_monadic n_ref new_A new_p \<bind>
+                                       (\<lambda>defernA'.
+                                           RETURN
+                                            (electmA \<union> electnA', rejectmA \<union> rejectnA', defernA')))))))
+                   \<le> SPEC (\<lambda>c. (c, let new_A = defer m A pr; new_p = limit_profile new_A pr
+                                    in (elect m A pr \<union> elect n new_A new_p,
+                                        reject m A pr \<union> reject n new_A new_p, defer n new_A new_p))
+                                \<in> Id))"
+       using limitp_correct[THEN fun_relD, THEN fun_relD, THEN nres_relD]
+         elect_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
+         set_rel_id_simp comp_apply SPEC_eq_is_RETURN(2)
+         reject_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
+         defer_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
+        specify_left
+       sorry
+   qed
+ qed
+
+lemma refine_params:
+  assumes "(m_ref, m) \<in> \<langle>Id\<rangle>em_rel" and
+    "(n_ref, n) \<in> \<langle>Id\<rangle>em_rel"
+  shows "(sequential_composition_mon  m_ref n_ref,   RETURN oo (m \<triangleright> n))
+\<in> (elec_mod_relb Id)"
+proof (refine_vcg, rename_tac A' A pl pr)
+  fix A' A :: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume prel: "(pl, pr) \<in> profile_rel"
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  have "(sequential_composition_mon m_ref n_ref, m \<triangleright> n)
+    \<in> {(emref, em). (emref, RETURN \<circ>\<circ> em) \<in> elec_mod_relb Id}"
+    using assms sequence_ref_correct[THEN fun_relD, THEN fun_relD]
+    unfolding em_rel_def by simp
+  from this have "(sequential_composition_mon m_ref n_ref, RETURN oo (m \<triangleright> n)) \<in> elec_mod_relb Id"
+    unfolding em_rel_def
+    by simp
+  from arel prel this[THEN fun_relD,THEN fun_relD, THEN nres_relD]
+  show "  sequential_composition_mon m_ref n_ref A' pl
+       \<le> \<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) ((RETURN \<circ>\<circ>\<circ> (\<triangleright>) m) n A pr)"
+    by fastforce
+qed
+
 
 locale seqcomp_impl =
-  fixes m :: "nat Electoral_Module_Ref"
+  fixes m_ref :: "nat Electoral_Module_Ref"
   fixes m_impl :: "(nat, unit) hashtable
       \<Rightarrow> (nat array \<times> nat) list
          \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
-  fixes n :: "nat Electoral_Module_Ref"
+  fixes n_ref :: "nat Electoral_Module_Ref"
   fixes n_impl :: "(nat, unit) hashtable
       \<Rightarrow> (nat array \<times> nat) list
          \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
   assumes 
-    m_impl: "(uncurry m_impl, uncurry m)
+    m_impl: "(uncurry m_impl, uncurry m_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"  
     and
-    n_impl: "(uncurry n_impl, uncurry n)
+    n_impl: "(uncurry n_impl, uncurry n_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
 
 begin
 
-  lemma this_loc: "seqcomp_impl m m_impl n n_impl" by unfold_locales
+  lemma this_loc: "seqcomp_impl m_ref m_impl n_ref n_impl" by unfold_locales
 
 
-sepref_register "m" :: "nat Electoral_Module_Ref"
-sepref_register "n" :: "nat Electoral_Module_Ref"
+sepref_register "m_ref" :: "nat Electoral_Module_Ref"
+sepref_register "n_ref" :: "nat Electoral_Module_Ref"
 
 declare m_impl [sepref_fr_rules]
 declare n_impl [sepref_fr_rules]
 
 
-
-
-
-schematic_goal seqt_imp:
-  "(uncurry ?c, (uncurry (sequential_composition_mon m n))) 
+schematic_goal seqcomp_imp:
+  "(uncurry ?c, (uncurry (sequential_composition_mon m_ref n_ref))) 
     \<in> alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (result_impl_assn)"
   unfolding sequential_composition_mon_def elect_monadic_def defer_monadic_def reject_monadic_def
-    limit_profile_l.simps limit_monadic_def
+    limit_profile_l_def limit_monadic_def
   apply (rewrite in "WHILEIT _ _ _ (_,\<hole>)" arl.fold_custom_empty )
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty )
   by sepref
 
 
-concrete_definition (in -) seqt_imp uses seqcomp_impl.seqt_imp
-  prepare_code_thms (in -) seqt_imp_def
-lemmas seqt_imp_refine = seqt_imp.refine[OF this_loc]
-
-term "\<langle>\<langle>A\<rangle>em_rel,\<langle>\<langle>A\<rangle>em_rel, \<langle>A\<rangle>em_rel\<rangle>fun_rel\<rangle>fun_rel"
+concrete_definition (in -) sequetial_composition_sep uses seqcomp_impl.seqcomp_imp
+  prepare_code_thms (in -) sequetial_composition_sep_def
+lemmas seqt_imp_refine = sequetial_composition_sep.refine[OF this_loc]
 
 
-thm seqt_imp_def
+lemmas seqt_imp_correct = seqt_imp_refine[FCOMP refine_params]
+
+
+thm sequetial_composition_sep_def
 
 
 end 
 
-thm "seqt_imp_def"
-thm "seqt_imp.refine"
+
+abbreviation sequence_sep
+     (infix "\<triangleright>sep" 50) where
+  "m \<triangleright>sep n \<equiv> sequetial_composition_sep m n"
+
+lemmas seqt_imp_correct = sequetial_composition_sep.refine[FCOMP refine_params]
+
 
 end

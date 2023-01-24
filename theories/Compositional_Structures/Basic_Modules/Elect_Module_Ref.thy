@@ -14,7 +14,7 @@ fun elect_module_ref :: "'a Electoral_Module_Ref" where
 }"
 
 lemma elect_module_ref_correct:
-  shows "(elect_module_ref, (\<lambda> A p. SPEC (\<lambda> res. res= elect_module A p)))
+  shows "(elect_module_ref, (\<lambda> A p. SPEC (\<lambda> res. res = elect_module A p)))
       \<in> elec_mod_relb Id"
   unfolding elect_module_ref.simps elect_module.simps aux_set_copy_def
   apply (intro fun_relI)
@@ -41,13 +41,15 @@ qed
 
   
 
-sepref_definition elect_sepref is 
+sepref_definition elect_module_sep is 
   "uncurry elect_module_ref" :: "(alts_set_impl_assn)\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k
     \<rightarrow>\<^sub>a (result_impl_assn)"
   unfolding elect_module_ref.simps aux_set_copy_def
   apply (rewrite in "\<hole>" hs.fold_custom_empty)+
   by sepref
 
-lemmas elect_sepref_correct = elect_sepref.refine[FCOMP elect_module_ref_correct]
+
+
+lemmas elect_elect_module_sep_correct = elect_module_sep.refine[FCOMP elect_module_ref_correct]
 
 end

@@ -130,7 +130,7 @@ qed
 
 
 
-locale parameter_module =
+locale set_select_imp =
   fixes mod1_ref :: "nat Electoral_Module_Ref"
   fixes mod1_impl :: "(nat, unit) hashtable
       \<Rightarrow> (nat array \<times> nat) list
@@ -141,7 +141,7 @@ locale parameter_module =
 
 begin
 
-  lemma this_loc: "parameter_module mod1_ref mod1_impl" by unfold_locales
+  lemma this_loc: "set_select_imp mod1_ref mod1_impl" by unfold_locales
 
 
 sepref_register "mod1_ref" :: "nat Electoral_Module_Ref"
@@ -155,7 +155,7 @@ schematic_goal elect_impl:
   by sepref
 
 
-concrete_definition (in -) elect_sep uses parameter_module.elect_impl
+concrete_definition (in -) elect_sep uses set_select_imp.elect_impl
   prepare_code_thms (in -) elect_sep_def
 lemmas elect_impl_refine = elect_sep.refine[OF this_loc]
 
@@ -168,7 +168,7 @@ schematic_goal defer_impl:
   unfolding defer_monadic_def
   by sepref
 
-concrete_definition (in -) defer_sep uses parameter_module.defer_impl
+concrete_definition (in -) defer_sep uses set_select_imp.defer_impl
   prepare_code_thms (in -) defer_sep_def
   lemmas defer_impl_refine = defer_sep.refine[OF this_loc]
 
@@ -177,14 +177,14 @@ schematic_goal reject_impl:
   unfolding reject_monadic_def
   by sepref
 
-concrete_definition (in -) reject_sep uses parameter_module.reject_impl
+concrete_definition (in -) reject_sep uses set_select_imp.reject_impl
   prepare_code_thms (in -) reject_sep_def
   lemmas reject_impl_refine = reject_sep.refine[OF this_loc]
 
 
 end
 
-thm "elect_sep_def"
+term "elect_sep"
 thm "elect_sep.refine"
 
 
