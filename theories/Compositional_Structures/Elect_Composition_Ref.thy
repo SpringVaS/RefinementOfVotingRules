@@ -8,6 +8,8 @@ begin
 definition  
   "elector_sep m \<equiv> m \<triangleright>sep elect_module_sep"
 
+thm "elector_sep_def"
+
 lemma elector_sep_impl: "seqcomp_impl m_ref m_impl elect_module_ref elect_module_sep"
   apply unfold_locales
 proof -
@@ -18,6 +20,8 @@ proof -
 next
 
   oops
+
+
 
 interpretation electori:  seqcomp_impl m_ref m_impl elect_module_ref elect_module_sep
 

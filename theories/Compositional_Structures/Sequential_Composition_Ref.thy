@@ -189,7 +189,7 @@ end
 abbreviation sequence_sep
      (infix "\<triangleright>sep" 50) where
   "m \<triangleright>sep n \<equiv> sequetial_composition_sep m n"
-
+                                                                      
 lemmas seqt_imp_correct = sequetial_composition_sep.refine[FCOMP refine_params]
 
 

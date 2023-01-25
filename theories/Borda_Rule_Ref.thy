@@ -4,8 +4,8 @@ theory Borda_Rule_Ref
           "Compositional_Structures/Elect_Composition_Ref"              
 begin
 
-definition borda_rule_ref :: "'a Electoral_Module_Ref" where
-  "borda_rule_ref A p \<equiv> elector_ref borda_monadic A p"
+definition borda_rule_sep where
+  "borda_rule_sep A p \<equiv> elector_sep borda_elim_sepref (A, p)"
 
 
 end

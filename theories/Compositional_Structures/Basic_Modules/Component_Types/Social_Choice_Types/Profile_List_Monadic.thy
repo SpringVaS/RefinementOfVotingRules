@@ -801,11 +801,14 @@ qed
 
 definition condorcet_winner_monadic :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "condorcet_winner_monadic A p w \<equiv>
+    if (w \<in> A) then
     FOREACH A
-        (\<lambda> x b. do {
-         winswx <- wins_monadic w p x;
-         RETURN (b \<and> ((x = w) \<or> winswx))
-        }) True"
+     (\<lambda> x b. do {
+     winswx <- wins_monadic w p x;
+     RETURN (b \<and> ((x = w) \<or> winswx))
+    }) (True)
+    else RETURN False"
+
 
 sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic" 
   :: "(alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
@@ -819,22 +822,35 @@ lemma condorcet_winner_monadic_correct:
   shows "(condorcet_winner_monadic, RETURN ooo condorcet_winner) 
   \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel"
   unfolding condorcet_winner_monadic_def
-  apply (refine_vcg FOREACHc_rule[where I = "\<lambda> it b. b = condorcet_winner (A - it) p w"])
-proof (clarsimp simp del: wins.simps, rename_tac A' A pl pr winner)
+  apply (refine_vcg)
+proof (rename_tac A' A pl pr lol winner, auto simp del: wins.simps)
   fix A' A :: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"  
   fix winner :: 'a
   assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
   assume prel: "(pl, pr) \<in> profile_rel"
+  assume winA: "winner \<in> A'"
   from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
   from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
   show "FOREACH A'  (\<lambda>x b. wins_monadic winner pl x \<bind> (\<lambda>winswx. RETURN (b \<and> (x = winner \<or> winswx)))) True
        \<le> RETURN (finite A \<and> profile A pr \<and> winner \<in> A \<and> (\<forall>x\<in>A - {winner}. wins winner pr x))"
-    apply (refine_vcg FOREACH_rule[where I = "\<lambda> it b. b = condorcet_winner (A - it) pr winner"])
+    apply (refine_vcg winA FOREACH_rule[where I = "\<lambda> it b. b = (winner \<in> (A - it)) \<longrightarrow>  condorcet_winner (A - it) pr winner"])
         apply (simp add: fina)
-      apply (auto simp add: aeq fina)[1]
-    oops
+      apply (auto simp add: aeq fina winA)[1] unfolding condorcet_winner.simps
+    using wins_monadic_correct
+    sorry
+next 
+  fix A' A :: "'a set"
+  fix pr :: "'a Profile"    
+  fix winner :: 'a
+  assume nwinA: "winner \<notin> A'"
+  assume winA: "winner \<in> A"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
+  from this winA nwinA have "False" by simp
+  from this show "\<exists>x\<in>A - {winner}. \<not> wins winner pr x" by simp
+qed
     
 lemma cond_winner_l_unique:
   fixes A:: "'a set" 
