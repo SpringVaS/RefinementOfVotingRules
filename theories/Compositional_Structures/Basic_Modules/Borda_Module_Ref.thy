@@ -44,7 +44,7 @@ qed
 
 
 lemma borda_ref_correct:          
-  shows "(borda_monadic,(\<lambda> A p. SPEC (\<lambda> em. em = borda A p))) \<in> elec_mod_relb Id"
+  shows "(borda_monadic, RETURN oo borda) \<in> elec_mod_relb Id"
   unfolding borda_monadic_def borda.simps
 proof (clarify, rename_tac A' A pl pr)
   fix A' A:: "'a set"
@@ -60,17 +60,17 @@ proof (clarify, rename_tac A' A pl pr)
     precompborda: "pre_compute_scores borda_score_mon A' pl
   \<le> SPEC (\<lambda>map. map = pre_computed_map borda_score A pr)" by fastforce
   note maxelim = max_eliminator_ref_correct[where efn = borda_score, THEN fun_relD]
-  from arel aeq prel precompborda this show "(pre_compute_scores borda_score_mon A' pl \<bind>
-        (\<lambda>scores. max_eliminator_ref scores A' pl),
-        SPEC (\<lambda>res. res = max_eliminator borda_score A pr))
+  from arel aeq prel precompborda this show " (pre_compute_scores borda_score_mon A' pl \<bind> (\<lambda>scores. max_eliminator_ref scores A' pl),
+        (RETURN \<circ>\<circ>\<circ> max_eliminator) borda_score A pr)
        \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+    unfolding comp_apply
     using specify_left[where M = 
         "\<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
   (SPEC (\<lambda>res. res = max_eliminator borda_score A pr))"
        and m = "pre_compute_scores borda_score_mon A' pl"
        and \<Phi> = "(\<lambda>map. map = pre_computed_map borda_score A pr)"
        and f = "(\<lambda>scores. max_eliminator_ref scores A' pl)"]
-  nres_relI nres_relD by blast
+  nres_relI nres_relD SPEC_eq_is_RETURN(2)  by metis
 qed 
 
 theorem borda_ref_return:
@@ -110,12 +110,8 @@ sepref_definition borda_elim_sepref is
 
   done
 
-term borda_elim_sepref
-
 
 lemmas borda_impl_correct = borda_elim_sepref.refine[FCOMP borda_ref_correct]
-
-
-
+  
 
 end
