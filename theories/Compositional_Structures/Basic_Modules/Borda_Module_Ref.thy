@@ -7,8 +7,8 @@ fun borda_score_mon :: "'a Evaluation_Function_Ref" where
   "borda_score_mon x A p =
     sum_impl (prefer_count_monadic_imp p x) A"
 
-definition borda_monadic :: "'a Electoral_Module_Ref" where
-  "borda_monadic A pl \<equiv> do {
+definition borda_ref :: "'a Electoral_Module_Ref" where
+  "borda_ref A pl \<equiv> do {
    scores <- (pre_compute_scores borda_score_mon A pl);
    max_eliminator_ref scores A pl
 }"
@@ -44,8 +44,8 @@ qed
 
 
 lemma borda_ref_correct:          
-  shows "(borda_monadic, RETURN oo borda) \<in> elec_mod_relb Id"
-  unfolding borda_monadic_def borda.simps
+  shows "(borda_ref, RETURN oo borda) \<in> elec_mod_relb Id"
+  unfolding borda_ref_def borda.simps
 proof (clarify, rename_tac A' A pl pr)
   fix A' A:: "'a set"
   fix pl :: "'a Profile_List"
@@ -73,8 +73,8 @@ proof (clarify, rename_tac A' A pl pr)
   nres_relI nres_relD SPEC_eq_is_RETURN(2)  by metis
 qed 
 
-theorem borda_ref_return:
-  shows "(borda_monadic,borda) \<in> \<langle>Id\<rangle>em_rel"
+lemma borda_drel[param]:
+  shows "(borda_ref,borda) \<in> \<langle>Id\<rangle>em_rel"
   unfolding em_rel_def
 proof (clarify,refine_vcg, rename_tac A' A pl pr)
   fix A' A:: "'a set"
@@ -82,18 +82,26 @@ proof (clarify,refine_vcg, rename_tac A' A pl pr)
   fix pr :: "'a Profile"
   assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
   assume prel: " (pl, pr) \<in> profile_rel"
-  from arel prel show " borda_monadic A' pl \<le> \<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
+  from arel prel show " borda_ref A' pl \<le> \<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
         ((RETURN \<circ>\<circ> borda) A pr)"
   using borda_ref_correct[THEN fun_relD, THEN fun_relD, THEN nres_relD]
     SPEC_eq_is_RETURN(2) push_in_let_conv(2)
   by (metis relAPP_def set_rel_id_simp)
 qed
 
+sepref_decl_op (no_def) borda_mod: "borda_ref :: 'a Electoral_Module_Ref" :: "elec_mod_rel_ref Id"
+  apply standard
+  apply (rule nres_relI)
+  apply simp
+  done
+
+
+
 sepref_definition borda_elim_sepref is
-  "uncurry borda_monadic":: 
+  "uncurry borda_ref":: 
     "alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k 
    \<rightarrow>\<^sub>a (result_impl_assn)"
-  unfolding borda_monadic_def  max_eliminator_ref.simps borda_score_mon.simps sum_impl_def
+  unfolding borda_ref_def  max_eliminator_ref.simps borda_score_mon.simps sum_impl_def
     less_eliminator_ref.simps  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
     prefer_count_monadic_imp_def[abs_def] is_less_preferred_than_mon_def[abs_def]
@@ -110,8 +118,8 @@ sepref_definition borda_elim_sepref is
 
   done
 
+lemmas borda_elim_sepref_correct = borda_elim_sepref.refine[FCOMP borda_ref_correct]
 
-lemmas borda_impl_correct = borda_elim_sepref.refine[FCOMP borda_ref_correct]
-  
+
 
 end

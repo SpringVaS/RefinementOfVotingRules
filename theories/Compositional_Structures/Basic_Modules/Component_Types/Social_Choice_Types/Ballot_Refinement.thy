@@ -248,15 +248,16 @@ abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
 
 abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
 
-definition "alts_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>nat_rel\<rangle>alt_set_rel)"
+definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>nat_rel\<rangle>alt_set_rel)"
 
-definition "ballot_assn \<equiv> (hr_comp ballot_impl_assn ballot_rel)"
+definition "ballot_ref_assn \<equiv>  hr_comp ballot_impl_assn (\<langle>nat_rel\<rangle>list_rel)"
 
-definition "profile_assn \<equiv> (list_assn ballot_assn)"
+definition "alts_assn \<equiv> hr_comp alts_ref_assn (\<langle>nat_rel\<rangle>set_rel)"
 
-abbreviation "result_assn \<equiv> alts_assn \<times>\<^sub>a
-                              alts_assn \<times>\<^sub>a
-                               alts_assn"
+definition "result_set_assn \<equiv> hr_comp(hr_comp (hs.assn nat_assn) (\<langle>nat_rel\<rangle>set_rel)) (\<langle>nat_rel\<rangle>set_rel)"
+
+
+definition "profile_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>nat_rel \<times>\<^sub>r nat_rel\<rangle>set_rel)"
 
 
 
