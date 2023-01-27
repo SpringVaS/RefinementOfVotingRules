@@ -13,6 +13,11 @@ abbreviation elec_mod_rel_orig :: "('a \<times> 'a) set \<Rightarrow>
   "elec_mod_rel_orig R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel , 
   \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>fun_rel\<rangle>fun_rel" 
 
+abbreviation elec_mod_rel_orig_nres :: "('a \<times> 'a) set \<Rightarrow> 
+  (('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres) \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" where
+  "elec_mod_rel_orig_nres R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel , 
+  \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel" 
+
 abbreviation elec_mod_rel_ref :: "('a \<times> 'a) set \<Rightarrow> 
   (('a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result) \<times> ('a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result)) set" where
   "elec_mod_rel_ref R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R\<rangle>list_rel\<rangle>list_rel , 
@@ -140,18 +145,21 @@ qed
 
 
 
+
 locale set_select_imp =
+  fixes mod1 :: "nat Electoral_Module"       
   fixes mod1_ref :: "nat Electoral_Module_Ref"
   fixes mod1_impl :: "(nat, unit) hashtable
       \<Rightarrow> (nat array \<times> nat) list
          \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
   assumes 
+    mod1_refine: "(mod1_ref, mod1) \<in> \<langle>nat_rel\<rangle>em_rel" and
     mod1_impl: "(uncurry mod1_impl, uncurry mod1_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
 
 begin
 
-  lemma this_loc: "set_select_imp mod1_ref mod1_impl" by unfold_locales
+  lemma this_loc: "set_select_imp mod1 mod1_ref mod1_impl" by unfold_locales
 
 
 sepref_register "mod1_ref" :: "nat Electoral_Module_Ref"
@@ -169,9 +177,9 @@ concrete_definition (in -) elect_sep uses set_select_imp.elect_impl
   prepare_code_thms (in -) elect_sep_def
 lemmas elect_impl_refine = elect_sep.refine[OF this_loc]
 
-lemmas elect_sep_correct = 
-elect_sep.refine[OF this_loc, FCOMP elect_monadic_correct[THEN fun_relD]]
 
+lemmas elect_sep_correct = 
+elect_impl_refine[FCOMP elect_monadic_correct[THEN fun_relD, where x' = mod1]]
 
 schematic_goal defer_impl:
   "(uncurry ?c, uncurry (defer_monadic mod1_ref)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
@@ -183,7 +191,8 @@ concrete_definition (in -) defer_sep uses set_select_imp.defer_impl
   lemmas defer_impl_refine = defer_sep.refine[OF this_loc]
 
 schematic_goal reject_impl:
-  "(uncurry ?c, uncurry (reject_monadic mod1_ref)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
+  "(uncurry ?c, uncurry (reject_monadic mod1_ref)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k 
+      \<rightarrow>\<^sub>a alts_set_impl_assn"
   unfolding reject_monadic_def
   by sepref
 
@@ -193,9 +202,9 @@ concrete_definition (in -) reject_sep uses set_select_imp.reject_impl
 
 
 end
-
+         
 term "elect_sep"
-thm "elect_sep.refine"
+thm "set_select_imp.elect_sep_correct"
 
 
 
