@@ -646,7 +646,7 @@ definition prefer_count_monadic_imp:: "'a Profile_List \<Rightarrow> 'a \<Righta
   }) (0::nat)"
 
 lemma prefer_count_monadic_imp_refine:
-  shows "(prefer_count_monadic_imp, pc_foldli_list) \<in> Id \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  shows "(prefer_count_monadic_imp, pc_foldli_list) \<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   unfolding prefer_count_monadic_imp_def pc_foldli_list_def
   apply (refine_vcg ilpm_list_correct)
   apply (refine_dref_type)
@@ -658,15 +658,24 @@ theorem prefer_count_monadic_imp_correct:
   using assms(1) ref_two_step[OF prefer_count_monadic_imp_refine [THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD] 
       pc_foldli_list_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD],
       where x10 = pl and x5 = pl and x'5 = pr] refine_IdD
-  by (metis IdI)
+  by (metis list_rel_id IdI)
 
 lemma prefer_count_monadic_correct_rel:
   shows "(prefer_count_monadic_imp, RETURN ooo prefer_count)
     \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply (refine_vcg)
-  apply clarify
-  using  prefer_count_monadic_imp_correct SPEC_eq_is_RETURN(2) comp_apply refine_IdI
-  by (metis)
+proof (refine_vcg, clarify, unfold comp_apply, (clarsimp simp del: prefer_count.simps),
+    rename_tac pl pr a b)
+  fix a b :: "'a"
+  fix pr :: "'a Profile"
+  fix pl :: "'a Profile_List"
+  assume prel: "(pl, pr) \<in> profile_rel"
+  then show "prefer_count_monadic_imp pl a b \<le> RETURN (prefer_count pr a b) "
+  using   ref_two_step[OF prefer_count_monadic_imp_refine [THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD] 
+      pc_foldli_list_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD]] 
+  IdI
+  unfolding SPEC_eq_is_RETURN(2)
+  by fastforce
+qed
   
   
 
@@ -676,7 +685,6 @@ definition wins_monadic :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<
     pyx <- prefer_count_monadic_imp p y x;
     RETURN (pxy > pyx)
 }"
-
 
 lemma prefer_count_l_correct:
   shows "(prefer_count_l, prefer_count)
@@ -698,8 +706,37 @@ proof (standard, standard, rename_tac a b)
     by simp
 qed
 
+find_theorems "RES "
+
+lemma prefer_count_monadic_imp_ref_l:
+  shows "(prefer_count_monadic_imp, RETURN ooo prefer_count_l)
+    \<in>  \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+proof (clarsimp simp del: prefer_count_l.simps, rename_tac pl a b,
+    refine_vcg, unfold conc_fun_RETURN[symmetric], rule refine_IdI)
+  fix pl :: "'a Profile_List"
+  fix a:: 'a and b:: 'a
+  note pcr = prefer_count_monadic_imp_refine[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+      THEN nres_relD, THEN refine_IdD]
+  pc_fold_monad_eq[symmetric]
+  from this show "prefer_count_monadic_imp pl a b \<le> RETURN (prefer_count_l pl a b)"
+    using IdI list_rel_id by (metis)
+qed
+
+lemma imp_direct_ref: 
+  fixes pl :: "'a Profile_List"
+  fixes a b :: "'a"
+  shows"prefer_count_monadic_imp pl a b \<le> RETURN (prefer_count_l pl a b)"
+proof -
+  have "(pl, pl) \<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel" using list_rel_id IdI by simp
+  thus ?thesis
+  using prefer_count_monadic_imp_ref_l[THEN fun_relD, THEN fun_relD, THEN fun_relD
+      ,THEN nres_relD, THEN refine_IdD] IdI unfolding comp_def
+  by metis
+qed
+
+
 lemma wins_monadic_correct:
-  shows "(wins_monadic, RETURN ooo wins) \<in> Id \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  shows "(wins_monadic, (\<lambda> A p a. SPEC (\<lambda> is_win. is_win = wins A p a))) \<in> Id \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel"
   unfolding wins_monadic_def wins.simps
   apply (clarsimp simp del: prefer_count.simps)
   apply (refine_vcg prefer_count_monadic_imp_correct)
@@ -741,6 +778,27 @@ next
   from a2 this show  "prefer_count_l pl b a < prefer_count_l pl a b"
     by fastforce
 qed
+
+lemma wins_monadic_refine:
+  shows "(wins_monadic, RETURN ooo wins_l) \<in> Id \<rightarrow> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  unfolding wins_monadic_def wins_l.simps
+proof (clarsimp simp del: prefer_count_l.simps, rule nres_relI, rule refine_IdI,
+   refine_vcg , unfold SPEC_eq_is_RETURN(1), rename_tac a pl b )
+  fix pl :: "'a Profile_List"
+  fix a:: 'a and b:: 'a
+  note pcab = imp_direct_ref[where pl = pl and a = a and b = b]
+  note pcba = imp_direct_ref[where pl = pl and a = b and b = a]
+  have "prefer_count_monadic_imp pl a b
+       \<le> SPEC (\<lambda>pab. pab = prefer_count_l pl a b)"
+    using pcab SPEC_eq_is_RETURN(2)[symmetric, where y = "prefer_count_l pl a b"]
+    by metis
+  from this pcab pcba show "prefer_count_monadic_imp pl a b
+       \<le> SPEC (\<lambda>pxy. prefer_count_monadic_imp pl b a \<bind> (\<lambda>pyx. RETURN (pyx < pxy))
+                      \<le> RETURN (prefer_count_l pl b a < prefer_count_l pl a b))"
+    using bind_rule SPEC_cons_rule SPEC_eq_is_RETURN(1)
+    by (smt (z3)  order_eq_refl specify_left)
+qed
+ 
 
 lemma condorcet_winner_l_correct:
   shows "(condorcet_winner_l, condorcet_winner)
@@ -800,7 +858,7 @@ next
 qed
 
 definition condorcet_winner_monadic :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
-  "condorcet_winner_monadic A p w \<equiv>
+  "condorcet_winner_monadic A p w \<equiv> 
     if (w \<in> A) then
     FOREACH A
      (\<lambda> x b. do {
@@ -814,44 +872,57 @@ sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic"
   :: "(alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
   unfolding condorcet_winner_monadic_def wins_monadic_def prefer_count_monadic_imp_def 
     is_less_preferred_than_mon_def
-  rank_mon_def index_mon_def 
+  rank_mon_def index_mon_def
   apply sepref_dbg_keep
   done
 
 lemma condorcet_winner_monadic_correct:
-  shows "(condorcet_winner_monadic, RETURN ooo condorcet_winner) 
-  \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel"
-  unfolding condorcet_winner_monadic_def
-  apply (refine_vcg)
-proof (rename_tac A' A pl pr lol winner, auto simp del: wins.simps)
-  fix A' A :: "'a set"
-  fix pl :: "'a Profile_List"
-  fix pr :: "'a Profile"  
+  shows "(\<lambda> (A, p). condorcet_winner_monadic A p, (\<lambda> (A, p) a. SPEC (\<lambda> is_win. is_win = condorcet_winner A p a)))
+  \<in> \<langle>Id\<rangle>alt_and_profile_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel"
+  unfolding condorcet_winner_monadic_def 
+proof (clarsimp simp add:  profile_prop_list profileref  alt_and_profile_rel_def in_br_conv alt_set_rel_def
+    simp del: wins.simps, rename_tac A pl pr winner, safe)
+  fix A :: "'a set"
+  fix pl:: "'a Profile_List"
+  fix pr:: "'a Profile"
   fix winner :: 'a
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
-  assume prel: "(pl, pr) \<in> profile_rel"
-  assume winA: "winner \<in> A'"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
-  show "FOREACH A'  (\<lambda>x b. wins_monadic winner pl x \<bind> (\<lambda>winswx. RETURN (b \<and> (x = winner \<or> winswx)))) True
-       \<le> RETURN (finite A \<and> profile A pr \<and> winner \<in> A \<and> (\<forall>x\<in>A - {winner}. wins winner pr x))"
-    apply (refine_vcg winA FOREACH_rule[where I = "\<lambda> it b. b = (winner \<in> (A - it)) \<longrightarrow>  condorcet_winner (A - it) pr winner"])
-        apply (simp add: fina)
-      apply (auto simp add: aeq fina winA)[1] unfolding condorcet_winner.simps
-    using wins_monadic_correct
-    sorry
+  assume fina: "finite A"
+  assume winA': "winner \<in> A"
+  assume profrel: "(pl, pr) \<in> profile_on_A_rel A"
+  from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by blast
+  from profrel have profpl: "profile_l A pl" using profile_prop_list by blast
+  from prel profpl have profp: "profile A pr" using profileref[THEN fun_relD, THEN fun_relD,
+        THEN IdD] 
+      set_rel_id IdI by fastforce
+  from profp show "(FOREACH A
+         (\<lambda>x b. wins_monadic winner pl x \<bind> (\<lambda>winswx. RETURN (b \<and> (x = winner \<or> winswx)))) True,
+        RES {profile A pr \<and> (\<forall>x\<in>A - {winner}. wins winner pr x)})
+       \<in> \<langle>bool_rel\<rangle>nres_rel"
+    apply (refine_vcg profp FOREACH_rule [where I =" \<lambda> it b. b = 
+     profile A pr \<and> (\<forall>x\<in> (A - it).  (x = winner) \<or> (wins winner pr x))"])
+    apply (auto simp add: fina simp del: wins.simps)
+  proof (rename_tac xa it sigma)
+    fix xa :: 'a 
+    fix it :: "'a set"
+    fix sigma :: bool
+    assume xait: "xa \<in> it"
+    assume itsA: "it \<subseteq> A"
+    assume allwon: "\<forall>alt\<in>A - it. alt = winner \<or> wins winner pr alt"
+    assume profp: "profile A pr"
+    note wmc = wins_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD,
+        THEN refine_IdD]
+    from xait itsA allwon show  "wins_monadic winner pl xa
+       \<le> SPEC (\<lambda>winswx.
+                   (xa = winner \<or> winswx) \<and> (\<forall>alt\<in>A - (it - {xa}). alt = winner \<or> wins winner pr alt))"
+      apply (refine_vcg wmc profp IdI prel )
+      apply (auto)
+      sorry
+  qed
 next 
-  fix A' A :: "'a set"
-  fix pr :: "'a Profile"    
-  fix winner :: 'a
-  assume nwinA: "winner \<notin> A'"
-  assume winA: "winner \<in> A"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from this winA nwinA have "False" by simp
-  from this show "\<exists>x\<in>A - {winner}. \<not> wins winner pr x" by simp
+  show "(RETURN False, RES {False}) \<in> \<langle>bool_rel\<rangle>nres_rel"
+    by (refine_vcg, simp)
 qed
-    
+
 lemma cond_winner_l_unique:
   fixes A:: "'a set" 
   fixes pl :: "'a Profile_List"
@@ -911,11 +982,12 @@ definition limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow
     RETURN (new_p)) [] "*)
 
 sepref_definition limit_sep is "uncurry (limit_profile_l)" :: 
-  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn nat_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (arl_assn nat_assn))"
+  "(hs.assn cand_impl_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn cand_impl_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (arl_assn cand_impl_assn))"
   unfolding limit_profile_l_def limit_monadic_def
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
   apply (rewrite in "WHILEIT _ _ _ \<hole>" arl.fold_custom_empty)
-  by sepref
+  apply sepref_dbg_keep
+  done
 
 
 lemma "limitp_correct":

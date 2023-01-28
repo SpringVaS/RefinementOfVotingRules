@@ -89,13 +89,6 @@ proof (clarify,refine_vcg, rename_tac A' A pl pr)
   by (metis relAPP_def set_rel_id_simp)
 qed
 
-sepref_decl_op (no_def) borda_mod: "borda_ref :: 'a Electoral_Module_Ref" :: "elec_mod_rel_ref Id"
-  apply standard
-  apply (rule nres_relI)
-  apply simp
-  done
-
-
 
 sepref_definition borda_elim_sepref is
   "uncurry borda_ref":: 
@@ -113,10 +106,7 @@ sepref_definition borda_elim_sepref is
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
-
-  apply sepref_dbg_keep
-
-  done
+  by sepref
 
 lemmas borda_elim_sepref_correct = borda_elim_sepref.refine[FCOMP borda_ref_correct]
 

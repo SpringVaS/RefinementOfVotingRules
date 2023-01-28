@@ -31,11 +31,11 @@ abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel 
 abbreviation "evalf_profA_rel A \<equiv> Id \<rightarrow> profile_on_A_rel A \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
 definition evalf_rel ::
-    "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
+    "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) 
+\<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
     where  evalf_rel_def:
 "evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = e a A pro))) 
   \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
-
 
 locale set_of_alternatives =
    fixes A:: "'a set" 

@@ -20,14 +20,11 @@ text \<open>
 
 subsection \<open>Definition\<close>
 
-lemma card_is_set_size: "card = op_set_size"
-  by simp
 
 sepref_definition defer_equal_condition_sep is "uncurry (RETURN oo defer_equal_condition)" ::
 "nat_assn\<^sup>k *\<^sub>a result_impl_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn"
-  unfolding defer_equal_condition.simps card_is_set_size
+  unfolding defer_equal_condition.simps
   by sepref
 
-thm "defer_equal_condition_sep.refine"
 
 end

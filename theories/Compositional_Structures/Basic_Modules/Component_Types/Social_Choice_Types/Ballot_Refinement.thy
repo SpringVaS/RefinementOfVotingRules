@@ -18,9 +18,17 @@ lemma alt_set_rel_def[refine_rel_defs]:
   by (simp add: alt_set_rel_def_internal relAPP_def)
 
 lemma finite_alts:
-  assumes "(a, a') \<in> \<langle>Id\<rangle>alt_set_rel"
-  shows "finite a" using assms by (simp add: alt_set_rel_def in_br_conv)
+  assumes "(a, a') \<in> \<langle>R\<rangle>alt_set_rel" and "single_valued R" and "IS_LEFT_UNIQUE R"
+  shows "finite a" using assms  alt_set_rel_def in_br_conv
+  by (metis (no_types, lifting) IS_LEFT_UNIQUE_def Pair_inject finite_set_rel_transfer_back relcompE)
 
+lemma id_same_alts:
+  assumes "(A, A') \<in> \<langle>Id\<rangle>alt_set_rel"
+  shows "A' = A"
+  using assms  in_br_conv set_rel_id Id_O_R unfolding alt_set_rel_def
+  by (metis (no_types, lifting))
+
+  
 abbreviation "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
 
 abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"
@@ -159,6 +167,18 @@ sepref_definition limit_imp is "uncurry (limit_monadic)" ::
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
 
+definition alt_and_profile_rel ::
+  "('a \<times> 'a) set \<Rightarrow> (('a set \<times> 'a list list) \<times> 'a set \<times> ('a \<times> 'a) set list) set"
+  where alt_and_profile_rel_def_internal: 
+"alt_and_profile_rel R \<equiv> 
+  {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>alt_set_rel
+    \<and> (pl, pr) \<in> profile_on_A_rel (A')}"
+
+lemma alt_and_profile_rel_def[refine_rel_defs]: 
+  "\<langle>R\<rangle>alt_and_profile_rel \<equiv> {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>alt_set_rel
+    \<and> (pl, pr) \<in> profile_on_A_rel (A')}"
+  by (simp add: alt_and_profile_rel_def_internal relAPP_def)
+
 lemma sv_prof_rel: "single_valued profile_rel"
   by (simp add: list_rel_sv)
 
@@ -239,28 +259,64 @@ proof (-)
 qed
 
 
+lemma unfold_alt_profile_alt_rel:
+  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
+  shows "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  using assms unfolding alt_and_profile_rel_def
+  by simp
 
-abbreviation "ballot_impl_assn \<equiv> (arl_assn nat_assn)"
+lemma unfold_alt_profile_profA_rel:
+  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
+  shows "(pl,pr) \<in> profile_on_A_rel A'"
+  using assms unfolding alt_and_profile_rel_def alt_set_rel_def
+  using set_rel_id
+  apply simp
+  done
+
+lemma unfold_alt_profile_prof_rel:
+  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
+  shows "(pl,pr) \<in> profile_rel"
+proof -
+  from assms have "(pl,pr) \<in> profile_on_A_rel A'"
+    using unfold_alt_profile_profA_rel by blast
+  from this show ?thesis using profile_type_ref
+    by blast
+qed
+
+lemma unfold_alt_profile_prof_prop:
+  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
+  shows "profile_l A' pl"
+proof -
+  from assms have "(pl,pr) \<in> profile_on_A_rel A'"
+    using unfold_alt_profile_profA_rel by blast
+  from this show ?thesis using profile_prop_list
+    by blast
+qed
+
+
+abbreviation "cand_impl_assn \<equiv> nat_assn"
+
+abbreviation "ballot_impl_assn \<equiv> (arl_assn cand_impl_assn)"
 
 abbreviation "profile_impl_assn \<equiv> (list_assn ballot_impl_assn)"
 
-abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
+abbreviation "alts_set_impl_assn \<equiv> (hs.assn cand_impl_assn)"
 
 abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
 
-definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>nat_rel\<rangle>alt_set_rel)"
+definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>alt_set_rel)"
                                  
 
-definition "ballot_ref_assn \<equiv>  hr_comp ballot_impl_assn (\<langle>nat_rel\<rangle>list_rel)"
+definition "ballot_ref_assn \<equiv>  hr_comp ballot_impl_assn (\<langle>Id\<rangle>list_rel)"
 
-definition "alts_assn \<equiv> hr_comp alts_ref_assn (\<langle>nat_rel\<rangle>set_rel)"
+definition "alts_assn \<equiv> hr_comp alts_ref_assn (\<langle>Id\<rangle>set_rel)"
 
-definition "result_set_one_step \<equiv> hr_comp alts_set_impl_assn (\<langle>nat_rel\<rangle>set_rel)"
+definition "result_set_one_step \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>set_rel)"
 
-definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>nat_rel\<rangle>set_rel)"
+definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<rangle>set_rel)"
 
 
-definition "ballot_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>nat_rel \<times>\<^sub>r nat_rel\<rangle>set_rel)"
+definition "ballot_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
 
 
 
