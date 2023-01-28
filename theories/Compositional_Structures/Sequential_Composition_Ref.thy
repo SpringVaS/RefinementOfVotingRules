@@ -127,22 +127,22 @@ qed
 
 
 locale seqcomp_impl =
-  fixes m :: "nat Electoral_Module"
-  fixes m_ref :: "nat Electoral_Module_Ref"
-  fixes m_impl :: "(nat, unit) hashtable
-      \<Rightarrow> (nat array \<times> nat) list
-         \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
-  fixes n :: "nat Electoral_Module"
-  fixes n_ref :: "nat Electoral_Module_Ref"
-  fixes n_impl :: "(nat, unit) hashtable
-      \<Rightarrow> (nat array \<times> nat) list
-         \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
+  fixes m :: "'a::{hashable,heap} Electoral_Module"
+  fixes m_ref :: "'a Electoral_Module_Ref"
+  fixes m_impl :: "('a, unit) hashtable
+      \<Rightarrow> ('a array \<times> nat) list
+         \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
+  fixes n :: "'a Electoral_Module"
+  fixes n_ref :: "'a Electoral_Module_Ref"
+  fixes n_impl :: "('a, unit) hashtable
+      \<Rightarrow> ('a array \<times> 'a) list
+         \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
   assumes 
-    m_refine: "(m_ref, RETURN oo m) \<in> elec_mod_relb nat_rel" and
+    m_refine: "(m_ref, RETURN oo m) \<in> elec_mod_relb Id" and
     m_impl: "(uncurry m_impl, uncurry m_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"  
     and
-    n_refine: "(n_ref, RETURN oo n) \<in> elec_mod_relb nat_rel" and
+    n_refine: "(n_ref, RETURN oo n) \<in> elec_mod_relb Id" and
     n_impl: "(uncurry n_impl, uncurry n_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
 

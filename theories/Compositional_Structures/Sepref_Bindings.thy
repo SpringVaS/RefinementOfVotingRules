@@ -56,3 +56,15 @@ sepref_decl_impl defer_eqal_condition_impl: defer_equal_condition_sep.refine .
 
 end
 
+
+locale seq_binding = seqcomp_impl + refine_assns
+begin
+
+sepref_decl_op  seq_comb: "sequential_composition  ::
+  'a Electoral_Module \<Rightarrow> 'a Electoral_Module \<Rightarrow> 'a Electoral_Module" :: 
+  "\<langle>(elec_mod_rel_orig A), \<langle>(elec_mod_rel_orig A), (elec_mod_rel_orig_nres A)\<rangle>fun_rel\<rangle>fun_rel" 
+  sorry
+
+  
+
+end

@@ -27,6 +27,14 @@ abbreviation elec_mod_relb :: "('a \<times> 'a) set \<Rightarrow> ('a Electoral_
   "elec_mod_relb R \<equiv> \<langle>R\<rangle>alt_set_rel \<rightarrow> profile_rel 
   \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel"
 
+abbreviation elec_mod_relb_prof ::
+    "('a \<times> 'a) set
+     \<Rightarrow> (('a set \<times> 'a list list \<Rightarrow> ('a set \<times> 'a set \<times> 'a set) nres) \<times>
+         ('a set \<times> ('a \<times> 'a) set list \<Rightarrow> ('a set \<times> 'a set \<times> 'a set) nres)) set"
+ where "elec_mod_relb_prof R \<equiv> \<langle>\<langle>R\<rangle>alt_and_profile_rel,
+ \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel"
+
+
 definition em_rel :: "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> 'a Electoral_Module) set" 
   where em_rel_internal_def:
   "em_rel R \<equiv> {(emref,em).(emref, RETURN oo em) 
