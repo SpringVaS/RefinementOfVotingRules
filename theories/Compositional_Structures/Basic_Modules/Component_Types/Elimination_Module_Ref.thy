@@ -56,6 +56,8 @@ definition eliminate:: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarro
     }) ({}, {})
 }"
 
+(* Needed for Sepref Correctness Proof When uncurrying Alternatives and Profile  *)
+type_synonym 'a Electoral_Module_Ref_Cur = "('a set \<times> 'a Profile_List) \<Rightarrow> 'a Result nres"
 
 
 definition elimination_module_ref :: 

@@ -23,9 +23,23 @@ abbreviation elec_mod_rel_ref :: "('a \<times> 'a) set \<Rightarrow>
   "elec_mod_rel_ref R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R\<rangle>list_rel\<rangle>list_rel , 
   \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>fun_rel\<rangle>fun_rel" 
 
-abbreviation elec_mod_relb :: "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" where
+abbreviation elec_mod_relb :: "('a \<times> 'a) set \<Rightarrow> 
+('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" where
   "elec_mod_relb R \<equiv> \<langle>R\<rangle>alt_set_rel \<rightarrow> profile_rel 
   \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel"
+
+definition em_prof_nres ::
+  "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set"
+  where em_prof_nres_internal_def: "em_prof_nres R \<equiv> 
+  {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>alt_set_rel.
+  \<forall> (pl, pr) \<in> profile_on_A_rel (A').
+   (emref A' pl ,em A pr) \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel}"
+
+lemma em_prof_nres_def[refine_rel_defs]: 
+  "\<langle>R\<rangle>em_prof_nres \<equiv>  {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>alt_set_rel.
+  \<forall> (pl, pr) \<in> profile_on_A_rel (A').
+   (emref A' pl ,em A pr) \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel}"
+  by (simp add: em_prof_nres_internal_def relAPP_def)
 
 abbreviation elec_mod_relb_prof ::
     "('a \<times> 'a) set
@@ -34,6 +48,22 @@ abbreviation elec_mod_relb_prof ::
  where "elec_mod_relb_prof R \<equiv> \<langle>\<langle>R\<rangle>alt_and_profile_rel,
  \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel"
 
+lemma weak_ref_correct:
+  assumes "(emref, RETURN oo em) \<in> elec_mod_relb Id"
+  shows "(uncurry emref, uncurry (RETURN oo em)) \<in> elec_mod_relb_prof Id"
+proof (clarsimp, rename_tac A' pl A pr, rule nres_relI)
+   fix A' A:: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume arel: "((A', pl), A,pr) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
+  from arel have altrel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel " using unfold_alt_profile_alt_rel
+    by blast
+  from arel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
+    by blast
+  from altrel prel show "emref A' pl \<le> \<Down> Id (RETURN (em A pr))"
+    using assms[THEN fun_relD, THEN fun_relD, THEN nres_relD] unfolding comp_apply
+    by simp
+qed
 
 definition em_rel :: "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> 'a Electoral_Module) set" 
   where em_rel_internal_def:

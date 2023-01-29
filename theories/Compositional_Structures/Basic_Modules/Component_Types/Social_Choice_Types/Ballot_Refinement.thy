@@ -13,6 +13,10 @@ begin
 definition alt_set_rel where alt_set_rel_def_internal:
   "alt_set_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
 
+definition alt_set_rel_fixed :: "'a set \<Rightarrow> ('a set \<times> 'a set) set"
+  where alt_set_rel_fixed_def_internal:
+  "alt_set_rel_fixed A \<equiv> {(A, A). finite A \<and> A \<noteq> {}}"
+
 lemma alt_set_rel_def[refine_rel_defs]: 
   "\<langle>R\<rangle>alt_set_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
   by (simp add: alt_set_rel_def_internal relAPP_def)
@@ -167,6 +171,10 @@ sepref_definition limit_imp is "uncurry (limit_monadic)" ::
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
 
+term fun_rel
+
+term "{ (f,f'). \<forall>(a,a')\<in>A. (f a, f' a')\<in>B }"
+
 definition alt_and_profile_rel ::
   "('a \<times> 'a) set \<Rightarrow> (('a set \<times> 'a list list) \<times> 'a set \<times> ('a \<times> 'a) set list) set"
   where alt_and_profile_rel_def_internal: 
@@ -174,7 +182,7 @@ definition alt_and_profile_rel ::
   {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>alt_set_rel
     \<and> (pl, pr) \<in> profile_on_A_rel (A')}"
 
-lemma alt_and_profile_rel_def[refine_rel_defs]: 
+lemma alt_and_profile_rel_def: 
   "\<langle>R\<rangle>alt_and_profile_rel \<equiv> {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>alt_set_rel
     \<and> (pl, pr) \<in> profile_on_A_rel (A')}"
   by (simp add: alt_and_profile_rel_def_internal relAPP_def)

@@ -7,6 +7,8 @@ fun borda_score_mon :: "'a Evaluation_Function_Ref" where
   "borda_score_mon x A p =
     sum_impl (prefer_count_monadic_imp p x) A"
 
+
+
 definition borda_ref :: "'a Electoral_Module_Ref" where
   "borda_ref A pl \<equiv> do {
    scores <- (pre_compute_scores borda_score_mon A pl);
@@ -73,7 +75,14 @@ proof (clarify, rename_tac A' A pl pr)
   nres_relI nres_relD SPEC_eq_is_RETURN(2)  by metis
 qed 
 
-lemma borda_drel[param]:
+lemma borda_ref_correct_weak:
+  shows "(uncurry borda_ref,uncurry ( RETURN oo borda)) \<in> elec_mod_relb_prof Id"
+  using borda_ref_correct weak_ref_correct
+  by metis
+
+term "uncurry borda_ref"
+
+lemma borda_drel:
   shows "(borda_ref,borda) \<in> \<langle>Id\<rangle>em_rel"
   unfolding em_rel_def
 proof (clarify,refine_vcg, rename_tac A' A pl pr)
@@ -85,7 +94,7 @@ proof (clarify,refine_vcg, rename_tac A' A pl pr)
   from arel prel show " borda_ref A' pl \<le> \<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
         ((RETURN \<circ>\<circ> borda) A pr)"
   using borda_ref_correct[THEN fun_relD, THEN fun_relD, THEN nres_relD]
-    SPEC_eq_is_RETURN(2) push_in_let_conv(2)
+     push_in_let_conv(2)
   by (metis relAPP_def set_rel_id_simp)
 qed
 
@@ -106,9 +115,10 @@ sepref_definition borda_elim_sepref is
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
-  by sepref
+  apply sepref_dbg_keep
+  done
 
-lemmas borda_elim_sepref_correct = borda_elim_sepref.refine[FCOMP borda_ref_correct]
+lemmas borda_elim_sepref_correct[sepref_fr_rules] = borda_elim_sepref.refine[FCOMP borda_ref_correct]
 
 
 

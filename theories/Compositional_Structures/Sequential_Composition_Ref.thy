@@ -26,7 +26,8 @@ find_theorems Id
 
 
 lemma sequence_ref_correct:
-  shows "(sequential_composition_mon, sequential_composition) \<in> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel"
+  shows "(sequential_composition_mon, sequential_composition) 
+    \<in> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel"
   apply (refine_vcg)
   unfolding  sequential_composition_mon_def sequential_composition.simps
   apply (rename_tac m_ref m n_ref n)
@@ -127,22 +128,22 @@ qed
 
 
 locale seqcomp_impl =
-  fixes m :: "'a::{hashable,heap} Electoral_Module"
-  fixes m_ref :: "'a Electoral_Module_Ref"
-  fixes m_impl :: "('a, unit) hashtable
-      \<Rightarrow> ('a array \<times> nat) list
-         \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
-  fixes n :: "'a Electoral_Module"
-  fixes n_ref :: "'a Electoral_Module_Ref"
-  fixes n_impl :: "('a, unit) hashtable
-      \<Rightarrow> ('a array \<times> 'a) list
-         \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
+  fixes m :: "nat Electoral_Module"
+  fixes m_ref :: "nat Electoral_Module_Ref"
+  fixes m_impl :: "(nat, unit) hashtable
+      \<Rightarrow> (nat array \<times> nat) list
+         \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
+  fixes n :: "nat Electoral_Module"
+  fixes n_ref :: "nat Electoral_Module_Ref"
+  fixes n_impl :: "(nat, unit) hashtable
+      \<Rightarrow> (nat array \<times> nat) list
+         \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
   assumes 
-    m_refine: "(m_ref, RETURN oo m) \<in> elec_mod_relb Id" and
+    m_refine: "(uncurry m_ref, uncurry (RETURN oo m)) \<in> elec_mod_relb_prof Id" and
     m_impl: "(uncurry m_impl, uncurry m_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"  
     and
-    n_refine: "(n_ref, RETURN oo n) \<in> elec_mod_relb Id" and
+    n_refine: "(uncurry n_ref, uncurry (RETURN oo n)) \<in> elec_mod_relb_prof Id" and
     n_impl: "(uncurry n_impl, uncurry n_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
 
@@ -156,10 +157,6 @@ sepref_register "n_ref" :: "nat Electoral_Module_Ref"
 
 declare m_impl [sepref_fr_rules]
 declare n_impl [sepref_fr_rules]
-
-
-lemmas m_correct[sepref_fr_rules] = m_impl[FCOMP m_refine]
-lemmas n_correct[sepref_fr_rules] = m_impl[FCOMP m_refine]
 
 schematic_goal seqcomp_imp:
   "(uncurry ?c, (uncurry (sequential_composition_mon m_ref n_ref))) 
@@ -175,27 +172,21 @@ concrete_definition (in -) sequential_composition_sep uses seqcomp_impl.seqcomp_
 lemmas seqt_imp_refine = sequential_composition_sep.refine[OF this_loc]
 
 lemma tog:
-  shows "(sequential_composition_mon  m_ref n_ref,  RETURN oo (m \<triangleright> n))
-\<in> (elec_mod_relb Id)"
-proof (refine_vcg, rename_tac A' A pl pr)
+  shows "(uncurry (sequential_composition_mon  m_ref n_ref),  uncurry (RETURN oo (m \<triangleright> n)))
+\<in> (elec_mod_relb_prof Id)"
+proof (refine_vcg, clarsimp simp del: sequential_composition.simps,
+    rename_tac A' pl A pr)
   fix A' A :: "nat set"
   fix pl :: "nat Profile_List"
   fix pr :: "nat Profile"
-  assume arel: "(A', A) \<in> \<langle>nat_rel\<rangle>alt_set_rel"
-  assume prel: "(pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
-  have "(sequential_composition_mon m_ref n_ref, m \<triangleright> n)
-    \<in> {(emref, em). (emref, RETURN \<circ>\<circ> em) \<in> elec_mod_relb Id}"
-    using m_refine n_refine sequence_ref_correct[THEN fun_relD, THEN fun_relD]
-    unfolding em_rel_def by simp
-  from this have "(sequential_composition_mon m_ref n_ref, RETURN oo (m \<triangleright> n)) \<in> elec_mod_relb Id"
-    unfolding em_rel_def
-    by simp
-  from arel prel this[THEN fun_relD,THEN fun_relD, THEN nres_relD]
-  show "   sequential_composition_mon m_ref n_ref A' pl
-       \<le> \<Down> (\<langle>nat_rel\<rangle>set_rel \<times>\<^sub>r \<langle>nat_rel\<rangle>set_rel \<times>\<^sub>r \<langle>nat_rel\<rangle>set_rel) ((RETURN \<circ>\<circ>\<circ> (\<triangleright>) m) n A pr)"
-    by fastforce
+   assume arel: "((A', pl), A,pr) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
+  from arel have altrel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel " using unfold_alt_profile_alt_rel
+    by blast
+  from arel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
+    by blast
+  from arel show " sequential_composition_mon m_ref n_ref A' pl \<le> RETURN ((m \<triangleright> n) A pr)"
+    using sequence_ref_correct[THEN fun_relD,THEN fun_relD] unfolding em_rel_def
+    apply simp
 qed
 
 
@@ -209,9 +200,9 @@ thm sequential_composition_sep_def
 end 
 
 
-(*abbreviation sequence_sep
+abbreviation sequence_sep
      (infix "\<triangleright>sep" 50) where
-  "m \<triangleright>sep n \<equiv> sequential_composition_sep m n"*)
+  "m \<triangleright>sep n \<equiv> sequential_composition_sep m n"
 
 
 
