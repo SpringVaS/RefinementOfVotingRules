@@ -877,10 +877,11 @@ sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic"
   done
 
 lemma condorcet_winner_monadic_correct:
-  shows "(\<lambda> (A, p). condorcet_winner_monadic A p, (\<lambda> (A, p) a. SPEC (\<lambda> is_win. is_win = condorcet_winner A p a)))
+  shows "(\<lambda> (A, p). condorcet_winner_monadic A p, 
+(\<lambda> (A, p) a. SPEC (\<lambda> is_win. is_win = condorcet_winner A p a)))
   \<in> \<langle>Id\<rangle>alt_and_profile_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel"
   unfolding condorcet_winner_monadic_def 
-proof (clarsimp simp add:  profile_prop_list profileref  alt_and_profile_rel_def in_br_conv alt_set_rel_def
+proof (clarsimp simp add:  profile_prop_list profileref  alt_and_profile_rel_def in_br_conv finite_set_rel_def
     simp del: wins.simps, rename_tac A pl pr winner, safe)
   fix A :: "'a set"
   fix pl:: "'a Profile_List"
@@ -890,10 +891,7 @@ proof (clarsimp simp add:  profile_prop_list profileref  alt_and_profile_rel_def
   assume winA': "winner \<in> A"
   assume profrel: "(pl, pr) \<in> profile_on_A_rel A"
   from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by blast
-  from profrel have profpl: "profile_l A pl" using profile_prop_list by blast
-  from prel profpl have profp: "profile A pr" using profileref[THEN fun_relD, THEN fun_relD,
-        THEN IdD] 
-      set_rel_id IdI by fastforce
+  from profrel have profp: "profile A pr" using profile_prop_rel by blast
   from profp show "(FOREACH A
          (\<lambda>x b. wins_monadic winner pl x \<bind> (\<lambda>winswx. RETURN (b \<and> (x = winner \<or> winswx)))) True,
         RES {profile A pr \<and> (\<forall>x\<in>A - {winner}. wins winner pr x)})
@@ -914,8 +912,8 @@ proof (clarsimp simp add:  profile_prop_list profileref  alt_and_profile_rel_def
     from xait itsA allwon show  "wins_monadic winner pl xa
        \<le> SPEC (\<lambda>winswx.
                    (xa = winner \<or> winswx) \<and> (\<forall>alt\<in>A - (it - {xa}). alt = winner \<or> wins winner pr alt))"
-      apply (refine_vcg wmc profp IdI prel )
-      apply (auto)
+      apply (refine_vcg wmc profp IdI prel ) using cond_winner_unique
+      unfolding condorcet_winner.simps
       sorry
   qed
 next 

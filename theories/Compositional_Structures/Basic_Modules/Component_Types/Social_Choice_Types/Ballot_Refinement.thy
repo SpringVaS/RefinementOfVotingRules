@@ -10,28 +10,33 @@ theory Ballot_Refinement
 begin
 
 
-definition alt_set_rel where alt_set_rel_def_internal:
-  "alt_set_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
+definition finite_set_rel where alt_set_rel_def_internal:
+  "finite_set_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x))"
 
-definition alt_set_rel_fixed :: "'a set \<Rightarrow> ('a set \<times> 'a set) set"
-  where alt_set_rel_fixed_def_internal:
-  "alt_set_rel_fixed A \<equiv> {(A, A). finite A \<and> A \<noteq> {}}"
 
-lemma alt_set_rel_def[refine_rel_defs]: 
-  "\<langle>R\<rangle>alt_set_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x \<and> x \<noteq> {}))"
+
+(*lemma alt_set_rel_fixed_def[refine_rel_defs]: 
+  "\<langle>R\<rangle>alt_set_rel_fixed A \<equiv> {(As, Bs). As = A \<and> (As, Bs) \<in> \<langle>R\<rangle>set_rel}"
+  by (simp add: alt_set_rel_fixed_internal_def relAPP_def)*)
+
+lemma finite_set_rel_def[refine_rel_defs]: 
+  "\<langle>R\<rangle>finite_set_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x))"
   by (simp add: alt_set_rel_def_internal relAPP_def)
 
+definition alt_set_rel_fixed :: "('a \<times> 'a) set \<Rightarrow> 'a set \<Rightarrow> ('a set \<times> 'a set) set"
+  where alt_set_rel_fixed_internal_def:
+  "alt_set_rel_fixed R A \<equiv> \<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda>x. x = A) "
+
 lemma finite_alts:
-  assumes "(a, a') \<in> \<langle>R\<rangle>alt_set_rel" and "single_valued R" and "IS_LEFT_UNIQUE R"
-  shows "finite a" using assms  alt_set_rel_def in_br_conv
+  assumes "(a, a') \<in> \<langle>R\<rangle>finite_set_rel" and "single_valued R" and "IS_LEFT_UNIQUE R"
+  shows "finite a" using assms  finite_set_rel_def in_br_conv
   by (metis (no_types, lifting) IS_LEFT_UNIQUE_def Pair_inject finite_set_rel_transfer_back relcompE)
 
 lemma id_same_alts:
-  assumes "(A, A') \<in> \<langle>Id\<rangle>alt_set_rel"
+  assumes "(A, A') \<in> \<langle>Id\<rangle>finite_set_rel"
   shows "A' = A"
-  using assms  in_br_conv set_rel_id Id_O_R unfolding alt_set_rel_def
+  using assms  in_br_conv set_rel_id Id_O_R unfolding finite_set_rel_def
   by (metis (no_types, lifting))
-
   
 abbreviation "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
 
@@ -136,7 +141,7 @@ definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarr
 find_theorems filter
 
 lemma limit_monadic_refine:
-  shows "(limit_monadic, (\<lambda> A bl. SPEC(\<lambda> lim. lim = (limit_l A bl)))) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow>
+  shows "(limit_monadic, (\<lambda> A bl. SPEC(\<lambda> lim. lim = (limit_l A bl)))) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow>
       \<langle>Id\<rangle>list_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
   unfolding limit_monadic_def
   apply (refine_rcg, rename_tac A' A bl br)
@@ -144,10 +149,10 @@ proof -
   fix A' A :: "'a set"
   fix bl :: "'a Preference_List"
   fix  br :: "'a Preference_List"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume bid: "(bl, br) \<in> \<langle>Id\<rangle>list_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
   from bid have beq: "bl = br"
     by simp 
   show  " WHILE\<^sub>T\<^bsup>limit_monadic_inv A' bl\<^esup> (\<lambda>(i, nbal). i < length bl)
@@ -179,11 +184,11 @@ definition alt_and_profile_rel ::
   "('a \<times> 'a) set \<Rightarrow> (('a set \<times> 'a list list) \<times> 'a set \<times> ('a \<times> 'a) set list) set"
   where alt_and_profile_rel_def_internal: 
 "alt_and_profile_rel R \<equiv> 
-  {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>alt_set_rel
+  {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>finite_set_rel
     \<and> (pl, pr) \<in> profile_on_A_rel (A')}"
 
 lemma alt_and_profile_rel_def: 
-  "\<langle>R\<rangle>alt_and_profile_rel \<equiv> {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>alt_set_rel
+  "\<langle>R\<rangle>alt_and_profile_rel \<equiv> {((A', pl),(A, pr)). (A', A) \<in> \<langle>R\<rangle>finite_set_rel
     \<and> (pl, pr) \<in> profile_on_A_rel (A')}"
   by (simp add: alt_and_profile_rel_def_internal relAPP_def)
 
@@ -269,14 +274,14 @@ qed
 
 lemma unfold_alt_profile_alt_rel:
   assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  shows "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  shows "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   using assms unfolding alt_and_profile_rel_def
   by simp
 
 lemma unfold_alt_profile_profA_rel:
   assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
   shows "(pl,pr) \<in> profile_on_A_rel A'"
-  using assms unfolding alt_and_profile_rel_def alt_set_rel_def
+  using assms unfolding alt_and_profile_rel_def finite_set_rel_def
   using set_rel_id
   apply simp
   done
@@ -312,7 +317,7 @@ abbreviation "alts_set_impl_assn \<equiv> (hs.assn cand_impl_assn)"
 
 abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
 
-definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>alt_set_rel)"
+definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>finite_set_rel)"
                                  
 
 definition "ballot_ref_assn \<equiv>  hr_comp ballot_impl_assn (\<langle>Id\<rangle>list_rel)"

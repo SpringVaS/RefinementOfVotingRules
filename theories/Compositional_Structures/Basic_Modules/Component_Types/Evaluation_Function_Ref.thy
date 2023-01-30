@@ -26,7 +26,7 @@ subsection \<open>Definition\<close>
 type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres"
 
 
-abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
 abbreviation "evalf_profA_rel A \<equiv> Id \<rightarrow> profile_on_A_rel A \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
@@ -35,7 +35,7 @@ definition evalf_rel ::
 \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
     where  evalf_rel_def:
 "evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = e a A pro))) 
-  \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
+  \<in> Id \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
 
 definition evalf_rel_prof ::
     "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) 
@@ -49,14 +49,14 @@ lemma evalfeq:
   fixes pr :: "'a Profile"
   fixes pl :: "'a Profile_List"
   assumes 
-     fina: "finite A" and nempa: "A \<noteq> {}" and
+     fina: "finite A" and 
      pref: "(pl, pr) \<in> profile_rel" and
      evalref: "(refn, efn) \<in> evalf_rel"
    shows "refn a A pl \<le> RETURN (efn a A pr)"
 proof (-)
   from evalref have efrel: "(refn, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = efn a A pro))) \<in> efunrel"
   unfolding evalf_rel_def by simp
-  from fina nempa have "(A, A) \<in> \<langle>Id\<rangle>alt_set_rel" by (simp add: alt_set_rel_def in_br_conv)
+  from fina  have "(A, A) \<in> \<langle>Id\<rangle>finite_set_rel" by (simp add: finite_set_rel_def in_br_conv)
   from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD]
   SPEC_eq_is_RETURN(2)
   show ?thesis
@@ -75,7 +75,7 @@ proof (-)
   from evalref have efrel: "((\<lambda> a (A, pro). refn a A pro), (\<lambda> a (A, pro). SPEC (\<lambda> sc. sc = efn a A pro)))
     \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_and_profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel" unfolding evalf_rel_prof_def
     by auto
-  from rel have arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel" using unfold_alt_profile_alt_rel by blast
+  from rel have arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel" using unfold_alt_profile_alt_rel by blast
   from rel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
     by blast
   from rel efrel[THEN fun_relD, THEN fun_relD, THEN nres_relD, THEN refine_IdD]
@@ -93,15 +93,14 @@ proof (unfold evalf_rel_prof_def, clarsimp, rule nres_relI, rule refine_IdI,
   fix pr :: "'a Profile"
   fix a:: 'a
   assume rel: "((A', pl), A, pr) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  from rel have arel : "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel" 
+  from rel have arel : "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel" 
     using unfold_alt_profile_alt_rel by blast
   from rel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
     by blast
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have nempa: "A \<noteq> {}" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A" by (auto simp add: finite_set_rel_def in_br_conv)
   from assms have "eref a A pl \<le> RETURN (e a A pr)"
-    using fina nempa prel evalfeq assms
+    using fina prel evalfeq assms
     by metis  
   from this show "eref a A' pl \<le> RES {e a A pr}"
     by (simp add: aeq ireturn_eq)
@@ -112,12 +111,8 @@ qed
 locale set_of_alternatives =
    fixes A:: "'a set" 
    assumes 
-     fina: "finite A" and nempa: "A \<noteq> {}"
-
+     fina: "finite A"
 begin
-
-find_theorems SPEC
-
 
 
 end
@@ -161,7 +156,7 @@ theorem cond_winner_imp_max_eval_val_ref:
     winnerl: "condorcet_winner_l A pl w"
   shows "eref w A pl \<le> RETURN (Max {efn a A pr | a. a \<in> A})"
 proof -
-  from evalfref profrel fina nempa have efref: "eref w A pl \<le> RETURN (efn w A pr)"
+  from evalfref profrel fina  have efref: "eref w A pl \<le> RETURN (efn w A pr)"
     using  evalfeq
     by fastforce
   from fina profl profrel have f_prof: "finite_profile A pr" 
@@ -200,7 +195,7 @@ theorem non_cond_winner_not_max_eval_ref:
   shows "do {sl <- eref l A pl; RETURN (sl < Max {efn a A pr | a. a \<in> A})} \<le> RETURN True"  
 proof -
   from evalfref have efref: "eref w A pl \<le> RETURN (efn w A pr)"
-    using profrel fina nempa evalfeq refine_IdD
+    using profrel fina  evalfeq refine_IdD
     by simp
   from fina profl profrel have f_prof: "finite_profile A pr" 
     using profileref[THEN fun_relD, THEN fun_relD]
@@ -212,7 +207,7 @@ proof -
   from f_prof winner rating linA loser have lt: "efn l A pr < Max {efn a A pr | a. a \<in> A}"
     using non_cond_winner_not_max_eval[where A= A and l = l and e = efn and w = w and p = pr]
     by simp
-  from profrel evalfref fina nempa have "eref l A pl \<le> RETURN (efn l A pr)" using evalfeq
+  from profrel evalfref fina  have "eref l A pl \<le> RETURN (efn l A pr)" using evalfeq
     by fastforce
   from this lt show ?thesis
     by (smt (verit, ccfv_threshold) RETURN_SPEC_conv pw_ords_iff(1) specify_left)

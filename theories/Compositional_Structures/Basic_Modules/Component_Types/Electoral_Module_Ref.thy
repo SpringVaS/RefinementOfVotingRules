@@ -25,18 +25,24 @@ abbreviation elec_mod_rel_ref :: "('a \<times> 'a) set \<Rightarrow>
 
 abbreviation elec_mod_relb :: "('a \<times> 'a) set \<Rightarrow> 
 ('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" where
-  "elec_mod_relb R \<equiv> \<langle>R\<rangle>alt_set_rel \<rightarrow> profile_rel 
+  "elec_mod_relb R \<equiv> \<langle>R\<rangle>finite_set_rel \<rightarrow> profile_rel 
   \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel"
+
+abbreviation
+jopoiodo :: "('a \<times> 'a) set \<Rightarrow> 'a set \<Rightarrow>
+('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" 
+where "jopoiodo R A' \<equiv> \<langle>R\<rangle>finite_set_rel \<rightarrow> (profile_on_A_rel A')
+  \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel" 
 
 definition em_prof_nres ::
   "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set"
   where em_prof_nres_internal_def: "em_prof_nres R \<equiv> 
-  {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>alt_set_rel.
+  {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>finite_set_rel.
   \<forall> (pl, pr) \<in> profile_on_A_rel (A').
    (emref A' pl ,em A pr) \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel}"
 
 lemma em_prof_nres_def[refine_rel_defs]: 
-  "\<langle>R\<rangle>em_prof_nres \<equiv>  {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>alt_set_rel.
+  "\<langle>R\<rangle>em_prof_nres \<equiv>  {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>finite_set_rel.
   \<forall> (pl, pr) \<in> profile_on_A_rel (A').
    (emref A' pl ,em A pr) \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel}"
   by (simp add: em_prof_nres_internal_def relAPP_def)
@@ -56,7 +62,7 @@ proof (clarsimp, rename_tac A' pl A pr, rule nres_relI)
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
   assume arel: "((A', pl), A,pr) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  from arel have altrel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel " using unfold_alt_profile_alt_rel
+  from arel have altrel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel " using unfold_alt_profile_alt_rel
     by blast
   from arel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
     by blast
@@ -113,7 +119,7 @@ definition reject_monadic ::
 
 lemma elect_monadic_correct:
 shows "(elect_monadic, RETURN ooo elect) \<in> 
-    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
 proof (unfold elect_monadic_def em_rel_def, refine_rcg, clarsimp, 
         rename_tac emref em A' A pl pr)
   fix A' A:: "'a set"
@@ -121,11 +127,11 @@ proof (unfold elect_monadic_def em_rel_def, refine_rcg, clarsimp,
   fix pr :: "'a Profile"
   fix emref :: "'a Electoral_Module_Ref"
   fix em :: "'a Electoral_Module"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: " (pl, pr) \<in> profile_rel"
-  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
   from arel prel emrel[THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD] 
   have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)" using SPEC_eq_is_RETURN(2) comp_apply 
     by metis
@@ -137,7 +143,7 @@ qed
 
 lemma defer_monadic_correct:
 shows "(defer_monadic, RETURN ooo defer) \<in> 
-    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
 proof (unfold defer_monadic_def em_rel_def, refine_rcg, clarsimp, 
         rename_tac emref em A' A pl pr)
   fix A' A:: "'a set"
@@ -145,11 +151,11 @@ proof (unfold defer_monadic_def em_rel_def, refine_rcg, clarsimp,
   fix pr :: "'a Profile"
   fix emref :: "'a Electoral_Module_Ref"
   fix em :: "'a Electoral_Module"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: " (pl, pr) \<in> profile_rel"
-  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
   from arel prel emrel[THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD] 
   have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)" using SPEC_eq_is_RETURN(2) comp_apply 
     by metis
@@ -160,7 +166,7 @@ qed
 
 lemma reject_monadic_correct:
 shows "(reject_monadic, RETURN ooo reject) \<in> 
-    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
 proof (unfold reject_monadic_def em_rel_def, refine_rcg, clarsimp, 
         rename_tac emref em A' A pl pr)
   fix A' A:: "'a set"
@@ -168,11 +174,11 @@ proof (unfold reject_monadic_def em_rel_def, refine_rcg, clarsimp,
   fix pr :: "'a Profile"
   fix emref :: "'a Electoral_Module_Ref"
   fix em :: "'a Electoral_Module"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: " (pl, pr) \<in> profile_rel"
-  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
   from arel prel emrel[THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD] 
   have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)" using SPEC_eq_is_RETURN(2) comp_apply 
     by metis

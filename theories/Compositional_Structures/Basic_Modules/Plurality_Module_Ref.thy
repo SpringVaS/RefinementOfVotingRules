@@ -65,8 +65,6 @@ proof (unfold plurality_monadic_def plurality_mod.simps)
 qed
    
 
-end
-
 
 sepref_definition plurality_elim_sepref is
   "uncurry plurality_monadic":: 
@@ -87,4 +85,5 @@ sepref_definition plurality_elim_sepref is
 
 
 
+end
 end

@@ -36,10 +36,10 @@ proof (clarify, refine_rcg, unfold borda_score_mon.simps borda_score.simps,
   fix x :: 'a
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: "(pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
   show "sum_impl (prefer_count_monadic_imp pl x) A' \<le> SPEC (\<lambda>sc. sc = sum (prefer_count pr x) A)"
     by (refine_vcg fina prel prefer_count_monadic_imp_correct sum_impl_correct, simp add: aeq)
 qed
@@ -52,10 +52,10 @@ proof (clarify, rename_tac A' A pl pr)
   fix A' A:: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: " (pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
   note compute_scores_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD, 
           THEN refine_IdD, where x4 = borda_score_mon and x'4 = borda_score]
   from arel prel this borda_score_correct have 
@@ -89,7 +89,7 @@ proof (clarify,refine_vcg, rename_tac A' A pl pr)
   fix A' A:: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: " (pl, pr) \<in> profile_rel"
   from arel prel show " borda_ref A' pl \<le> \<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
         ((RETURN \<circ>\<circ> borda) A pr)"
@@ -103,8 +103,8 @@ sepref_definition borda_elim_sepref is
   "uncurry borda_ref":: 
     "alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k 
    \<rightarrow>\<^sub>a (result_impl_assn)"
-  unfolding borda_ref_def  max_eliminator_ref.simps borda_score_mon.simps sum_impl_def
-    less_eliminator_ref.simps  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
+  unfolding borda_ref_def  max_eliminator_ref_def borda_score_mon.simps sum_impl_def
+    less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
     prefer_count_monadic_imp_def[abs_def] is_less_preferred_than_mon_def[abs_def]
     rank_mon_def[abs_def] index_mon_def[abs_def]
@@ -112,13 +112,17 @@ sepref_definition borda_elim_sepref is
   apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
+  apply (rewrite in "RETURN ({}, {}, \<hole>)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN ({}, \<hole>, _)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN ( \<hole>, _, _)" hs.fold_custom_empty) 
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
   apply sepref_dbg_keep
   done
 
-lemmas borda_elim_sepref_correct[sepref_fr_rules] = borda_elim_sepref.refine[FCOMP borda_ref_correct]
+lemmas borda_elim_sepref_correct[sepref_fr_rules] 
+  = borda_elim_sepref.refine[FCOMP borda_ref_correct]
 
 
 
