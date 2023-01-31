@@ -27,16 +27,16 @@ find_theorems Id
 
 lemma sequence_ref_correct:
   shows "(sequential_composition_mon, sequential_composition) 
-    \<in> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>em_rel"
+    \<in> \<langle>Id\<rangle>em_prof_nres \<rightarrow> \<langle>Id\<rangle>em_prof_nres \<rightarrow> \<langle>Id\<rangle>em_prof_nres"
   apply (refine_vcg)
   unfolding  sequential_composition_mon_def sequential_composition.simps
   apply (rename_tac m_ref m n_ref n)
 proof (-)
   fix m_ref n_ref :: "'a Electoral_Module_Ref"
   fix m n :: "'a Electoral_Module"
-  assume m_refine: "(m_ref, m) \<in> \<langle>Id\<rangle>em_rel"
-  assume n_refine: "(n_ref, n) \<in> \<langle>Id\<rangle>em_rel"
-  show "((\<lambda>A p. defer_monadic m_ref A p \<bind>
+  assume m_refine: "(m_ref, m) \<in> \<langle>Id\<rangle>em_prof_nres"
+  assume n_refine: "(n_ref, n) \<in> \<langle>Id\<rangle>em_prof_nres"
+  show "       (\<lambda>A p. defer_monadic m_ref A p \<bind>
                (\<lambda>new_A.
                    limit_profile_l A p \<bind>
                    (\<lambda>new_p.
@@ -51,72 +51,32 @@ proof (-)
                                        defer_monadic n_ref new_A new_p \<bind>
                                        (\<lambda>defernA'.
                                            RETURN
-                                            (electmA \<union> electnA', rejectmA \<union> rejectnA', defernA')))))))),
+                                            (electmA \<union> electnA', rejectmA \<union> rejectnA',
+                                             defernA')))))))),
         \<lambda>A p. let new_A = defer m A p; new_p = limit_profile new_A p
                in (elect m A p \<union> elect n new_A new_p, reject m A p \<union> reject n new_A new_p,
                    defer n new_A new_p))
-       \<in> \<langle>Id\<rangle>em_rel)"
-  proof (unfold em_rel_def, (clarsimp simp del: limit_profile.simps), refine_vcg, rename_tac A' A pl pr)
-     fix A' A :: "'a set"
-     fix pl :: "'a Profile_List"
-     fix pr :: "'a Profile"
-     assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
-     assume prel: "(pl, pr) \<in> profile_rel"
-     from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-     from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
-     from m_refine arel prel  have "defer_monadic m_ref A' pl \<le> SPEC (\<lambda> defset. defset = defer m A pr)"
-       using defer_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD,
-           where x3 = m_ref and x'3 = m and x2 = A' and x'2 = A and x1 = pl and x'1 = pr]
-               set_rel_id_simp comp_apply SPEC_eq_is_RETURN(2)[symmetric] refine_IdD
-       by metis
-       
-     from arel prel m_refine n_refine show "defer_monadic m_ref A' pl
-       \<le> SPEC (\<lambda>new_A.
-                   limit_profile_l A' pl \<bind>
-                   (\<lambda>new_p.
-                       elect_monadic m_ref A' pl \<bind>
-                       (\<lambda>electmA.
-                           elect_monadic n_ref new_A new_p \<bind>
-                           (\<lambda>electnA'.
-                               reject_monadic m_ref A' pl \<bind>
-                               (\<lambda>rejectmA.
-                                   reject_monadic n_ref new_A new_p \<bind>
-                                   (\<lambda>rejectnA'.
-                                       defer_monadic n_ref new_A new_p \<bind>
-                                       (\<lambda>defernA'.
-                                           RETURN
-                                            (electmA \<union> electnA', rejectmA \<union> rejectnA', defernA')))))))
-                   \<le> SPEC (\<lambda>c. (c, let new_A = defer m A pr; new_p = limit_profile new_A pr
-                                    in (elect m A pr \<union> elect n new_A new_p,
-                                        reject m A pr \<union> reject n new_A new_p, defer n new_A new_p))
-                                \<in> Id))"
-       using limitp_correct[THEN fun_relD, THEN fun_relD, THEN nres_relD]
-         elect_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
-         set_rel_id_simp comp_apply SPEC_eq_is_RETURN(2)
-         reject_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
-         defer_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD]
-        specify_left
-       sorry
-   qed
- qed
+       \<in> \<langle>Id\<rangle>em_prof_nres"
+    sorry
+qed
 
 lemma refine_params:
-  assumes "(m_ref, m) \<in> \<langle>Id\<rangle>em_rel" and
-    "(n_ref, n) \<in> \<langle>Id\<rangle>em_rel"
+  assumes "(m_ref, m) \<in> \<langle>Id\<rangle>em_prof_nres" and
+    "(n_ref, n) \<in> \<langle>Id\<rangle>em_prof_nres"
   shows "(sequential_composition_mon  m_ref n_ref,  RETURN oo (m \<triangleright> n))
 \<in> (elec_mod_relb Id)"
 proof (refine_vcg, rename_tac A' A pl pr)
   fix A' A :: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
+  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: "(pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: alt_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: alt_set_rel_def in_br_conv)
+  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
+  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
   have "(sequential_composition_mon m_ref n_ref, m \<triangleright> n)
     \<in> {(emref, em). (emref, RETURN \<circ>\<circ> em) \<in> elec_mod_relb Id}"
     using assms sequence_ref_correct[THEN fun_relD, THEN fun_relD]
-    unfolding em_rel_def by simp
+    unfolding em_prof_nres_def sorry
   from this have "(sequential_composition_mon m_ref n_ref, RETURN oo (m \<triangleright> n)) \<in> elec_mod_relb Id"
     unfolding em_rel_def
     by simp
@@ -187,6 +147,7 @@ proof (refine_vcg, clarsimp simp del: sequential_composition.simps,
   from arel show " sequential_composition_mon m_ref n_ref A' pl \<le> RETURN ((m \<triangleright> n) A pr)"
     using sequence_ref_correct[THEN fun_relD,THEN fun_relD] unfolding em_rel_def
     apply simp
+    sorry
 qed
 
 

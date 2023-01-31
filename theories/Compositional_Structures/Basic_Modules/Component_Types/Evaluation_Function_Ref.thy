@@ -28,8 +28,6 @@ type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow
 
 abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
-abbreviation "evalf_profA_rel A \<equiv> Id \<rightarrow> profile_on_A_rel A \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
-
 definition evalf_rel ::
     "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) 
 \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
@@ -160,7 +158,7 @@ proof -
     using  evalfeq
     by fastforce
   from fina profl profrel have f_prof: "finite_profile A pr" 
-    using profileref[THEN fun_relD, THEN fun_relD]
+    using profile_ref
     by fastforce
   from winnerl condorcet_winner_l_correct[THEN fun_relD, THEN fun_relD,THEN fun_relD]
   profrel
@@ -198,7 +196,7 @@ proof -
     using profrel fina  evalfeq refine_IdD
     by simp
   from fina profl profrel have f_prof: "finite_profile A pr" 
-    using profileref[THEN fun_relD, THEN fun_relD]
+    using profile_ref
     by fastforce
   from winnerl condorcet_winner_l_correct[THEN fun_relD, THEN fun_relD,THEN fun_relD]
   profrel

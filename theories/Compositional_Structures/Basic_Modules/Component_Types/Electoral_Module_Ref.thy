@@ -28,23 +28,17 @@ abbreviation elec_mod_relb :: "('a \<times> 'a) set \<Rightarrow>
   "elec_mod_relb R \<equiv> \<langle>R\<rangle>finite_set_rel \<rightarrow> profile_rel 
   \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel"
 
-abbreviation
-jopoiodo :: "('a \<times> 'a) set \<Rightarrow> 'a set \<Rightarrow>
-('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" 
-where "jopoiodo R A' \<equiv> \<langle>R\<rangle>finite_set_rel \<rightarrow> (profile_on_A_rel A')
-  \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel" 
-
 definition em_prof_nres ::
-  "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set"
+  "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result)) set"
   where em_prof_nres_internal_def: "em_prof_nres R \<equiv> 
   {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>finite_set_rel.
   \<forall> (pl, pr) \<in> profile_on_A_rel (A').
-   (emref A' pl ,em A pr) \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel}"
+   (emref A' pl ,RETURN(em A pr)) \<in> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel}"
 
 lemma em_prof_nres_def[refine_rel_defs]: 
   "\<langle>R\<rangle>em_prof_nres \<equiv>  {(emref, em). \<forall> (A', A) \<in> \<langle>R\<rangle>finite_set_rel.
   \<forall> (pl, pr) \<in> profile_on_A_rel (A').
-   (emref A' pl ,em A pr) \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel}"
+   (emref A' pl ,RETURN(em A pr)) \<in> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel}"
   by (simp add: em_prof_nres_internal_def relAPP_def)
 
 abbreviation elec_mod_relb_prof ::
@@ -80,6 +74,49 @@ lemma em_rel_def[refine_rel_defs]:
   "\<langle>R\<rangle>em_rel \<equiv> {(emref,em).(emref, RETURN oo em) 
   \<in> elec_mod_relb R}"
   by (simp add: em_rel_internal_def relAPP_def)
+
+locale fixed_alts  =
+  fixes Alts :: "nat set"
+begin
+
+abbreviation elec_mod_fixed_alts_rel
+  where "elec_mod_fixed_alts_rel \<equiv>
+  \<langle>\<langle>nat_rel\<rangle>finite_set_rel O br (\<lambda>x. x) (\<lambda> As. As = Alts), \<langle>profile_on_A_rel Alts,
+ \<langle>\<langle>nat_rel\<rangle>set_rel \<times>\<^sub>r \<langle>nat_rel\<rangle>set_rel \<times>\<^sub>r \<langle>nat_rel\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel"
+
+definition "em_fixed_alts_rel \<equiv> {(emref, em). (emref, RETURN oo em) 
+  \<in> elec_mod_fixed_alts_rel } "
+
+find_theorems profile
+
+lemma weak_ref_correctb:
+  assumes "(emref, RETURN oo em) \<in> (elec_mod_relb nat_rel)"
+  shows "(emref, (RETURN oo em)) \<in> elec_mod_fixed_alts_rel"
+proof (clarsimp simp add: finite_set_rel_def in_br_conv, rule nres_relI, rule refine_IdI, rename_tac pl pr)
+  fix pl pr
+  note emref = assms[THEN fun_relD,THEN fun_relD]
+  assume "finite Alts"
+  from this have arel: "(Alts, Alts) \<in> \<langle>nat_rel\<rangle>finite_set_rel"
+    unfolding finite_set_rel_def 
+    apply simp using in_br_conv
+    by metis  
+  assume "(pl, pr) \<in> profile_on_A_rel Alts"
+  from this have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by blast
+  from arel prel emref show "emref Alts pl \<le> RETURN (em Alts pr)"
+    using prod_rel_id set_rel_id nres_relD refine_IdD
+    by fastforce
+qed
+
+lemma weaken_em_rel:
+  assumes "(emref, em) \<in> \<langle>nat_rel\<rangle>em_rel"
+  shows "(emref, em) \<in> em_fixed_alts_rel"
+  using assms unfolding em_rel_def em_fixed_alts_rel_def
+  using weak_ref_correctb
+  by simp
+
+end
+
+
 
 definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
   "aux_set_copy A \<equiv>  FOREACH A

@@ -82,42 +82,7 @@ lemma is_less_preferred_than_ref:
   apply (refine_vcg)
   by (auto simp only: refine_rel_defs less_preffered_l_rel_eq)
 
-find_theorems filter
-
-lemma limitref:
-  shows "(limit_l, limit) \<in> \<langle>Id\<rangle>alt_set_rel \<rightarrow> ballot_rel \<rightarrow> ballot_rel"
-  apply (refine_vcg, rename_tac A' A bl br)
-proof -
-    fix A' A :: "'a set"
-  fix bl :: "'a Preference_List"
-  fix  br :: "'a Preference_Relation"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>alt_set_rel"
-  assume bid: "(bl, br) \<in> ballot_rel"
-  from this have eq: "br = pl_\<alpha> bl" by (simp add: in_br_conv)
-  from bid have prec: "distinct bl" using well_formed_pl_def in_br_conv
-      by (metis)
-  from prec have "(limit_l A bl, limit A (pl_\<alpha> bl)) \<in> ballot_rel"
-  proof (induct bl)
-   show "(limit_l A [], limit A (pl_\<alpha> [])) \<in> ballot_rel"
-    apply (auto simp add: pl_\<alpha>_def List.member_def)
-    unfolding pl_\<alpha>_def well_formed_pl_def
-    using in_br_conv
-    by (metis (no_types, lifting) Collect_empty_eq case_prodE distinct.simps(1) is_less_preferred_than_l.elims(2) member_rec(2))
-next
-  fix a :: "'a"
-  fix bbl:: "'a Preference_List"
-  assume ic: "(distinct bbl \<Longrightarrow> (limit_l A bbl, limit A (pl_\<alpha> bbl)) \<in> ballot_rel)"
-  assume precc: "distinct (a # bbl)"
-  from this have dc: "distinct (bbl)" by auto
-  have infil: "a \<notin> A \<longrightarrow> filter (\<lambda>a. a \<in> A) (a#bbl) = filter (\<lambda>a. a \<in> A) (bbl) "
-    by auto
-  from infil dc ic have "a \<notin> A \<longrightarrow> (limit_l A (a # bbl), limit A (pl_\<alpha> (bbl))) \<in> ballot_rel"
-    unfolding limit_l.simps  well_formed_pl_def
-    by presburger
-  oops
-  
-  (* inductctive proof with case distinction 
-qed*)
+find_theorems "sorted_wrt"
 
 
 definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
@@ -211,6 +176,8 @@ qed
 
 lemma profile_type_ref:
   fixes A:: "'a set"
+  fixes pl :: "'a Profile_List"
+  and pr :: "'a Profile"
   assumes "(pl, pr) \<in> profile_on_A_rel A" 
   shows "(pl, pr) \<in> profile_rel"
 proof standard
@@ -232,23 +199,22 @@ next
 qed    
 
 lemma profile_prop_list:
-  fixes A:: "'a set" and pl:: "'a Profile_List"
+  fixes A:: "'a set" 
+  fixes pl :: "'a Profile_List"
+  and pr :: "'a Profile"
   assumes "(pl,pr) \<in> profile_on_A_rel A"
   shows "profile_l A pl"
   unfolding profile_l_def
   using assms in_br_conv
   by (metis (full_types) list_rel_imp_same_length pair_in_Id_conv param_nth relcompEpair)
 
-lemma profileref:
-  shows "(profile_l, profile) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> bool_rel"
-  apply (refine_rcg)
- apply (clarsimp simp add: linearorder_ref)
+lemma profile_ref:
+  fixes A :: "'a set"
+  fixes pl :: "'a Profile_List"
+  and pr :: "'a Profile"
+  assumes prel: "(pl,pr) \<in> profile_rel"
+  shows "profile_l A pl = profile A pr"
 proof (-)
-  fix pl:: "'a Profile_List" 
-  fix pr:: "'a Profile"
-  assume prel: "(pl, pr) \<in> profile_rel"
-  fix A:: "'a set"
-  fix i:: nat
   from prel have "\<forall>idx < length pl. ((pl!idx), (pr!idx)) \<in> ballot_rel"
     using in_br_conv
     by (simp add: list_rel_pres_length param_nth)
@@ -266,7 +232,7 @@ proof (-)
   from assms have profrel: "(pl,pr) \<in> profile_rel"
     using profile_type_ref by metis
   from profl this show "profile A pr"
-    using profileref
+    using profile_ref
     by (simp add: in_br_conv linorder_l_imp_rel list_rel_eq_listrel listrel_iff_nth 
         profile_def profile_l_def relAPP_def)
 qed

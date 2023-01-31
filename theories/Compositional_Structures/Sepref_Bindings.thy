@@ -25,18 +25,24 @@ lemma condorcet_aux:
   done
 
 
-sepref_decl_op (no_def) "borda :: 'a Electoral_Module" :: "elec_mod_rel_orig_nres Id" 
+sepref_decl_op (no_def) "borda :: nat Electoral_Module" :: "elec_mod_rel_orig_nres nat_rel" 
   using borda_aux .
 
-(*sepref_decl_op (no_def) "condorcet :: 'a Electoral_Module" :: "elec_mod_rel_orig_nres Id"
-  apply standard
-  apply (rule nres_relI)
-  apply simp 
-  done*)
+
 
 sepref_decl_op (no_def) defer_equal_imp: "(defer_equal_condition)" :: 
   "\<langle>nat_rel, \<langle>(\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel), \<langle>bool_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel" 
   where "R = Id" .
+
+
+context fixed_alts
+begin
+
+sepref_decl_op (no_def) "condorcet :: nat Electoral_Module" :: 
+  "elec_mod_rel_orig_nres nat_rel" 
+
+end
+
 
 locale refine_assns =
  notes  
@@ -51,6 +57,8 @@ begin
 thm borda_elim_sepref.refine[FCOMP borda_ref_correct]
 
 sepref_decl_impl borda_impl: borda_elim_sepref.refine[FCOMP borda_ref_correct]  .
+
+
 
 sepref_decl_impl defer_eqal_condition_impl: defer_equal_condition_sep.refine .
 

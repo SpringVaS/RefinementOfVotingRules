@@ -424,8 +424,8 @@ lemma wc_foreach_list_rank_correct:
   assumes "(pl, pr) \<in> profile_rel" and "profile_l A pl"
   shows "wc_foreach_list_rank pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
 proof (-)
-  from assms have "profile A pr" using profileref
-    by (metis (mono_tags, opaque_lifting) fun_relD1 pair_in_Id_conv set_rel_id_simp) 
+  from assms have "profile A pr" using profile_ref
+    by (metis) 
   from assms(1) this 
   show "wc_foreach_list_rank pl a \<le> (SPEC (\<lambda>wc. wc = win_count pr a))"
   using ref_two_step[OF win_count_list_r_refine_os wc_foreach_rank_correct] refine_IdD
@@ -575,8 +575,6 @@ next
 qed
 
 text \<open> Data refinement \<close>
-
-find_theorems "fold"
 
 fun prefer_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat" where
   "prefer_count_l p a b = fold (\<lambda> x ac. (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac))) p 0"
@@ -813,10 +811,9 @@ proof (rename_tac A pl pr alt, safe)
   assume a2: "profile_l A pl"
   note winc = wins_l_correct[unfolded fref_def, THEN fun_relD, THEN fun_relD,THEN fun_relD,
       where x2 = alt and x'2 = alt and x1 = pl and x'1 = pr]
-  note profr = profileref[THEN fun_relD, THEN fun_relD,
-      where x1 = A and x'1 = A and x = pl and x' = pr]
+  note profr = profile_ref
   from a1 a2 profr show "(profile A pr)"
-    by simp
+    by metis
 next
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
@@ -838,10 +835,9 @@ next
   assume a2: "profile A pr"
   note winc = wins_l_correct[unfolded fref_def, THEN fun_relD, THEN fun_relD,THEN fun_relD,
       where x2 = alt and x'2 = alt and x1 = pl and x'1 = pr]
-  note profr = profileref[THEN fun_relD, THEN fun_relD,
-      where x1 = A and x'1 = A and x = pl and x' = pr]
+  note profr = profile_ref
   from a1 a2 profr show "(profile_l A pl)"
-    by simp
+    by blast
 next
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
@@ -863,7 +859,8 @@ definition condorcet_winner_monadic :: "'a set \<Rightarrow> 'a Profile_List \<R
     FOREACH A
      (\<lambda> x b. do {
      winswx <- wins_monadic w p x;
-     RETURN (b \<and> ((x = w) \<or> winswx))
+      RETURN (if (x = w) then b
+      else (b \<and> (winswx)))
     }) (True)
     else RETURN False"
 
@@ -877,48 +874,31 @@ sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic"
   done
 
 lemma condorcet_winner_monadic_correct:
-  shows "(\<lambda> (A, p). condorcet_winner_monadic A p, 
-(\<lambda> (A, p) a. SPEC (\<lambda> is_win. is_win = condorcet_winner A p a)))
-  \<in> \<langle>Id\<rangle>alt_and_profile_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel"
-  unfolding condorcet_winner_monadic_def 
-proof (clarsimp simp add:  profile_prop_list profileref  alt_and_profile_rel_def in_br_conv finite_set_rel_def
-    simp del: wins.simps, rename_tac A pl pr winner, safe)
-  fix A :: "'a set"
-  fix pl:: "'a Profile_List"
-  fix pr:: "'a Profile"
-  fix winner :: 'a
-  assume fina: "finite A"
-  assume winA': "winner \<in> A"
-  assume profrel: "(pl, pr) \<in> profile_on_A_rel A"
-  from profrel have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by blast
-  from profrel have profp: "profile A pr" using profile_prop_rel by blast
-  from profp show "(FOREACH A
-         (\<lambda>x b. wins_monadic winner pl x \<bind> (\<lambda>winswx. RETURN (b \<and> (x = winner \<or> winswx)))) True,
-        RES {profile A pr \<and> (\<forall>x\<in>A - {winner}. wins winner pr x)})
-       \<in> \<langle>bool_rel\<rangle>nres_rel"
-    apply (refine_vcg profp FOREACH_rule [where I =" \<lambda> it b. b = 
-     profile A pr \<and> (\<forall>x\<in> (A - it).  (x = winner) \<or> (wins winner pr x))"])
-    apply (auto simp add: fina simp del: wins.simps)
-  proof (rename_tac xa it sigma)
-    fix xa :: 'a 
-    fix it :: "'a set"
-    fix sigma :: bool
-    assume xait: "xa \<in> it"
-    assume itsA: "it \<subseteq> A"
-    assume allwon: "\<forall>alt\<in>A - it. alt = winner \<or> wins winner pr alt"
-    assume profp: "profile A pr"
-    note wmc = wins_monadic_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD,
-        THEN refine_IdD]
-    from xait itsA allwon show  "wins_monadic winner pl xa
-       \<le> SPEC (\<lambda>winswx.
-                   (xa = winner \<or> winswx) \<and> (\<forall>alt\<in>A - (it - {xa}). alt = winner \<or> wins winner pr alt))"
-      apply (refine_vcg wmc profp IdI prel ) using cond_winner_unique
-      unfolding condorcet_winner.simps
-      sorry
-  qed
-next 
-  show "(RETURN False, RES {False}) \<in> \<langle>bool_rel\<rangle>nres_rel"
-    by (refine_vcg, simp)
+  fixes A :: "'a set"
+  fixes pl :: "'a Profile_List"
+    and pr :: "'a Profile"
+   assumes prel: "(pl, pr) \<in> profile_rel" and proflp: "profile_l A pl" 
+  assumes fina: "finite A" 
+  shows "condorcet_winner_monadic A pl a
+  \<le> SPEC (\<lambda> is_win. is_win = condorcet_winner A pr a)"
+proof (unfold condorcet_winner_monadic_def, auto simp del: condorcet_winner.simps)
+  from prel proflp have profp: "profile A pr" using profile_ref
+    by blast
+  assume winner_in: "a \<in> A"
+  note winsc = wins_monadic_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD]
+  from winner_in  have "FOREACH A (\<lambda>x b. wins_monadic a pl x \<bind> (\<lambda>winswx. RETURN (if x = a then b else b \<and> winswx)))
+     True
+    \<le> SPEC (\<lambda> is_win. is_win =  condorcet_winner A pr a)"
+      apply (refine_vcg  FOREACH_rule [where I =" \<lambda> it b. b =
+    (\<forall>x\<in>(A - it) - {a}. wins a pr x)"] winsc prel fina profp)
+    by (auto simp add: winner_in fina  profp simp del: wins.simps)
+  from this show "FOREACH A (\<lambda>x b. wins_monadic a pl x \<bind> (\<lambda>winswx. RETURN (if x = a then b else b \<and> winswx)))
+     True
+    \<le> RES {condorcet_winner A pr a}" by simp
+next
+  assume aA: "a \<notin> A"
+  assume condwa: "condorcet_winner A pr a"
+  from aA condwa show "False" by simp   
 qed
 
 lemma cond_winner_l_unique:
@@ -990,7 +970,7 @@ sepref_definition limit_sep is "uncurry (limit_profile_l)" ::
 
 lemma "limitp_correct":
   shows "(limit_profile_l, RETURN oo limit_profile) \<in> 
-      \<langle>Id\<rangle>alt_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
+      \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
   sorry
 
 end
