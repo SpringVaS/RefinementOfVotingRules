@@ -3,14 +3,17 @@ theory Condorcet_Module_Ref
            "Component_Types/Elimination_Module_Ref"
 begin
 
+
 definition condorcet_score_ref :: "'a Evaluation_Function_Ref" where
   "condorcet_score_ref x A p = do {
     is_x_cond_winner <- (condorcet_winner_monadic A p x);
     RETURN (if (is_x_cond_winner) then 1 else 0)}"
 
 
+
+
 definition condorcet_ref :: "'a Electoral_Module_Ref" where
-  "condorcet_ref A pl \<equiv> do {
+  "condorcet_ref A pl  \<equiv> do {
    scores <- (pre_compute_scores condorcet_score_ref A pl);
    max_eliminator_ref scores A pl
 }"
@@ -21,16 +24,53 @@ lemma condorcet_score_ref_correct:
   assumes 
     fina: "finite A"
     and profrel: "(pl, pr) \<in> profile_rel"
-    and profpropl: "profile_l A pl"
-  shows "condorcet_score_ref x A pl \<le> SPEC (\<lambda> sc. sc = (condorcet_score x A pr))"
+    and profprop: "profile A pr"
+  shows "\<forall> x \<in> A. condorcet_score_ref x A pl \<le> SPEC (\<lambda> sc. sc = (condorcet_score x A pr))"
   unfolding condorcet_score_ref_def condorcet_score.simps
+  apply clarify
   apply (refine_vcg assms condorcet_winner_monadic_correct)
   by auto
 
+definition "condorcet_spec \<equiv> SPEC (\<lambda> condres. (condres, RETURN oo (condorcet)) \<in>
+  \<langle>Id\<rangle>set_rel \<rightarrow>\<^sub>f profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel)"
 
-context fixed_alts 
+lemma condorcet_ref_correct:          
+  shows "(uncurry condorcet_ref, uncurry (RETURN oo condorcet)) \<in> 
+  ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+proof (unfold condorcet_ref_def comp_apply SPEC_eq_is_RETURN(2)[symmetric], 
+    intro frefI nres_relI, clarsimp simp add: set_rel_id prod_rel_id simp del : condorcet.simps,
+    rename_tac A pl pr)
+  fix A :: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume prel: " (pl, pr) \<in> profile_rel"
+  assume fina: "finite A"
+  assume profp: "profile A pr"
+  from prel fina profp  have  precompcond: "pre_compute_scores condorcet_score_ref A pl
+  \<le> SPEC (\<lambda>map. map = pre_computed_map condorcet_score A pr)" using
+    condorcet_score_ref_correct compute_scores_correct
+    by metis
+  note maxelim = max_eliminator_ref_correct[where efn = condorcet_score and A = A and pl = pl
+      and pr = pr]
+  from fina prel this have mid: "(\<And>x. x = pre_computed_map condorcet_score A pr \<Longrightarrow>
+          max_eliminator_ref x A pl \<le> SPEC (\<lambda>x. x = max_eliminator condorcet_score A pr))"
+    by blast
+   have "pre_compute_scores condorcet_score_ref A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
+       \<le> SPEC (\<lambda>x. x = condorcet A pr)"
+     unfolding condorcet.simps
+     apply refine_vcg
+     using precompcond  mid
+       SPEC_cons_rule[where m = "pre_compute_scores condorcet_score_ref A pl" and
+\<Psi> = "(\<lambda>scores. max_eliminator_ref scores A pl \<le> SPEC (\<lambda>x. x = max_eliminator condorcet_score A pr))"
+  and \<Phi> = "(\<lambda> map. map = (pre_computed_map condorcet_score A pr))"]
+     by blast 
+    thus " pre_compute_scores condorcet_score_ref A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
+       \<le> RES {condorcet A pr}"
+    by (metis singleton_conv)
+qed
 
-begin
 sepref_definition condorcet_elim_sepref is
   "uncurry condorcet_ref":: 
   "alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k 
@@ -55,50 +95,7 @@ sepref_definition condorcet_elim_sepref is
 
   done
 
+lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]
 
-theorem condorcet_ref_correct:
-  shows "(condorcet_ref,  (RETURN oo condorcet)) \<in> 
-  elec_mod_fixed_alts_rel"
-proof (unfold condorcet_ref_def condorcet.simps, refine_vcg, auto simp only: in_br_conv set_rel_id prod_rel_id finite_set_rel_def,
-    rule refine_IdI, unfold comp_apply SPEC_eq_is_RETURN(2)[symmetric] , rename_tac pl pr)
-  fix pl :: "nat Profile_List"
-  fix pr :: "nat Profile"
-  assume profrel: "(pl, pr) \<in> profile_on_A_rel Alts"
-  assume fina: "finite Alts"
-  from profrel have prel: "(pl, pr) \<in> profile_rel" using
-      profile_type_ref by blast
-  from profrel have profpl: "profile_l Alts pl" using profile_prop_list by blast
-  from fina prel profpl  have 
-  "\<forall>a\<in>Alts. condorcet_score_ref a Alts pl \<le> SPEC (\<lambda>score. score = condorcet_score a Alts pr)"
-    using condorcet_score_ref_correct
-    by metis
-  from this prel fina  have  precompcond: "pre_compute_scores condorcet_score_ref Alts pl
-  \<le> SPEC (\<lambda>map. map = pre_computed_map condorcet_score Alts pr)" using
-    compute_scores_correct
-    by blast
-  note maxelim = max_eliminator_ref_correct[where efn = condorcet_score and A = Alts and pl = pl
-      and pr = pr]
-  from fina prel this have mid: "(\<And>x. x = pre_computed_map condorcet_score Alts pr \<Longrightarrow>
-          max_eliminator_ref x Alts pl \<le> SPEC (\<lambda>x. x = max_eliminator condorcet_score Alts pr))"
-    by blast
-   show "pre_compute_scores condorcet_score_ref Alts pl \<bind> (\<lambda>scores. max_eliminator_ref scores Alts pl)
-       \<le> SPEC (\<lambda>x. x = max_eliminator condorcet_score Alts pr)"
-     unfolding comp_apply SPEC_eq_is_RETURN(2)[symmetric] 
-     apply refine_vcg
-     using precompcond  mid
-       SPEC_cons_rule[where m = "pre_compute_scores condorcet_score_ref Alts pl" and
-\<Psi> = "(\<lambda>scores. max_eliminator_ref scores Alts pl \<le> SPEC (\<lambda>x. x = max_eliminator condorcet_score Alts pr))"
-  and \<Phi> = "(\<lambda> map. map = (pre_computed_map condorcet_score Alts pr))"]
-     by blast 
-qed 
-
-term "(condorcet_ref,  (RETURN oo condorcet))"
-
-
-lemmas cond_ref[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]
-
-end
-
-lemmas cond = fixed_alts.condorcet_ref_correct
 
 end

@@ -26,13 +26,13 @@ lemma borda_score_correct:
  
 
 lemma borda_ref_correct:          
-  shows "(borda_ref, RETURN oo borda) \<in> 
-  \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel 
+  shows "(uncurry borda_ref, uncurry (RETURN oo borda)) \<in> 
+  [\<lambda> (A, _). finite A]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-  unfolding borda_ref_def borda.simps
-proof (unfold borda_ref_def borda.simps, refine_vcg, auto simp only: in_br_conv set_rel_id prod_rel_id finite_set_rel_def,
-    rule refine_IdI, unfold comp_apply SPEC_eq_is_RETURN(2)[symmetric] , rename_tac pl pr A,
-    refine_vcg)
+  unfolding borda_ref_def
+proof (intro frefI nres_relI,  clarsimp simp add: set_rel_id prod_rel_id simp del: borda.simps,
+    unfold borda.simps comp_apply SPEC_eq_is_RETURN(2)[symmetric], rename_tac A pl pr,
+refine_vcg)
   fix A:: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
@@ -49,32 +49,14 @@ and A = A and pl = pl
   from fina prel this have mid: "(\<And>x. x = pre_computed_map borda_score A pr \<Longrightarrow>
           max_eliminator_ref x A pl \<le> SPEC (\<lambda>x. x = max_eliminator borda_score A pr))"
     by blast
-   show "pre_compute_scores borda_score_mon A pl
-       \<le> SPEC (\<lambda>scores.
-                   max_eliminator_ref scores A pl \<le> SPEC (\<lambda>x. x = max_eliminator borda_score A pr))"
+   show "  pre_compute_scores borda_score_mon A pl
+       \<le> SPEC (\<lambda>scores. max_eliminator_ref scores A pl \<le> SPEC (\<lambda>x. x = max_eliminator borda_score A pr))"
      using precompborda  mid
        SPEC_cons_rule[where m = "pre_compute_scores borda_score_mon A pl" and
 \<Psi> = "(\<lambda>scores. max_eliminator_ref scores A pl \<le> SPEC (\<lambda>x. x = max_eliminator borda_score A pr))"
   and \<Phi> = "(\<lambda> map. map = (pre_computed_map borda_score A pr))"]
-     by blast 
+     by blast
 qed 
-
-
-lemma borda_drel:
-  shows "(borda_ref,borda) \<in> \<langle>Id\<rangle>em_rel"
-  unfolding em_rel_def
-proof (clarify,refine_vcg, rename_tac A' A pl pr)
-  fix A' A:: "'a set"
-  fix pl :: "'a Profile_List"
-  fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume prel: " (pl, pr) \<in> profile_rel"
-  from arel prel show " borda_ref A' pl \<le> \<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
-        ((RETURN \<circ>\<circ> borda) A pr)"
-  using borda_ref_correct[THEN fun_relD, THEN fun_relD, THEN nres_relD]
-     push_in_let_conv(2)
-  by (metis relAPP_def set_rel_id_simp)
-qed
 
 
 sepref_definition borda_elim_sepref is
@@ -99,7 +81,7 @@ sepref_definition borda_elim_sepref is
   apply sepref_dbg_keep
   done
 
-lemmas borda_elim_sepref_correct[sepref_fr_rules] 
+lemmas borda_elim_sepref_correct [sepref_fr_rules]
   = borda_elim_sepref.refine[FCOMP borda_ref_correct]
 
 

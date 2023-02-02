@@ -877,13 +877,11 @@ lemma condorcet_winner_monadic_correct:
   fixes A :: "'a set"
   fixes pl :: "'a Profile_List"
     and pr :: "'a Profile"
-   assumes prel: "(pl, pr) \<in> profile_rel" and proflp: "profile_l A pl" 
+   assumes prel: "(pl, pr) \<in> profile_rel" and profp: "profile A pr" 
   assumes fina: "finite A" 
   shows "condorcet_winner_monadic A pl a
   \<le> SPEC (\<lambda> is_win. is_win = condorcet_winner A pr a)"
 proof (unfold condorcet_winner_monadic_def, auto simp del: condorcet_winner.simps)
-  from prel proflp have profp: "profile A pr" using profile_ref
-    by blast
   assume winner_in: "a \<in> A"
   note winsc = wins_monadic_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD]
   from winner_in  have "FOREACH A (\<lambda>x b. wins_monadic a pl x \<bind> (\<lambda>winswx. RETURN (if x = a then b else b \<and> winswx)))
