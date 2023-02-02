@@ -50,13 +50,12 @@ lemma evalfeq:
      fina: "finite A" and 
      pref: "(pl, pr) \<in> profile_rel" and
      evalref: "(refn, efn) \<in> evalf_rel"
-   shows "refn a A pl \<le> RETURN (efn a A pr)"
+   shows "refn a A pl \<le> SPEC (\<lambda>score. score = (efn a A pr))"
 proof (-)
   from evalref have efrel: "(refn, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = efn a A pro))) \<in> efunrel"
   unfolding evalf_rel_def by simp
   from fina  have "(A, A) \<in> \<langle>Id\<rangle>finite_set_rel" by (simp add: finite_set_rel_def in_br_conv)
   from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD]
-  SPEC_eq_is_RETURN(2)
   show ?thesis
     by (metis IdI) 
 qed
@@ -81,39 +80,8 @@ proof (-)
     using arel id_same_alts by fastforce
 qed
 
-lemma drop_prof_prop: 
-  assumes "(eref, e) \<in> evalf_rel"
-  shows "(eref, e) \<in> evalf_rel_prof"
-proof (unfold evalf_rel_prof_def, clarsimp, rule nres_relI, rule refine_IdI,
-    rename_tac a A' pl A pr)
-  fix A' A :: "'a set"
-  fix pl :: "'a Profile_List"
-  fix pr :: "'a Profile"
-  fix a:: 'a
-  assume rel: "((A', pl), A, pr) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  from rel have arel : "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel" 
-    using unfold_alt_profile_alt_rel by blast
-  from rel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
-    by blast
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from assms have "eref a A pl \<le> RETURN (e a A pr)"
-    using fina prel evalfeq assms
-    by metis  
-  from this show "eref a A' pl \<le> RES {e a A pr}"
-    by (simp add: aeq ireturn_eq)
-qed
 
 
-
-locale set_of_alternatives =
-   fixes A:: "'a set" 
-   assumes 
-     fina: "finite A"
-begin
-
-
-end
   
   subsection \<open>Refined Condorcet Property\<close>
 
@@ -139,24 +107,22 @@ text \<open>
   If a Condorcet Winner w exists, w has the maximum evaluation value.
 \<close>
 
-context set_of_alternatives
-begin
 
-theorem cond_winner_imp_max_eval_val_ref:
+(*theorem cond_winner_imp_max_eval_val_ref:
+  fixes A :: "'a set"
   fixes eref :: "'a Evaluation_Function_Ref"
   and efn :: "'a Evaluation_Function"
   fixes pl :: "'a Profile_List" and pr :: "'a Profile"
-  assumes profrel : "(pl, pr) \<in> profile_rel"
-  assumes evalfref: "(eref, efn) \<in> evalf_rel"
+  assumes fina: "finite A" 
+  and profrel : "(pl, pr) \<in> profile_rel"
+  and efref: "eref w A pl \<le> SPEC (\<lambda> score. score = (efn w A pr))"
   assumes
     rating: "condorcet_rating efn" and
     profl: "profile_l A pl" and
     winnerl: "condorcet_winner_l A pl w"
   shows "eref w A pl \<le> RETURN (Max {efn a A pr | a. a \<in> A})"
 proof -
-  from evalfref profrel fina  have efref: "eref w A pl \<le> RETURN (efn w A pr)"
-    using  evalfeq
-    by fastforce
+  from win
   from fina profl profrel have f_prof: "finite_profile A pr" 
     using profile_ref
     by fastforce
@@ -169,7 +135,7 @@ proof -
     by (metis (mono_tags, lifting))
   from efref this show ?thesis
     by auto      
-qed
+qed*)
 
 text \<open>
   If e is Condorcet-rating, the following holds:
@@ -178,12 +144,16 @@ text \<open>
   evaluation value.
 \<close>
 
+find_theorems "Max"
+
 theorem non_cond_winner_not_max_eval_ref:
- fixes eref :: "'a Evaluation_Function_Ref"
+  fixes A :: "'a set"
+  fixes eref :: "'a Evaluation_Function_Ref"
   and efn :: "'a Evaluation_Function"
   fixes pl :: "'a Profile_List" and pr :: "'a Profile"
+  assumes fina: "finite A" 
   assumes profrel : "(pl, pr) \<in> profile_rel"
-  assumes evalfref: "(eref, efn) \<in> evalf_rel"
+  and efref: "\<forall> c \<in> A. eref c A pl \<le> SPEC (\<lambda> score. score = (efn c A pr))"
   assumes
     rating: "condorcet_rating efn" and
     profl: "profile_l A pl" and
@@ -192,9 +162,7 @@ theorem non_cond_winner_not_max_eval_ref:
     loser: "w \<noteq> l"
   shows "do {sl <- eref l A pl; RETURN (sl < Max {efn a A pr | a. a \<in> A})} \<le> RETURN True"  
 proof -
-  from evalfref have efref: "eref w A pl \<le> RETURN (efn w A pr)"
-    using profrel fina  evalfeq refine_IdD
-    by simp
+  from winnerl have winA: "w \<in> A" by simp
   from fina profl profrel have f_prof: "finite_profile A pr" 
     using profile_ref
     by fastforce
@@ -205,12 +173,13 @@ proof -
   from f_prof winner rating linA loser have lt: "efn l A pr < Max {efn a A pr | a. a \<in> A}"
     using non_cond_winner_not_max_eval[where A= A and l = l and e = efn and w = w and p = pr]
     by simp
-  from profrel evalfref fina  have "eref l A pl \<le> RETURN (efn l A pr)" using evalfeq
-    by fastforce
-  from this lt show ?thesis
-    by (smt (verit, ccfv_threshold) RETURN_SPEC_conv pw_ords_iff(1) specify_left)
+  from  fina linA efref  show ?thesis unfolding SPEC_eq_is_RETURN(2)[symmetric]
+    using specify_left[where m = "eref l A pl" and \<Phi> = "(\<lambda>score. score = efn l A pr)"
+          and f = "(\<lambda>sl. SPEC (\<lambda>x. x = (sl < Max {efn a A pr |a. a \<in> A})))"
+          and M= "SPEC (\<lambda>x. x = True)"]
+    using lt by fastforce  
+
 qed
 
-end
 
 end

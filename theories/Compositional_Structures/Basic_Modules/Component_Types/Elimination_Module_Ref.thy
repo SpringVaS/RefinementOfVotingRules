@@ -76,35 +76,60 @@ definition pre_computed_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Ri
 
 
 lemma eliminate_correct:
-  fixes e :: "'a Evaluation_Function"
+  fixes A :: "'a set"
+  fixes efn :: "'a Evaluation_Function"
   and p :: "'a Profile"
   and t :: "Threshold_Value"
   and r :: "Threshold_Relation"
-  shows "((\<lambda> A. eliminate (pre_computed_map e A p) t r A), 
-    (\<lambda> A. SPEC (\<lambda> (rej,def). (rej,def) = ((elimination_set e t r A p), A - (elimination_set e t r A p)))))
-    \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  assumes  fina: "finite A" 
+  shows "eliminate (pre_computed_map efn A p) t r A
+    \<le> SPEC (\<lambda> (rej,def). 
+    (rej,def) = ((elimination_set efn t r A p), A - (elimination_set efn t r A p)))"
   unfolding pre_computed_map_def eliminate_def
-proof (refine_vcg, rename_tac A' A)
-  fix A' A :: "'a set"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
-  show " FOREACH A'
-        (\<lambda>x (rej, def).
-            ASSERT (x \<in> dom ((\<lambda>a. Some (e a A' p)) |` A')) \<bind>
-            (\<lambda>_. let scx = the (((\<lambda>a. Some (e a A' p)) |` A') x)
-                  in if r scx t then RETURN (insert x rej, def) else RETURN (rej, insert x def)))
-        ({}, {})
-       \<le> SPEC (\<lambda>(rej, def). (rej, def) = (elimination_set e t r A p, A - elimination_set e t r A p))"
-  proof (refine_vcg FOREACH_rule
-      [where I = "\<lambda> it (rej, def). rej = ((elimination_set e t r A p) - it)
-                \<and> def = (A - it) - (elimination_set e t r (A) p)"], clarsimp_all simp add: fina,
-        auto simp add: aeq)
-  qed
-qed
+  by (refine_vcg FOREACH_rule
+      [where I = "\<lambda> it (rej, def). rej = ((elimination_set efn t r A p) - it)
+                \<and> def = (A - it) - (elimination_set efn t r A p)"],auto simp add: fina)
 
 
 lemma compute_scores_correct:
+  fixes A :: "'a set"
+  fixes pr :: "'a Profile"
+  fixes pl :: "'a Profile_List"
+  fixes efnref :: "'a Evaluation_Function_Ref"
+  and efn :: "'a Evaluation_Function"
+  assumes 
+     fina: "finite A" and 
+     prel: "(pl, pr) \<in> profile_rel" and
+  efnrel:  "\<forall>a \<in> A. efnref a A pl \<le> SPEC (\<lambda>score. score = (efn a A pr))"
+  shows "pre_compute_scores efnref A pl \<le>
+   SPEC(\<lambda> map. map = (pre_computed_map efn A pr))"
+  unfolding pre_compute_scores_def pre_computed_map_def
+proof (refine_vcg FOREACH_rule[where I = 
+        "(\<lambda>it r. r = (\<lambda> a. Some (efn a A pr))|`(A - it))"],
+        clarsimp_all simp add: fina)
+    fix x:: 'a
+  fix it:: "'a set"
+  assume xit: "x \<in> it"
+  assume itA: "it \<subseteq> A"
+  from xit itA have xiA: "x \<in> A" by fastforce
+  from xit itA have wcr: "((\<lambda>a. Some (efn a A pr)) |` (A - it))(x \<mapsto> (efn x A pr)) =
+                      (\<lambda>a. Some (efn a A pr)) |` (A - (it - {x}))"
+      using it_step_insert_iff restrict_map_insert
+      by metis
+  from this have mapupdeq: "(\<lambda>scx. ((\<lambda>a. Some (efn a A pr)) |` (A - it))(x \<mapsto> scx) =
+                   (\<lambda>a. Some (efn a A pr)) |` (A - (it - {x})))
+      = (\<lambda> wc. wc = (efn x A pr))"
+    by (metis map_upd_eqD1)
+  from efnrel xiA have "efnref x A pl \<le> SPEC (\<lambda>score. score = (efn x A pr))"
+    by fastforce
+  from this mapupdeq show "efnref x A pl
+       \<le> SPEC (\<lambda>scx. ((\<lambda>a. Some (efn a A pr)) |` (A - it))(x \<mapsto> scx) =
+                      (\<lambda>a. Some (efn a A pr)) |` (A - (it - {x})))"
+    using  it_step_insert_iff restrict_map_insert
+    by presburger
+qed
+
+lemma compute_scores_correctrel:
   shows "(pre_compute_scores, (\<lambda> e A pr. SPEC(\<lambda> map. map = (pre_computed_map e A pr)))) \<in> 
    evalf_rel \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
   unfolding pre_compute_scores_def pre_computed_map_def
@@ -205,107 +230,55 @@ qed
 qed
 
 
+
 theorem elimination_module_ref_correct:
+  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
   and pr :: "'a Profile"
   and pl :: "'a Profile_List"
   and t :: "Threshold_Value"
   and r :: "Threshold_Relation"
-  assumes "(pl, pr) \<in> profile_rel"
-shows "(\<lambda> A. (elimination_module_ref (pre_computed_map efn A pr) t r A pl),
-        (\<lambda> A. SPEC (\<lambda> em. em = (elimination_module efn t r A pr))))
-      \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-  unfolding em_rel_def
-  unfolding elimination_module_ref_def
-proof (clarify, rename_tac A' A)
-  fix A' A :: "'a set"
-  assume arel : "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  note elimalg = eliminate_correct[THEN fun_relD, THEN nres_relD, THEN refine_IdD,
-          where x2=A' and x'2 = A]
-   have " (eliminate (pre_computed_map efn A' pr) t r A' \<bind>
-        (\<lambda>(rej, def). if def = {} then RETURN ({}, {}, rej) else RETURN ({}, rej, def)),
-        SPEC (\<lambda>em. em = elimination_module efn t r A pr))
-       \<in> \<langle>Id\<rangle>nres_rel"
-     apply (refine_vcg elimalg)
-     by (auto simp add: arel)
-  from this show "(eliminate (pre_computed_map efn A' pr) t r A' \<bind>
-        (\<lambda>(rej, def). if def = {} then RETURN ({}, {}, rej) else RETURN ({}, rej, def)),
-        SPEC (\<lambda>em. em = elimination_module efn t r A pr))
-       \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-    by simp
-qed
+    assumes fina: "finite A"  and
+  "(pl, pr) \<in> profile_rel"
+shows "elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le>
+        SPEC (\<lambda> em. em = (elimination_module efn t r A pr))"
+  by (unfold elimination_module_ref_def, refine_vcg eliminate_correct,
+    auto simp add: fina)
+  
 
 lemma scoremax_correct:
   fixes A :: "'a set"
   assumes fina: "finite A" and nempa: "A \<noteq> {}"
-  fixes e :: "'a Evaluation_Function"
+  fixes efn :: "'a Evaluation_Function"
   and pr :: "'a Profile"
-  shows "scoremax A (pre_computed_map e A pr)
- \<le> SPEC (\<lambda> max. max = Max {(e a A pr) | a. a \<in> A})"
+  shows "scoremax A (pre_computed_map efn A pr)
+ \<le> SPEC (\<lambda> max. max = Max {(efn a A pr) | a. a \<in> A})"
 proof (unfold scoremax_def pre_computed_map_def)
   show "FOREACH A
      (\<lambda>x max.
-         ASSERT (x \<in> dom ((\<lambda>a. Some (e a A pr)) |` A)) \<bind>
-         (\<lambda>_. let scx = the (((\<lambda>a. Some (e a A pr)) |` A) x)
+         ASSERT (x \<in> dom ((\<lambda>a. Some (efn a A pr)) |` A)) \<bind>
+         (\<lambda>_. let scx = the (((\<lambda>a. Some (efn a A pr)) |` A) x)
                in if max < scx then RETURN scx else RETURN max))
      0
-    \<le> SPEC (\<lambda>max. max = Max {e a A pr |a. a \<in> A})"
-    apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (e a A pr) \<le> max)
-      \<and> ((\<exists>a \<in> (A - it). max = (e a A pr)) \<or> max = 0))"], clarsimp_all simp add:  fina nempa,
+    \<le> SPEC (\<lambda>max. max = Max {efn a A pr |a. a \<in> A})"
+    apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (efn a A pr) \<le> max)
+      \<and> ((\<exists>a \<in> (A - it). max = (efn a A pr)) \<or> max = 0))"], clarsimp_all simp add:  fina nempa,
          auto)
-  using max_score_in[where A= A and f = "(\<lambda> x. e x A pr)"] fina nempa
-            score_bounded[where A= A and f = "(\<lambda> x. e x A pr)"] 
+  using max_score_in[where A= A and f = "(\<lambda> x. efn x A pr)"] fina nempa
+            score_bounded[where A= A and f = "(\<lambda> x. efn x A pr)"] 
   apply (metis DiffI dual_order.trans order_less_imp_le)
-  using max_score_in[where A= A and f = "(\<lambda> x. e x A pr)"] fina nempa
-            score_bounded[where A= A and f = "(\<lambda> x. e x A pr)"] 
+  using max_score_in[where A= A and f = "(\<lambda> x. efn x A pr)"] fina nempa
+            score_bounded[where A= A and f = "(\<lambda> x. efn x A pr)"] 
 proof ((metis (mono_tags, lifting) order_antisym_conv))
-  assume all0: "\<forall>a\<in>A. e a A pr = 0"
-  from all0 have eq: "{e a A pr |a. a \<in> A} = {0}"
+  assume all0: "\<forall>a\<in>A. efn a A pr = 0"
+  from all0 have eq: "{efn a A pr |a. a \<in> A} = {0}"
     using nempa Max_singleton by force
   have "Max {0} = 0"
     using Max_singleton by blast
-  from eq this  show " Max {e a A pr |a. a \<in> A} = 0"
+  from eq this  show " Max {efn a A pr |a. a \<in> A} = 0"
     by simp
 qed
 qed
-
-(*context set_of_alternatives
-begin
-
-
-
-lemma scoremax_correct_ctx:
-  shows "(scoremax A (pre_computed_map e A pr) 
-\<le> SPEC (\<lambda> max. max = Max {(e a A pr) | a. a \<in> A}))"
-  unfolding scoremax_def pre_computed_map_def
-  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (e a A pr) \<le> max) 
-      \<and> ((\<exists>a \<in> (A - it). max = (e a A pr)) \<or> max = 0))"] )
-  apply (auto simp add: fina)
-  subgoal by (metis Diff_iff leD nle_le order_trans)
-  subgoal by (metis DiffI order_less_imp_le)
-  using max_score_in[where A= A and f = "(\<lambda> x. e x A pr)"] fina nempa
-            score_bounded[where A= A and f = "(\<lambda> x. e x A pr)"]
-  subgoal by (metis (mono_tags, lifting) order_antisym_conv)
-  
-proof -
-  assume "\<forall>a\<in>A. e a A pr = 0"
-  from this have eq: "{e a A pr |a. a \<in> A} = {0}"
-    using nempa Max_singleton by force
-  have "Max {0} = 0"
-    using Max_singleton by blast
-  from eq this show " Max {e a A pr |a. a \<in> A} = 0"
-    by simp
-qed
-
-end*)
- 
-
-locale profile_complete = set_of_alternatives + 
-  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
-  assumes 
-     profrel: "(pl, pr) \<in> profile_on_A_rel A"
-
-
 
 subsection \<open>Common Eliminators\<close>
                                    
@@ -319,93 +292,56 @@ definition max_eliminator_ref ::  "'a Scores_Map \<Rightarrow>
     if (A = {}) then
       RETURN ({},{},{})
     else do {
-    ASSERT (A \<noteq> {});
     t <- (scoremax A e); 
     (less_eliminator_ref e t A p)
  }"
 
-lemma less_eliminator_correct:
-  fixes efn :: "'a Evaluation_Function"
+lemma less_eliminator_ref_correct:
+  fixes A :: "'a set"
+  and efn :: "'a Evaluation_Function"
   and pr :: "'a Profile"
   and pl :: "'a Profile_List"
   and t :: "Threshold_Value"
-  assumes prel: "(pl, pr) \<in> profile_rel"
-  shows "((\<lambda> A. less_eliminator_ref (pre_computed_map efn A pr) t A pl),
-            (\<lambda> A. SPEC (\<lambda> em. em = (less_eliminator efn t A pr))))
-          \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+  assumes fina: "finite A" 
+  and prel: "(pl, pr) \<in> profile_rel"
+  shows "(less_eliminator_ref (pre_computed_map efn A pr) t A pl) \<le>
+            SPEC (\<lambda> em. em = (less_eliminator efn t A pr))"
   unfolding less_eliminator_ref_def less_eliminator.simps
-proof (clarify, rename_tac A' A)
-  fix A' A :: "'a set"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  from arel prel show "(elimination_module_ref (pre_computed_map efn A' pr) t (<) A' pl,
-        SPEC (\<lambda>em. em = elimination_module efn t (<) A pr))
-       \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-    by (refine_vcg elimination_module_ref_correct[THEN fun_relD])
+proof (-)
+ show "elimination_module_ref (pre_computed_map efn A pr) t (<) A pl
+       \<le> SPEC (\<lambda>em. em = elimination_module efn t (<) A pr) "
+   using fina prel elimination_module_ref_correct by blast
 qed
 
-theorem max_eliminator_ref_correct:
+lemma max_eliminator_ref_correct:
+  fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
   and pr :: "'a Profile"
   and pl :: "'a Profile_List"
+  assumes fina: "finite A"
   assumes prel: "(pl, pr) \<in> profile_rel"
-  shows "((\<lambda> A'. max_eliminator_ref (pre_computed_map efn A' pr) A' pl),
-           ((\<lambda> A.  SPEC (\<lambda> em. em = max_eliminator efn A pr))))
- \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow>  \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-  unfolding max_eliminator_ref_def 
-proof ( clarsimp simp del: max_eliminator.simps, rename_tac A' A, 
-    (refine_vcg))
-  fix A' A :: "'a set"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume empa: "A' = {}"
-  from arel have aeq: "A' = A" by (simp add: finite_set_rel_def in_br_conv)
-  from empa show "(({}, {}, {}), max_eliminator efn A pr) \<in> Id"
-    using aeq by auto  
+  shows "(max_eliminator_ref (pre_computed_map efn A pr) A pl
+          \<le> SPEC (\<lambda> em. em = max_eliminator efn A pr))"
+proof (unfold max_eliminator_ref_def, refine_vcg)
+  show "A = {} \<Longrightarrow> ({}, {}, {}) = max_eliminator efn A pr" by simp
 next
-  fix A' A :: "'a set"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume nempa: "A' \<noteq> {}"
-  from arel have fina: "finite A" by (simp add: finite_set_rel_def in_br_conv)
-  from arel have aeq: "A' = A" by (simp add: finite_set_rel_def in_br_conv)
-
-  note lec = less_eliminator_correct[where efn = efn and t = "Max {efn x A pr |x. x \<in> A}",
-      THEN fun_relD, THEN nres_relD, THEN nres_relI]
-  from arel prel this aeq have elim: "(less_eliminator_ref (pre_computed_map efn A' pr)
-   (Max {efn x A pr |x. x \<in> A}) A pl,
-   SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr))
-  \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-    by blast 
-  have simprefl: "less_eliminator_ref (pre_computed_map efn A' pr)
-   (Max {efn x A pr |x. x \<in> A}) A pl
-   \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn x A pr |x. x \<in> A}) A pr)"
-    using elim[THEN nres_relD]
-    by (clarsimp simp only: set_rel_id prod_rel_id refine_IdD)
-  note sci = scoremax_correct
-  from this arel prel fina nempa aeq have maxs: "scoremax A' (pre_computed_map efn A' pr) 
-    \<le> SPEC (\<lambda> maxs. maxs = (Max {efn x A pr |x. x \<in> A}))" 
+  assume nempa: "A \<noteq> {}"
+  from fina nempa have scoremax_ins: "scoremax A (pre_computed_map efn A pr) \<le> SPEC (\<lambda>max. max = Max {efn a A pr |a. a \<in> A})"
+    using scoremax_correct by blast
+  have less_elim_ins: " (\<And>x. x = Max {efn a A pr |a. a \<in> A} \<Longrightarrow>
+          less_eliminator_ref (pre_computed_map efn A pr) x A pl
+          \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn a A pr |a. a \<in> A}) A pr))"
+    using fina prel less_eliminator_ref_correct[where A = A and pl = pl and pr = pr and efn = efn]
+    by fastforce
+  show "scoremax A (pre_computed_map efn A pr)
+    \<le> SPEC (\<lambda>t. less_eliminator_ref (pre_computed_map efn A pr) t A pl
+                 \<le> SPEC (\<lambda>em. em = max_eliminator efn A pr))"
+    unfolding max_eliminator.simps 
+    using scoremax_ins less_elim_ins  SPEC_cons_rule[where m = "scoremax A (pre_computed_map efn A pr)"
+      and \<Phi> = "(\<lambda>max. max = Max {efn a A pr |a. a \<in> A})"
+      and \<Psi> = "(\<lambda> t. less_eliminator_ref (pre_computed_map efn A pr) t A pl
+                 \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn a A pr |a. a \<in> A}) A pr))"]
     by blast
-  from simprefl maxs show " scoremax A' (pre_computed_map efn A' pr)
-       \<le> SPEC (\<lambda>t. less_eliminator_ref (pre_computed_map efn A' pr) t A' pl
-                    \<le> SPEC (\<lambda>c. (c , max_eliminator efn A pr) \<in> Id))"
-    unfolding max_eliminator.simps using aeq
-    by (smt (verit, best) IdI SPEC_cons_rule)
-
-qed
-
-lemma max_eliminator_Id:
-   fixes efn :: "'a Evaluation_Function"
-  and pr :: "'a Profile"
-  and pl :: "'a Profile_List"
-  assumes prel: "(pl, pr) \<in> profile_rel"
-  shows "((\<lambda> A. max_eliminator_ref (pre_computed_map efn A pr) A pl),
-           ((\<lambda> A.  SPEC (\<lambda> em. em = max_eliminator efn A pr))))
- \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow>  \<langle>Id\<rangle>nres_rel"
-proof (rule fun_relI, rule nres_relI, rename_tac A' A)
-  fix A' A :: "'a set"
-  assume arel:  "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  thus  "max_eliminator_ref (pre_computed_map efn A' pr) A' pl
-       \<le> \<Down> Id (SPEC (\<lambda>em. em = max_eliminator efn A pr))" 
-    using max_eliminator_ref_correct[THEN fun_relD, THEN nres_relD] prel set_rel_id prod_rel_id
-    by metis
 qed
   
 

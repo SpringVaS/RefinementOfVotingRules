@@ -14,11 +14,6 @@ definition finite_set_rel where alt_set_rel_def_internal:
   "finite_set_rel R \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x))"
 
 
-
-(*lemma alt_set_rel_fixed_def[refine_rel_defs]: 
-  "\<langle>R\<rangle>alt_set_rel_fixed A \<equiv> {(As, Bs). As = A \<and> (As, Bs) \<in> \<langle>R\<rangle>set_rel}"
-  by (simp add: alt_set_rel_fixed_internal_def relAPP_def)*)
-
 lemma finite_set_rel_def[refine_rel_defs]: 
   "\<langle>R\<rangle>finite_set_rel \<equiv> (\<langle>R\<rangle>set_rel O br (\<lambda>x. x) (\<lambda> x. finite x))"
   by (simp add: alt_set_rel_def_internal relAPP_def)
@@ -82,7 +77,7 @@ lemma is_less_preferred_than_ref:
   apply (refine_vcg)
   by (auto simp only: refine_rel_defs less_preffered_l_rel_eq)
 
-find_theorems "sorted_wrt"
+
 
 
 definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
@@ -103,33 +98,28 @@ definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarr
     RETURN (nbal)
   }"                          
 
-find_theorems filter
 
 lemma limit_monadic_refine:
-  shows "(limit_monadic, (\<lambda> A bl. SPEC(\<lambda> lim. lim = (limit_l A bl)))) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow>
-      \<langle>Id\<rangle>list_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
+  fixes A :: "'a set" and bal :: "'a Preference_List"
+  assumes fina: "finite A" 
+  shows "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))"
   unfolding limit_monadic_def
-  apply (refine_rcg, rename_tac A' A bl br)
-proof -
-  fix A' A :: "'a set"
-  fix bl :: "'a Preference_List"
-  fix  br :: "'a Preference_List"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume bid: "(bl, br) \<in> \<langle>Id\<rangle>list_rel"
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
-  from bid have beq: "bl = br"
-    by simp 
-  show  " WHILE\<^sub>T\<^bsup>limit_monadic_inv A' bl\<^esup> (\<lambda>(i, nbal). i < length bl)
-        (\<lambda>(i, nbal).
-            ASSERT (i < length bl) \<bind>
-            (\<lambda>_. let c = bl ! i in RETURN (if c \<in> A' then (i + 1, nbal @ [c]) else (i + 1, nbal))))
-        (0, []) \<bind>
-       (\<lambda>(i, nbal). RETURN nbal)
-       \<le> SPEC (\<lambda>lim. lim = limit_l A br)"
-    by (refine_vcg WHILEIT_rule[where R = "measure (\<lambda>(i, newb). length bl - i)"],
-        auto simp add: limit_monadic_inv_def pl_\<alpha>_def beq aeq take_Suc_conv_app_nth)
-qed
+ by (refine_vcg WHILEIT_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"],
+        auto simp add: limit_monadic_inv_def pl_\<alpha>_def  take_Suc_conv_app_nth)
+
+lemma limit_monadic_correct:
+  fixes A :: "'a set" and bal :: "'a Preference_List"
+  assumes fina: "finite A" 
+  assumes balrel: "(bal, bar) \<in> ballot_on_A_rel A"
+  shows "(limit_monadic A bal, SPEC(\<lambda> lim. lim = (limit A bar)))
+      \<in>  \<langle>ballot_on_A_rel A\<rangle>nres_rel"
+proof (refine_vcg)
+  from balrel have "distinct bal \<and> linear_order_on_l A bal"
+    unfolding  well_formed_pl_def using in_br_conv
+    by (metis relcomp.simps) 
+   have "(limit_l A bal, (limit A (pl_\<alpha> bal))) \<in> ballot_on_A_rel A"
+     using limit_l_eq[symmetric] unfolding in_br_conv well_formed_pl_def
+     oops
   
 
 sepref_definition limit_imp is "uncurry (limit_monadic)" ::
@@ -283,7 +273,7 @@ abbreviation "alts_set_impl_assn \<equiv> (hs.assn cand_impl_assn)"
 
 abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
 
-definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>finite_set_rel)"
+(*definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>finite_set_rel)"
                                  
 
 definition "ballot_ref_assn \<equiv>  hr_comp ballot_impl_assn (\<langle>Id\<rangle>list_rel)"
@@ -295,7 +285,7 @@ definition "result_set_one_step \<equiv> hr_comp alts_set_impl_assn (\<langle>Id
 definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<rangle>set_rel)"
 
 
-definition "ballot_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
+definition "ballot_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"*)
 
 
 

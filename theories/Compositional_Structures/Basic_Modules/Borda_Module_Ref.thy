@@ -8,14 +8,13 @@ fun borda_score_mon :: "'a Evaluation_Function_Ref" where
     sum_impl (prefer_count_monadic_imp p x) A"
 
 
-
 definition borda_ref :: "'a Electoral_Module_Ref" where
   "borda_ref A pl \<equiv> do {
    scores <- (pre_compute_scores borda_score_mon A pl);
    max_eliminator_ref scores A pl
 }"
 
-lemma borda_score_refine_alt:
+lemma borda_score_correct:
   fixes A:: "'a set"
   fixes pl:: "'a Profile_List" and pr:: "'a Profile"
   assumes 
@@ -26,61 +25,40 @@ lemma borda_score_refine_alt:
   by (refine_vcg fina sum_impl_correct prefer_count_monadic_imp_correct  profrel)
  
 
-lemma borda_score_correct:
-  shows "(borda_score_mon, borda_score)
-    \<in> evalf_rel"
-  unfolding evalf_rel_def
-proof (clarify, refine_rcg, unfold borda_score_mon.simps borda_score.simps, 
-        rename_tac x A' A pl pr)
-  fix A' A :: "'a set"
-  fix x :: 'a
-  fix pl :: "'a Profile_List"
-  fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume prel: "(pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
-  show "sum_impl (prefer_count_monadic_imp pl x) A' \<le> SPEC (\<lambda>sc. sc = sum (prefer_count pr x) A)"
-    by (refine_vcg fina prel prefer_count_monadic_imp_correct sum_impl_correct, simp add: aeq)
-qed
-
-
 lemma borda_ref_correct:          
-  shows "(borda_ref, RETURN oo borda) \<in> elec_mod_relb Id"
+  shows "(borda_ref, RETURN oo borda) \<in> 
+  \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel 
+  \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
   unfolding borda_ref_def borda.simps
-proof (clarify, rename_tac A' A pl pr)
-  fix A' A:: "'a set"
+proof (unfold borda_ref_def borda.simps, refine_vcg, auto simp only: in_br_conv set_rel_id prod_rel_id finite_set_rel_def,
+    rule refine_IdI, unfold comp_apply SPEC_eq_is_RETURN(2)[symmetric] , rename_tac pl pr A,
+    refine_vcg)
+  fix A:: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
   assume prel: " (pl, pr) \<in> profile_rel"
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
-  note compute_scores_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD, THEN nres_relD, 
-          THEN refine_IdD, where x4 = borda_score_mon and x'4 = borda_score]
-  from arel prel this borda_score_correct have 
-    precompborda: "pre_compute_scores borda_score_mon A' pl
+  assume fina: "finite A"
+  note csc = compute_scores_correct[where efnref = borda_score_mon and efn= borda_score
+and A = A and pl = pl
+      and pr = pr]
+  from fina prel this borda_score_correct have 
+    precompborda: "pre_compute_scores borda_score_mon A pl
   \<le> SPEC (\<lambda>map. map = pre_computed_map borda_score A pr)" by fastforce
-  note maxelim = max_eliminator_ref_correct[where efn = borda_score, THEN fun_relD]
-  from arel aeq prel precompborda this show " (pre_compute_scores borda_score_mon A' pl \<bind> (\<lambda>scores. max_eliminator_ref scores A' pl),
-        (RETURN \<circ>\<circ>\<circ> max_eliminator) borda_score A pr)
-       \<in> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-    unfolding comp_apply
-    using specify_left[where M = 
-        "\<Down> (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel) 
-  (SPEC (\<lambda>res. res = max_eliminator borda_score A pr))"
-       and m = "pre_compute_scores borda_score_mon A' pl"
-       and \<Phi> = "(\<lambda>map. map = pre_computed_map borda_score A pr)"
-       and f = "(\<lambda>scores. max_eliminator_ref scores A' pl)"]
-  nres_relI nres_relD SPEC_eq_is_RETURN(2)  by metis
+  note maxelim = max_eliminator_ref_correct[where efn = borda_score and A = A and pl = pl
+      and pr = pr]
+  from fina prel this have mid: "(\<And>x. x = pre_computed_map borda_score A pr \<Longrightarrow>
+          max_eliminator_ref x A pl \<le> SPEC (\<lambda>x. x = max_eliminator borda_score A pr))"
+    by blast
+   show "pre_compute_scores borda_score_mon A pl
+       \<le> SPEC (\<lambda>scores.
+                   max_eliminator_ref scores A pl \<le> SPEC (\<lambda>x. x = max_eliminator borda_score A pr))"
+     using precompborda  mid
+       SPEC_cons_rule[where m = "pre_compute_scores borda_score_mon A pl" and
+\<Psi> = "(\<lambda>scores. max_eliminator_ref scores A pl \<le> SPEC (\<lambda>x. x = max_eliminator borda_score A pr))"
+  and \<Phi> = "(\<lambda> map. map = (pre_computed_map borda_score A pr))"]
+     by blast 
 qed 
 
-lemma borda_ref_correct_weak:
-  shows "(uncurry borda_ref,uncurry ( RETURN oo borda)) \<in> elec_mod_relb_prof Id"
-  using borda_ref_correct weak_ref_correct
-  by metis
-
-term "uncurry borda_ref"
 
 lemma borda_drel:
   shows "(borda_ref,borda) \<in> \<langle>Id\<rangle>em_rel"

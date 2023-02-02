@@ -23,9 +23,9 @@ abbreviation elec_mod_rel_ref :: "('a \<times> 'a) set \<Rightarrow>
   "elec_mod_rel_ref R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R\<rangle>list_rel\<rangle>list_rel , 
   \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>fun_rel\<rangle>fun_rel" 
 
-abbreviation elec_mod_relb :: "('a \<times> 'a) set \<Rightarrow> 
+abbreviation elec_mod_data_rel :: "('a \<times> 'a) set \<Rightarrow> 
 ('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres)) set" where
-  "elec_mod_relb R \<equiv> \<langle>R\<rangle>finite_set_rel \<rightarrow> profile_rel 
+  "elec_mod_data_rel R \<equiv> \<langle>R\<rangle>finite_set_rel \<rightarrow> profile_rel 
   \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel"
 
 definition em_prof_nres ::
@@ -41,39 +41,6 @@ lemma em_prof_nres_def[refine_rel_defs]:
    (emref A' pl ,RETURN(em A pr)) \<in> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel}"
   by (simp add: em_prof_nres_internal_def relAPP_def)
 
-abbreviation elec_mod_relb_prof ::
-    "('a \<times> 'a) set
-     \<Rightarrow> (('a set \<times> 'a list list \<Rightarrow> ('a set \<times> 'a set \<times> 'a set) nres) \<times>
-         ('a set \<times> ('a \<times> 'a) set list \<Rightarrow> ('a set \<times> 'a set \<times> 'a set) nres)) set"
- where "elec_mod_relb_prof R \<equiv> \<langle>\<langle>R\<rangle>alt_and_profile_rel,
- \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel"
-
-lemma weak_ref_correct:
-  assumes "(emref, RETURN oo em) \<in> elec_mod_relb Id"
-  shows "(uncurry emref, uncurry (RETURN oo em)) \<in> elec_mod_relb_prof Id"
-proof (clarsimp, rename_tac A' pl A pr, rule nres_relI)
-   fix A' A:: "'a set"
-  fix pl :: "'a Profile_List"
-  fix pr :: "'a Profile"
-  assume arel: "((A', pl), A,pr) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  from arel have altrel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel " using unfold_alt_profile_alt_rel
-    by blast
-  from arel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
-    by blast
-  from altrel prel show "emref A' pl \<le> \<Down> Id (RETURN (em A pr))"
-    using assms[THEN fun_relD, THEN fun_relD, THEN nres_relD] unfolding comp_apply
-    by simp
-qed
-
-definition em_rel :: "('a \<times> 'a) set \<Rightarrow> ('a Electoral_Module_Ref \<times> 'a Electoral_Module) set" 
-  where em_rel_internal_def:
-  "em_rel R \<equiv> {(emref,em).(emref, RETURN oo em) 
-  \<in> elec_mod_relb R}"
-
-lemma em_rel_def[refine_rel_defs]:
-  "\<langle>R\<rangle>em_rel \<equiv> {(emref,em).(emref, RETURN oo em) 
-  \<in> elec_mod_relb R}"
-  by (simp add: em_rel_internal_def relAPP_def)
 
 locale fixed_alts  =
   fixes Alts :: "nat set"
@@ -90,7 +57,7 @@ definition "em_fixed_alts_rel \<equiv> {(emref, em). (emref, RETURN oo em)
 find_theorems profile
 
 lemma weak_ref_correctb:
-  assumes "(emref, RETURN oo em) \<in> (elec_mod_relb nat_rel)"
+  assumes "(emref, RETURN oo em) \<in> (elec_mod_data_rel nat_rel)"
   shows "(emref, (RETURN oo em)) \<in> elec_mod_fixed_alts_rel"
 proof (clarsimp simp add: finite_set_rel_def in_br_conv, rule nres_relI, rule refine_IdI, rename_tac pl pr)
   fix pl pr
@@ -106,13 +73,6 @@ proof (clarsimp simp add: finite_set_rel_def in_br_conv, rule nres_relI, rule re
     using prod_rel_id set_rel_id nres_relD refine_IdD
     by fastforce
 qed
-
-lemma weaken_em_rel:
-  assumes "(emref, em) \<in> \<langle>nat_rel\<rangle>em_rel"
-  shows "(emref, em) \<in> em_fixed_alts_rel"
-  using assms unfolding em_rel_def em_fixed_alts_rel_def
-  using weak_ref_correctb
-  by simp
 
 end
 
@@ -154,94 +114,61 @@ definition reject_monadic ::
   }"
 
 
-lemma elect_monadic_correct:
-shows "(elect_monadic, RETURN ooo elect) \<in> 
-    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-proof (unfold elect_monadic_def em_rel_def, refine_rcg, clarsimp, 
-        rename_tac emref em A' A pl pr)
-  fix A' A:: "'a set"
+lemma elect_monadic_correct_aux:
+  fixes A :: "'a set"
+  and emref :: "'a Electoral_Module_Ref"
+  and em :: "'a Electoral_Module"
+  assumes emrefc: "emref A pl \<le> SPEC (\<lambda> res. res = em A pr)"
+  shows "elect_monadic emref A pl \<le> SPEC (\<lambda> es. es = (elect em A pr))"
+  unfolding elect_monadic_def
+  apply refine_vcg
+  unfolding SPEC_eq_is_RETURN(2)[symmetric]
+  using emrefc
+  by (simp add: SPEC_trans) 
+
+lemma elect_monadic_correct_unin:
+  fixes alt_rel :: "('a set \<times> 'a set) set"
+  and profrel :: "('a Profile_List \<times> 'a Profile) set"
+  and R :: "('a \<times> 'a) set"
+  and emref :: "'a Electoral_Module_Ref"
+  and em :: "'a Electoral_Module"
+  (*assumes emrefc: "(emref, RETURN oo em) \<in> alt_rel \<rightarrow> profrel 
+                                    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r\<langle>Id\<rangle>set_rel\<rangle>nres_rel"*)
+  shows "(elect_monadic, RETURN ooo (elect)) \<in>
+    {(emref, em).(emref, RETURN oo em) \<in> alt_rel \<rightarrow> profrel 
+                                    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r\<langle>Id\<rangle>set_rel\<rangle>nres_rel } \<rightarrow>
+   alt_rel \<rightarrow> profrel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+  unfolding elect_monadic_def comp_apply
+proof (refine_vcg, clarsimp, rename_tac emref em A' A pl pr)
+  fix A' A :: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
   fix emref :: "'a Electoral_Module_Ref"
   fix em :: "'a Electoral_Module"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume prel: " (pl, pr) \<in> profile_rel"
-  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel prel emrel[THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD] 
-  have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)" using SPEC_eq_is_RETURN(2) comp_apply 
-    by metis
-  from this show " emref A' pl \<bind> (\<lambda>result. RETURN (elect_r result)) \<le> RETURN (elect em A pr)"
-    using specify_left[where m = "emref A' pl" and \<Phi> = "\<lambda> res. res = (em A pr)"]
-    by fastforce
+  assume arel: "(A', A) \<in> alt_rel"
+  assume prel: "(pl, pr) \<in> profrel"
+  assume emrefc : "(emref, \<lambda>x xa. RETURN (em x xa)) \<in> alt_rel \<rightarrow> profrel \<rightarrow> \<langle>Id\<rangle>nres_rel "
+  from arel prel have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)"
+    using emrefc[THEN fun_relD, THEN fun_relD, THEN nres_relD] 
+    unfolding comp_apply SPEC_eq_is_RETURN(2)[symmetric] 
+    by simp
+  from this show " emref A' pl \<le> SPEC (\<lambda>result. elect_r result = elect em A pr)"
+    using order.trans by fastforce
 qed
+    
 
 
-lemma defer_monadic_correct:
-shows "(defer_monadic, RETURN ooo defer) \<in> 
-    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-proof (unfold defer_monadic_def em_rel_def, refine_rcg, clarsimp, 
-        rename_tac emref em A' A pl pr)
-  fix A' A:: "'a set"
-  fix pl :: "'a Profile_List"
-  fix pr :: "'a Profile"
-  fix emref :: "'a Electoral_Module_Ref"
-  fix em :: "'a Electoral_Module"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume prel: " (pl, pr) \<in> profile_rel"
-  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel prel emrel[THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD] 
-  have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)" using SPEC_eq_is_RETURN(2) comp_apply 
-    by metis
-  from this show " emref A' pl \<bind> (\<lambda>result. RETURN (defer_r result)) \<le> RETURN (defer em A pr)"
-    using specify_left[where m = "emref A' pl" and \<Phi> = "\<lambda> res. res = (em A pr)"]
-    by fastforce
-qed
-
-lemma reject_monadic_correct:
-shows "(reject_monadic, RETURN ooo reject) \<in> 
-    \<langle>Id\<rangle>em_rel \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-proof (unfold reject_monadic_def em_rel_def, refine_rcg, clarsimp, 
-        rename_tac emref em A' A pl pr)
-  fix A' A:: "'a set"
-  fix pl :: "'a Profile_List"
-  fix pr :: "'a Profile"
-  fix emref :: "'a Electoral_Module_Ref"
-  fix em :: "'a Electoral_Module"
-  assume arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  assume prel: " (pl, pr) \<in> profile_rel"
-  assume emrel: "(emref, RETURN \<circ>\<circ> em) \<in> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  from arel have aeq: "A' = A" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel have fina: "finite A'" by (auto simp add: finite_set_rel_def in_br_conv)
-  from arel prel emrel[THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD] 
-  have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)" using SPEC_eq_is_RETURN(2) comp_apply 
-    by metis
-  from this show " emref A' pl \<bind> (\<lambda>result. RETURN (reject_r result)) \<le> RETURN (reject em A pr)"
-    using specify_left[where m = "emref A' pl" and \<Phi> = "\<lambda> res. res = (em A pr)"]
-    by fastforce
-qed
-
-
-
-
-locale set_select_imp =
-  fixes mod1 :: "nat Electoral_Module"       
+locale set_select_imp = 
   fixes mod1_ref :: "nat Electoral_Module_Ref"
   fixes mod1_impl :: "(nat, unit) hashtable
       \<Rightarrow> (nat array \<times> nat) list
          \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
   assumes 
-    mod1_refine: "(mod1_ref, mod1) \<in> \<langle>nat_rel\<rangle>em_rel" and
     mod1_impl: "(uncurry mod1_impl, uncurry mod1_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
-
 begin
 
-  lemma this_loc: "set_select_imp mod1 mod1_ref mod1_impl" by unfold_locales
-
+lemma this_loc: "set_select_imp  mod1_ref mod1_impl" by unfold_locales
 
 sepref_register "mod1_ref" :: "nat Electoral_Module_Ref"
 
@@ -258,9 +185,6 @@ concrete_definition (in -) elect_sep uses set_select_imp.elect_impl
   prepare_code_thms (in -) elect_sep_def
 lemmas elect_impl_refine = elect_sep.refine[OF this_loc]
 
-
-lemmas elect_sep_correct = 
-elect_impl_refine[FCOMP elect_monadic_correct[THEN fun_relD, where x' = mod1]]
 
 schematic_goal defer_impl:
   "(uncurry ?c, uncurry (defer_monadic mod1_ref)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
@@ -283,10 +207,5 @@ concrete_definition (in -) reject_sep uses set_select_imp.reject_impl
 
 
 end
-         
-term "elect_sep"
-thm "set_select_imp.elect_sep_correct"
-
-
 
 end
