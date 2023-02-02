@@ -9,9 +9,6 @@ definition condorcet_score_ref :: "'a Evaluation_Function_Ref" where
     is_x_cond_winner <- (condorcet_winner_monadic A p x);
     RETURN (if (is_x_cond_winner) then 1 else 0)}"
 
-
-
-
 definition condorcet_ref :: "'a Electoral_Module_Ref" where
   "condorcet_ref A pl  \<equiv> do {
    scores <- (pre_compute_scores condorcet_score_ref A pl);
@@ -40,7 +37,7 @@ lemma condorcet_ref_correct:
             pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
 proof (unfold condorcet_ref_def comp_apply SPEC_eq_is_RETURN(2)[symmetric], 
-    intro frefI nres_relI, clarsimp simp add: set_rel_id prod_rel_id simp del : condorcet.simps,
+    intro frefI, clarsimp simp add: set_rel_id prod_rel_id simp del : condorcet.simps,
     rename_tac A pl pr)
   fix A :: "'a set"
   fix pl :: "'a Profile_List"
