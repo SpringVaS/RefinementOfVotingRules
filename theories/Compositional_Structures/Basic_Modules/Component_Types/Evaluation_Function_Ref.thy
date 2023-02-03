@@ -60,27 +60,6 @@ proof (-)
     by (metis IdI) 
 qed
 
-lemma evalproffeq:   
-  fixes A' A :: "'a set"
-  fixes pr :: "'a Profile"
-  fixes pl :: "'a Profile_List"
-  assumes 
-     rel: "((A', pl), A, pr) \<in> \<langle>Id\<rangle>alt_and_profile_rel" and
-     evalref: "(refn, efn) \<in> evalf_rel_prof"
-   shows "refn a A pl \<le> RETURN (efn a A pr)"
-proof (-)
-  from evalref have efrel: "((\<lambda> a (A, pro). refn a A pro), (\<lambda> a (A, pro). SPEC (\<lambda> sc. sc = efn a A pro)))
-    \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_and_profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel" unfolding evalf_rel_prof_def
-    by auto
-  from rel have arel: "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel" using unfold_alt_profile_alt_rel by blast
-  from rel have prel: "(pl, pr) \<in> profile_rel " using unfold_alt_profile_prof_rel
-    by blast
-  from rel efrel[THEN fun_relD, THEN fun_relD, THEN nres_relD, THEN refine_IdD]
-  show ?thesis unfolding SPEC_eq_is_RETURN(2)
-    using arel id_same_alts by fastforce
-qed
-
-
 
   
   subsection \<open>Refined Condorcet Property\<close>

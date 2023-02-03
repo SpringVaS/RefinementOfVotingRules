@@ -28,16 +28,13 @@ lemma condorcet_score_ref_correct:
   apply (refine_vcg assms condorcet_winner_monadic_correct)
   by auto
 
-definition "condorcet_spec \<equiv> SPEC (\<lambda> condres. (condres, RETURN oo (condorcet)) \<in>
-  \<langle>Id\<rangle>set_rel \<rightarrow>\<^sub>f profile_rel \<rightarrow> \<langle>Id\<rangle>nres_rel)"
-
 lemma condorcet_ref_correct:          
   shows "(uncurry condorcet_ref, uncurry (RETURN oo condorcet)) \<in> 
   ([\<lambda> (A, pl). finite_profile A
             pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
 proof (unfold condorcet_ref_def comp_apply SPEC_eq_is_RETURN(2)[symmetric], 
-    intro frefI, clarsimp simp add: set_rel_id prod_rel_id simp del : condorcet.simps,
+    intro frefI nres_relI, clarsimp simp add: set_rel_id prod_rel_id simp del : condorcet.simps,
     rename_tac A pl pr)
   fix A :: "'a set"
   fix pl :: "'a Profile_List"
@@ -75,9 +72,6 @@ sepref_definition condorcet_elim_sepref is
   unfolding condorcet_ref_def  max_eliminator_ref_def condorcet_score_ref_def 
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
-    condorcet_winner_monadic_def[abs_def]  wins_monadic_def[abs_def] prefer_count_monadic_imp_def
-    is_less_preferred_than_mon_def[abs_def] rank_mon_def[abs_def] index_mon_def[abs_def]
-    short_circuit_conv
   apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
@@ -87,12 +81,11 @@ sepref_definition condorcet_elim_sepref is
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
-
   apply sepref_dbg_keep
 
   done
 
-lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]
+(*lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]*)
 
 
 end

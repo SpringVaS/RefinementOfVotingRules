@@ -76,11 +76,6 @@ next
     by (metis antisym index_le_size le_neq_implies_less order_trans)
 qed
 
-lemma index_mon_refine:
-  shows "(index_mon, (\<lambda> ballot a. (RETURN (List_Index.index ballot a))))\<in> Id \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>nres_rel"
-  apply (refine_vcg index_mon_correct)
-  apply simp
-  done
 
 
 definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
@@ -126,7 +121,7 @@ definition is_less_preferred_than_mon :: "'a \<Rightarrow> 'a Preference_List \<
   RETURN ((ra > 0) \<and> (rb > 0) \<and> (ra \<ge> rb))
 }"
 
-lemma ilpm_list_correct:
+lemma ilpm_list_refine:
   shows "is_less_preferred_than_mon a pl b \<le> 
       SPEC (\<lambda> lp. lp =  is_less_preferred_than_l a pl b)" 
   unfolding is_less_preferred_than_mon_def is_less_preferred_than_l.simps 
@@ -135,7 +130,7 @@ lemma ilpm_list_correct:
 
 sepref_definition ilp_sep
   is "uncurry2 is_less_preferred_than_mon" :: 
-    "(nat_assn\<^sup>k *\<^sub>a (array_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+    "(nat_assn\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
   unfolding is_less_preferred_than_mon_def rank_mon_def[abs_def] index_mon_def[abs_def]
   by sepref
 
@@ -646,7 +641,7 @@ definition prefer_count_monadic_imp:: "'a Profile_List \<Rightarrow> 'a \<Righta
 lemma prefer_count_monadic_imp_refine:
   shows "(prefer_count_monadic_imp, pc_foldli_list) \<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   unfolding prefer_count_monadic_imp_def pc_foldli_list_def
-  apply (refine_vcg ilpm_list_correct)
+  apply (refine_vcg ilpm_list_refine)
   apply (refine_dref_type)
   by auto
 
@@ -674,8 +669,16 @@ proof (refine_vcg, clarify, unfold comp_apply, (clarsimp simp del: prefer_count.
   unfolding SPEC_eq_is_RETURN(2)
   by fastforce
 qed
-  
-  
+
+sepref_definition prefer_count_sep is
+  "uncurry2 prefer_count_monadic_imp" :: "profile_impl_assn\<^sup>k *\<^sub>a cand_impl_assn\<^sup>k  *\<^sub>a cand_impl_assn\<^sup>k
+    \<rightarrow>\<^sub>a nat_assn"
+  unfolding prefer_count_monadic_imp_def is_less_preferred_than_mon_def rank_mon_def index_mon_def
+  by sepref
+
+sepref_register prefer_count_monadic_imp
+
+declare prefer_count_sep.refine [sepref_fr_rules]
 
 definition wins_monadic :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "wins_monadic x p y \<equiv> do {
@@ -704,7 +707,6 @@ proof (standard, standard, rename_tac a b)
     by simp
 qed
 
-find_theorems "RES "
 
 lemma prefer_count_monadic_imp_ref_l:
   shows "(prefer_count_monadic_imp, RETURN ooo prefer_count_l)
@@ -867,11 +869,13 @@ definition condorcet_winner_monadic :: "'a set \<Rightarrow> 'a Profile_List \<R
 
 sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic" 
   :: "(alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
-  unfolding condorcet_winner_monadic_def wins_monadic_def prefer_count_monadic_imp_def 
-    is_less_preferred_than_mon_def
-  rank_mon_def index_mon_def
+  unfolding condorcet_winner_monadic_def wins_monadic_def 
   apply sepref_dbg_keep
   done
+
+sepref_register condorcet_winner_monadic
+
+declare cond_imp.refine [sepref_fr_rules]
 
 lemma condorcet_winner_monadic_correct:
   fixes A :: "'a set"
@@ -952,23 +956,44 @@ definition limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow
          newb <- (limit_monadic A x);
         RETURN (op_list_append np newb)}) []"
 
-(*definition limit_monadic :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
- "limit_monadic A p \<equiv> 
- nfoldli p (\<lambda>_.True) (\<lambda> x new_p.
-    RETURN (new_p)) [] "*)
+sepref_register limit_monadic
+declare limit_imp.refine [sepref_fr_rules]
 
-sepref_definition limit_sep is "uncurry (limit_profile_l)" :: 
+sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" :: 
   "(hs.assn cand_impl_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn cand_impl_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (arl_assn cand_impl_assn))"
-  unfolding limit_profile_l_def limit_monadic_def
+  unfolding limit_profile_l_def 
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
-  apply (rewrite in "WHILEIT _ _ _ \<hole>" arl.fold_custom_empty)
   apply sepref_dbg_keep
   done
 
+sepref_register limit_profile_l
+
+declare limit_profile_sep.refine [sepref_fr_rules]
 
 lemma "limitp_correct":
-  shows "(limit_profile_l, RETURN oo limit_profile) \<in> 
-      \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
-  sorry
+  shows "(uncurry limit_profile_l, uncurry (RETURN oo limit_profile)) \<in> 
+      [\<lambda> (A, pl). finite_profile A pl]\<^sub>f
+   (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel) \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
+proof(unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric], 
+    intro frefI nres_relI, clarify, auto, rename_tac A pl pr)
+  fix A' A :: "'a set"
+  fix pl:: "'a Profile_List" 
+  fix pr :: "'a Profile"
+  assume fina: "finite A"
+  assume prel: " (pl, pr) \<in> profile_rel"
+  assume pro: "profile A pr"
+  from prel pro have bwiseref: " \<forall>i<length pr. (limit_l A (pl ! i) , limit A (pr ! i)) \<in> ballot_rel"
+    using limit_l_eq
+    by (smt (verit) in_br_conv limit_l_sound list_rel_pres_length pair_in_Id_conv param_nth profile_l_def profile_ref)
+  show " nfoldli pl (\<lambda>_. True) (\<lambda>x np. limit_monadic A x \<bind> (\<lambda>newb. RES {np @ [newb]})) []
+       \<le> \<Down> profile_rel (RES {map (limit A) pr})"
+    apply (refine_vcg limit_monadic_refine fina pro nfoldli_rule[where I = "(\<lambda> proc rem r. 
+              r = map (limit_l A) proc)"])
+       apply (auto)
+    using prel bwiseref unfolding profile_def
+    by (simp add: list_rel_eq_listrel listrel_iff_nth relAPP_def) 
+qed
 
+
+    
 end

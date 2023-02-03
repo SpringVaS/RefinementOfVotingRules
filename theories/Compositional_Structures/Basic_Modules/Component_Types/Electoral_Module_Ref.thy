@@ -42,41 +42,6 @@ lemma em_prof_nres_def[refine_rel_defs]:
   by (simp add: em_prof_nres_internal_def relAPP_def)
 
 
-locale fixed_alts  =
-  fixes Alts :: "nat set"
-begin
-
-abbreviation elec_mod_fixed_alts_rel
-  where "elec_mod_fixed_alts_rel \<equiv>
-  \<langle>\<langle>nat_rel\<rangle>finite_set_rel O br (\<lambda>x. x) (\<lambda> As. As = Alts), \<langle>profile_on_A_rel Alts,
- \<langle>\<langle>nat_rel\<rangle>set_rel \<times>\<^sub>r \<langle>nat_rel\<rangle>set_rel \<times>\<^sub>r \<langle>nat_rel\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel"
-
-definition "em_fixed_alts_rel \<equiv> {(emref, em). (emref, RETURN oo em) 
-  \<in> elec_mod_fixed_alts_rel } "
-
-find_theorems profile
-
-lemma weak_ref_correctb:
-  assumes "(emref, RETURN oo em) \<in> (elec_mod_data_rel nat_rel)"
-  shows "(emref, (RETURN oo em)) \<in> elec_mod_fixed_alts_rel"
-proof (clarsimp simp add: finite_set_rel_def in_br_conv, rule nres_relI, rule refine_IdI, rename_tac pl pr)
-  fix pl pr
-  note emref = assms[THEN fun_relD,THEN fun_relD]
-  assume "finite Alts"
-  from this have arel: "(Alts, Alts) \<in> \<langle>nat_rel\<rangle>finite_set_rel"
-    unfolding finite_set_rel_def 
-    apply simp using in_br_conv
-    by metis  
-  assume "(pl, pr) \<in> profile_on_A_rel Alts"
-  from this have prel: "(pl, pr) \<in> profile_rel" using profile_type_ref by blast
-  from arel prel emref show "emref Alts pl \<le> RETURN (em Alts pr)"
-    using prod_rel_id set_rel_id nres_relD refine_IdD
-    by fastforce
-qed
-
-end
-
-
 
 definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
   "aux_set_copy A \<equiv>  FOREACH A
@@ -93,7 +58,7 @@ lemma aux_set_copy_correct:
 
 
 definition elect_monadic ::
-  "'a Electoral_Module_Ref \<Rightarrow> 'a set \<Rightarrow> 'a  Profile_List \<Rightarrow> 'a set nres" where
+  "'a Electoral_Module_Ref \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a set nres" where
   "elect_monadic m A p \<equiv> do {
     result <- m A p;
     RETURN (elect_r result)
@@ -170,7 +135,7 @@ begin
 
 lemma this_loc: "set_select_imp  mod1_ref mod1_impl" by unfold_locales
 
-sepref_register "mod1_ref" :: "nat Electoral_Module_Ref"
+sepref_register "mod1_ref" :: "'a Electoral_Module_Ref"
 
 declare mod1_impl [sepref_fr_rules]
 
@@ -184,7 +149,6 @@ schematic_goal elect_impl:
 concrete_definition (in -) elect_sep uses set_select_imp.elect_impl
   prepare_code_thms (in -) elect_sep_def
 lemmas elect_impl_refine = elect_sep.refine[OF this_loc]
-
 
 schematic_goal defer_impl:
   "(uncurry ?c, uncurry (defer_monadic mod1_ref)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"

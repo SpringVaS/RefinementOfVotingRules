@@ -35,14 +35,6 @@ sepref_decl_op (no_def) defer_equal_imp: "(defer_equal_condition)" ::
   where "R = Id" .
 
 
-context fixed_alts
-begin
-
-sepref_decl_op (no_def) "condorcet :: nat Electoral_Module" :: 
-  "elec_mod_rel_orig_nres nat_rel" 
-
-end
-
 
 locale refine_assns =
  notes  
@@ -54,9 +46,9 @@ locale refine_assns =
       
 begin
 
-thm borda_elim_sepref.refine[FCOMP borda_ref_correct]
 
-sepref_decl_impl borda_impl: borda_elim_sepref.refine[FCOMP borda_ref_correct]  .
+sepref_decl_impl borda_impl: borda_elim_sepref.refine[FCOMP borda_ref_correct] 
+  by simp
 
 
 

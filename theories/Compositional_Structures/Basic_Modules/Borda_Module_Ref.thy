@@ -66,9 +66,6 @@ sepref_definition borda_elim_sepref is
   unfolding borda_ref_def  max_eliminator_ref_def borda_score_mon.simps sum_impl_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
-    prefer_count_monadic_imp_def[abs_def] is_less_preferred_than_mon_def[abs_def]
-    rank_mon_def[abs_def] index_mon_def[abs_def]
-    short_circuit_conv
   apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)

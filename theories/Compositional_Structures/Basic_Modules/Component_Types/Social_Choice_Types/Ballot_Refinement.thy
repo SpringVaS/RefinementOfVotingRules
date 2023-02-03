@@ -107,26 +107,51 @@ lemma limit_monadic_refine:
  by (refine_vcg WHILEIT_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"],
         auto simp add: limit_monadic_inv_def pl_\<alpha>_def  take_Suc_conv_app_nth)
 
+lemma limit_l_sound:
+  fixes A :: "'a set"
+  fixes bal :: "'a Preference_List"
+  assumes "well_formed_pl bal"
+  shows "well_formed_pl (limit_l A bal)"
+  using assms unfolding well_formed_pl_def
+    by auto
+
+
 lemma limit_monadic_correct:
-  fixes A :: "'a set" and bal :: "'a Preference_List"
-  assumes fina: "finite A" 
-  assumes balrel: "(bal, bar) \<in> ballot_on_A_rel A"
-  shows "(limit_monadic A bal, SPEC(\<lambda> lim. lim = (limit A bar)))
-      \<in>  \<langle>ballot_on_A_rel A\<rangle>nres_rel"
-proof (refine_vcg)
-  from balrel have "distinct bal \<and> linear_order_on_l A bal"
-    unfolding  well_formed_pl_def using in_br_conv
-    by (metis relcomp.simps) 
-   have "(limit_l A bal, (limit A (pl_\<alpha> bal))) \<in> ballot_on_A_rel A"
-     using limit_l_eq[symmetric] unfolding in_br_conv well_formed_pl_def
-     oops
-  
+  shows "(uncurry limit_monadic, uncurry (RETURN oo limit))
+      \<in> [\<lambda> (A, bal). finite A \<and> linear_order_on A bal]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r ballot_rel) \<rightarrow> \<langle>ballot_rel\<rangle>nres_rel"
+proof (intro frefI nres_relI, auto simp del: limit.simps, 
+      unfold SPEC_eq_is_RETURN(2)[symmetric], rename_tac A bal bar)
+  fix A :: "'a set"
+  assume fina: "finite A"
+  fix bar :: "'a Preference_Relation"
+  fix bal :: "'a Preference_List"
+  assume balrel: "(bal, bar) \<in> ballot_rel"
+  assume lo: "linear_order_on A bar"
+  from lo have lolist: "linear_order_on_l A bal"
+    using balrel linord_eq unfolding in_br_conv
+    by auto
+  from balrel have wf: "well_formed_pl bal"
+   using in_br_conv
+   by metis
+  from balrel have abs: "bar = pl_\<alpha> bal" unfolding in_br_conv by simp
+  have limiteq: "pl_\<alpha> (limit_l A bal) = (limit A (pl_\<alpha> bal))"
+    using limit_l_eq wf lolist
+    by (auto simp add: in_br_conv)
+  from wf limit_l_sound this[symmetric] have "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
+    unfolding in_br_conv by blast
+  from this show "limit_monadic A bal \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))" 
+    using fina limit_monadic_refine SPEC_refine SPEC_trans iSPEC_rule
+    by (smt (verit, best))
+qed
+    
 
 sepref_definition limit_imp is "uncurry (limit_monadic)" ::
   "(hs.assn nat_assn)\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (arl_assn nat_assn)"
   unfolding limit_monadic_def
   apply (rewrite in "WHILEIT _ _ _ \<hole>" arl.fold_custom_empty)
   by sepref
+
+lemmas limit_imp_correct = limit_imp.refine[FCOMP limit_monadic_correct]
 
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
@@ -228,39 +253,6 @@ proof (-)
 qed
 
 
-lemma unfold_alt_profile_alt_rel:
-  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  shows "(A', A) \<in> \<langle>Id\<rangle>finite_set_rel"
-  using assms unfolding alt_and_profile_rel_def
-  by simp
-
-lemma unfold_alt_profile_profA_rel:
-  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  shows "(pl,pr) \<in> profile_on_A_rel A'"
-  using assms unfolding alt_and_profile_rel_def finite_set_rel_def
-  using set_rel_id
-  apply simp
-  done
-
-lemma unfold_alt_profile_prof_rel:
-  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  shows "(pl,pr) \<in> profile_rel"
-proof -
-  from assms have "(pl,pr) \<in> profile_on_A_rel A'"
-    using unfold_alt_profile_profA_rel by blast
-  from this show ?thesis using profile_type_ref
-    by blast
-qed
-
-lemma unfold_alt_profile_prof_prop:
-  assumes "((A', pl),(A, pr)) \<in> \<langle>Id\<rangle>alt_and_profile_rel"
-  shows "profile_l A' pl"
-proof -
-  from assms have "(pl,pr) \<in> profile_on_A_rel A'"
-    using unfold_alt_profile_profA_rel by blast
-  from this show ?thesis using profile_prop_list
-    by blast
-qed
 
 
 abbreviation "cand_impl_assn \<equiv> nat_assn"
@@ -273,7 +265,7 @@ abbreviation "alts_set_impl_assn \<equiv> (hs.assn cand_impl_assn)"
 
 abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
 
-(*definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>finite_set_rel)"
+definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>set_rel)"
                                  
 
 definition "ballot_ref_assn \<equiv>  hr_comp ballot_impl_assn (\<langle>Id\<rangle>list_rel)"
@@ -284,8 +276,7 @@ definition "result_set_one_step \<equiv> hr_comp alts_set_impl_assn (\<langle>Id
 
 definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<rangle>set_rel)"
 
-
-definition "ballot_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"*)
+definition "ballot_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
 
 
 
