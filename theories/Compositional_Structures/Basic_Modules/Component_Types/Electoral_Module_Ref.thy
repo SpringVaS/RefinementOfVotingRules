@@ -139,16 +139,16 @@ sepref_register "mod1_ref" :: "'a Electoral_Module_Ref"
 
 declare mod1_impl [sepref_fr_rules]
 
-schematic_goal elect_impl:
-  "(uncurry ?c, uncurry (elect_monadic mod1_ref)) 
-    \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
+sepref_definition  "elect_sep" is
+ "uncurry (elect_monadic mod1_ref)" 
+:: "(alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
   unfolding elect_monadic_def
-  by sepref
+  apply sepref_dbg_keep
+  done
 
-
-concrete_definition (in -) elect_sep uses set_select_imp.elect_impl
-  prepare_code_thms (in -) elect_sep_def
-lemmas elect_impl_refine = elect_sep.refine[OF this_loc]
+concrete_definition (in -) elect_sepi uses set_select_imp.elect_sep_def
+  prepare_code_thms (in -) "elect_sepi_def"
+  lemmas elect_sepi_refine = elect_sepi.refine[OF this_loc]
 
 schematic_goal defer_impl:
   "(uncurry ?c, uncurry (defer_monadic mod1_ref)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"
@@ -156,7 +156,7 @@ schematic_goal defer_impl:
   by sepref
 
 concrete_definition (in -) defer_sep uses set_select_imp.defer_impl
-  prepare_code_thms (in -) defer_sep_def
+  prepare_code_thms (in -) "defer_sep_def"
   lemmas defer_impl_refine = defer_sep.refine[OF this_loc]
 
 schematic_goal reject_impl:
@@ -168,7 +168,6 @@ schematic_goal reject_impl:
 concrete_definition (in -) reject_sep uses set_select_imp.reject_impl
   prepare_code_thms (in -) reject_sep_def
   lemmas reject_impl_refine = reject_sep.refine[OF this_loc]
-
 
 end
 

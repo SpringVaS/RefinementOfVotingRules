@@ -45,17 +45,26 @@ begin
 
   lemma this_loc: "seqcomp_impl m_ref m_impl n_ref n_impl" by unfold_locales
 
+interpretation m_sel: set_select_imp m_ref m_impl 
+  using m_impl by (unfold_locales, simp)
 
-sepref_register "m_ref" :: "nat Electoral_Module_Ref"
+interpretation n_sel:  set_select_imp n_ref n_impl 
+  using n_impl by (unfold_locales, simp)
+
+(*sepref_register "m_ref" :: "nat Electoral_Module_Ref"
 sepref_register "n_ref" :: "nat Electoral_Module_Ref"
 
 declare m_impl [sepref_fr_rules]
-declare n_impl [sepref_fr_rules]
+declare n_impl [sepref_fr_rules]*)
+
+sepref_register "(elect_monadic m_ref)"
+
+declare local.m_sel.elect_sep.refine [sepref_fr_rules]
 
 schematic_goal seqcomp_imp:
   "(uncurry ?c, (uncurry (sequential_composition_mon m_ref n_ref))) 
     \<in> alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (result_impl_assn)"
-  unfolding sequential_composition_mon_def elect_monadic_def defer_monadic_def reject_monadic_def
+  unfolding sequential_composition_mon_def  defer_monadic_def reject_monadic_def
   by sepref
 
 concrete_definition (in -) sequential_composition_sep uses seqcomp_impl.seqcomp_imp
