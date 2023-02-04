@@ -91,37 +91,81 @@ lemma elect_monadic_correct_aux:
   using emrefc
   by (simp add: SPEC_trans) 
 
-lemma elect_monadic_correct_unin:
-  fixes alt_rel :: "('a set \<times> 'a set) set"
-  and profrel :: "('a Profile_List \<times> 'a Profile) set"
-  and R :: "('a \<times> 'a) set"
-  and emref :: "'a Electoral_Module_Ref"
+lemma elect_monadic_correct:
+  fixes emref :: "'a Electoral_Module_Ref"
   and em :: "'a Electoral_Module"
-  (*assumes emrefc: "(emref, RETURN oo em) \<in> alt_rel \<rightarrow> profrel 
-                                    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r\<langle>Id\<rangle>set_rel\<rangle>nres_rel"*)
-  shows "(elect_monadic, RETURN ooo (elect)) \<in>
-    {(emref, em).(emref, RETURN oo em) \<in> alt_rel \<rightarrow> profrel 
-                                    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r\<langle>Id\<rangle>set_rel\<rangle>nres_rel } \<rightarrow>
-   alt_rel \<rightarrow> profrel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+  assumes emrefc: "(uncurry emref, uncurry (RETURN oo em)) \<in> 
+  ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+  shows "(uncurry (elect_monadic emref), uncurry (RETURN oo (elect em))) \<in>
+    ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
   unfolding elect_monadic_def comp_apply
-proof (refine_vcg, clarsimp, rename_tac emref em A' A pl pr)
-  fix A' A :: "'a set"
+proof (intro frefI, clarsimp, refine_vcg, rename_tac A pl pr)
+  fix A :: "'a set"
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
-  fix emref :: "'a Electoral_Module_Ref"
-  fix em :: "'a Electoral_Module"
-  assume arel: "(A', A) \<in> alt_rel"
-  assume prel: "(pl, pr) \<in> profrel"
-  assume emrefc : "(emref, \<lambda>x xa. RETURN (em x xa)) \<in> alt_rel \<rightarrow> profrel \<rightarrow> \<langle>Id\<rangle>nres_rel "
-  from arel prel have "emref A' pl \<le> SPEC (\<lambda> res. res = em A pr)"
-    using emrefc[THEN fun_relD, THEN fun_relD, THEN nres_relD] 
-    unfolding comp_apply SPEC_eq_is_RETURN(2)[symmetric] 
-    by simp
-  from this show " emref A' pl \<le> SPEC (\<lambda>result. elect_r result = elect em A pr)"
-    using order.trans by fastforce
-qed
+  assume prel: "(pl, pr) \<in> profile_rel"
+  assume fina: "finite A"
+  assume profa: "profile A pr"
+  have " emref A pl \<le> RETURN (em A pr)"
+    using fina prel profa emrefc[THEN frefD, THEN nres_relD] by auto
+  thus "emref A pl \<le> SPEC (\<lambda>result. RETURN (elect_r result) \<le> SPEC (\<lambda>c. (c, elect em A pr) \<in> Id))"
+    by (simp add: SPEC_trans)
+ qed
     
+lemma defer_monadic_correct:
+  fixes emref :: "'a Electoral_Module_Ref"
+  and em :: "'a Electoral_Module"
+  assumes emrefc: "(uncurry emref, uncurry (RETURN oo em)) \<in> 
+  ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+  shows "(uncurry (defer_monadic emref), uncurry (RETURN oo (defer em))) \<in>
+    ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+  unfolding defer_monadic_def comp_apply
+proof (intro frefI, clarsimp, refine_vcg, rename_tac A pl pr)
+  fix A :: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume prel: "(pl, pr) \<in> profile_rel"
+  assume fina: "finite A"
+  assume profa: "profile A pr"
+  have " emref A pl \<le> RETURN (em A pr)"
+    using fina prel profa emrefc[THEN frefD, THEN nres_relD] by auto
+  thus "emref A pl \<le> SPEC (\<lambda>result. RETURN (defer_r result) \<le> SPEC (\<lambda>c. (c, defer em A pr) \<in> Id))"
+    by (simp add: SPEC_trans)
+qed
 
+lemma reject_monadic_correct:
+  fixes emref :: "'a Electoral_Module_Ref"
+  and em :: "'a Electoral_Module"
+  assumes emrefc: "(uncurry emref, uncurry (RETURN oo em)) \<in> 
+  ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+  shows "(uncurry (reject_monadic emref), uncurry (RETURN oo (reject em))) \<in>
+    ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+  unfolding reject_monadic_def comp_apply
+proof (intro frefI, clarsimp, refine_vcg, rename_tac A pl pr)
+  fix A :: "'a set"
+  fix pl :: "'a Profile_List"
+  fix pr :: "'a Profile"
+  assume prel: "(pl, pr) \<in> profile_rel"
+  assume fina: "finite A"
+  assume profa: "profile A pr"
+  have " emref A pl \<le> RETURN (em A pr)"
+    using fina prel profa emrefc[THEN frefD, THEN nres_relD] by auto
+  thus "emref A pl \<le> SPEC (\<lambda>result. RETURN (reject_r result) \<le> SPEC (\<lambda>c. (c, reject em A pr) \<in> Id))"
+    by (simp add: SPEC_trans)
+qed    
+    
 
 locale set_select_imp = 
   fixes mod1_ref :: "nat Electoral_Module_Ref"
@@ -146,9 +190,7 @@ sepref_definition  "elect_sep" is
   apply sepref_dbg_keep
   done
 
-concrete_definition (in -) elect_sepi uses set_select_imp.elect_sep_def
-  prepare_code_thms (in -) "elect_sepi_def"
-  lemmas elect_sepi_refine = elect_sepi.refine[OF this_loc]
+
 
 schematic_goal defer_impl:
   "(uncurry ?c, uncurry (defer_monadic mod1_ref)) \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a alts_set_impl_assn"

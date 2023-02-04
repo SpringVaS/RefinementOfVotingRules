@@ -83,9 +83,13 @@ lemma is_less_preferred_than_ref:
 definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
   nbal = limit_l A (take i ballot)"
 
+definition "limit_monadic_d_inv A ballot \<equiv> \<lambda> (i, nbal).
+  (\<forall> a \<in> set nbal. \<forall> b \<in> set nbal . is_less_preferred_than_l a ballot b \<longrightarrow> 
+       is_less_preferred_than_l a nbal b)"
+
 definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
 "limit_monadic A ballot \<equiv> do {
-    (i, nbal) \<leftarrow> WHILEIT (limit_monadic_inv A ballot)
+    (i, nbal) \<leftarrow> WHILET
   (\<lambda> (i, nbal). i < length ballot) 
       (\<lambda> (i, nbal). do {
       ASSERT (i < (length ballot));
@@ -99,13 +103,49 @@ definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarr
   }"                          
 
 
+
+definition  limit_monadic' :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
+"limit_monadic' A ballot \<equiv> do {
+    nfoldli ballot (\<lambda> _. True) 
+    (\<lambda> x l. 
+    RETURN 
+    (if (x \<in> A) then
+         (l @ [x])
+      else
+        l)) []
+  }"                          
+
+
+
 lemma limit_monadic_refine:
   fixes A :: "'a set" and bal :: "'a Preference_List"
   assumes fina: "finite A" 
   shows "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))"
   unfolding limit_monadic_def
- by (refine_vcg WHILEIT_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"],
+  by (refine_vcg WHILET_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"
+            and I = "(limit_monadic_inv A bal)"],
         auto simp add: limit_monadic_inv_def pl_\<alpha>_def  take_Suc_conv_app_nth)
+
+lemma limit_monadicc:
+  fixes A :: "'a set" 
+    and bal :: "'a Preference_List"
+    and bar :: "'a Preference_Relation"   
+    and S :: "'a set"
+  assumes fina: "finite A"
+    and brel: "(bal, bar) \<in> ballot_rel"
+    and bal: "ballot_on A bal"
+    and subs : "S \<subseteq> A"
+  shows "limit_monadic S bal \<le> \<Down> ballot_rel (RETURN (limit S bar))"
+  unfolding limit_monadic_def comp_apply
+  apply (refine_vcg assms WHILET_rule[where 
+        R = "measure (\<lambda>(i, nbal). length ballot - i)" and I = "(\<lambda> (i, nbal).  
+    ballot_on (S - (set (drop i ballot))) nbal \<and> (\<forall> a. (a \<in> set (take i ballot) \<and> a \<in> S) 
+    \<longleftrightarrow> a \<in> (set nbal))
+    \<and> (\<forall> a \<in> set nbal. \<forall> b \<in> set nbal. a \<lesssim>\<^sub>(take i ballot) b \<longrightarrow> a \<lesssim>\<^sub>nbal b ))"])
+  unfolding limit_monadic_d_inv_def well_formed_pl_def
+  unfolding limit.simps in_br_conv apply (clarsimp) 
+  subgoal by auto
+  sorry
 
 lemma limit_l_sound:
   fixes A :: "'a set"
@@ -113,43 +153,80 @@ lemma limit_l_sound:
   assumes "well_formed_pl bal"
   shows "well_formed_pl (limit_l A bal)"
   using assms unfolding well_formed_pl_def
-    by auto
+  by auto
 
+
+lemma limit_l_refine:
+  fixes A :: "'a set"
+  fixes S :: "'a set"
+  fixes bal :: "'a Preference_List"
+  fixes bar :: "'a Preference_Relation"
+  assumes brel : " bar = pl_\<alpha> bal"
+  assumes bal: "ballot_on A bal"
+  assumes sub: "S \<subseteq> A"
+  and nempa: "A \<noteq> {}"
+  shows "(limit_l S bal , limit S bar) \<in> ballot_rel"
+proof (unfold in_br_conv well_formed_pl_def pl_\<alpha>_def)
+  from bal have dis: "distinct bal" unfolding in_br_conv well_formed_pl_def by simp
+  from bal brel sub nempa have limiteq: "limit S bar = {(a, y). a \<lesssim>\<^sub>(limit_l S bal) y}"
+    unfolding limit_l.simps
+  proof (induction bal arbitrary: A bar)
+    case Nil
+    then show ?case
+      by (simp add: linear_order_on_l_def member_def total_on_l_def)
+  next
+    case istep: (Cons a bal)
+    then show ?case 
+    proof (cases "a \<notin> S")
+      case True
+      assume bal: "ballot_on A (a # bal)"
+      assume lev: "bar = pl_\<alpha> (a # bal)"
+      have "{a. case a of (a, b) \<Rightarrow> (a, b) \<in> bar \<and> a \<in> S \<and> b \<in> S}
+      = {a. case a of (a, b) \<Rightarrow> is_less_preferred_than a bar b \<and> a \<in> S \<and> b \<in> S}"
+        by simp
+      have "{rel. case rel of (x, y) \<Rightarrow> is_less_preferred_than x (pl_\<alpha> (a # bal)) y \<and> x \<in> S \<and> y \<in> S}
+        = {rel. case rel of (x, y) \<Rightarrow> is_less_preferred_than x (pl_\<alpha> (bal)) y \<and> x \<in> S \<and> y \<in> S}"
+        unfolding pl_\<alpha>_def using less_preffered_l_rel_eq sorry
+      then show ?thesis sorry
+    next
+      case False
+      then show ?thesis sorry
+    qed
+ 
+  qed
+  from dis have "distinct (limit_l S bal)" unfolding limit_l.simps
+    by simp
+  from this limiteq show "limit S bar = {(a, y). a \<lesssim>\<^sub>(limit_l S bal) y} \<and> distinct (limit_l S bal)"
+    by simp
+qed
 
 lemma limit_monadic_correct:
-  shows "(uncurry limit_monadic, uncurry (RETURN oo limit))
-      \<in> [\<lambda> (A, bal). finite A \<and> linear_order_on A bal]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r ballot_rel) \<rightarrow> \<langle>ballot_rel\<rangle>nres_rel"
-proof (intro frefI nres_relI, auto simp del: limit.simps, 
+  shows "(limit_monadic, (RETURN oo limit))
+      \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ballot_rel \<rightarrow> \<langle>ballot_rel\<rangle>nres_rel"
+proof (intro fun_relI nres_relI, auto simp del: limit.simps, 
       unfold SPEC_eq_is_RETURN(2)[symmetric], rename_tac A bal bar)
   fix A :: "'a set"
-  assume fina: "finite A"
   fix bar :: "'a Preference_Relation"
   fix bal :: "'a Preference_List"
   assume balrel: "(bal, bar) \<in> ballot_rel"
-  assume lo: "linear_order_on A bar"
-  from lo have lolist: "linear_order_on_l A bal"
-    using balrel linord_eq unfolding in_br_conv
-    by auto
   from balrel have wf: "well_formed_pl bal"
    using in_br_conv
    by metis
   from balrel have abs: "bar = pl_\<alpha> bal" unfolding in_br_conv by simp
-  have limiteq: "pl_\<alpha> (limit_l A bal) = (limit A (pl_\<alpha> bal))"
-    using limit_l_eq wf lolist
-    by (auto simp add: in_br_conv)
-  from wf limit_l_sound this[symmetric] have "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
-    unfolding in_br_conv by blast
+  from wf limit_l_sound have "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
+    unfolding in_br_conv using limit_l_refine sorry
   from this show "limit_monadic A bal \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))" 
-    using fina limit_monadic_refine SPEC_refine SPEC_trans iSPEC_rule
-    by (smt (verit, best))
+    using  limit_monadic_refine SPEC_refine SPEC_trans iSPEC_rule
+   sorry
 qed
     
 
 sepref_definition limit_imp is "uncurry (limit_monadic)" ::
   "(hs.assn nat_assn)\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (arl_assn nat_assn)"
   unfolding limit_monadic_def
-  apply (rewrite in "WHILEIT _ _ _ \<hole>" arl.fold_custom_empty)
-  by sepref
+  apply (rewrite  in "WHILET  _ _ rewrite_HOLE" arl.fold_custom_empty)
+  apply sepref_dbg_keep
+  done
 
 lemmas limit_imp_correct = limit_imp.refine[FCOMP limit_monadic_correct]
 

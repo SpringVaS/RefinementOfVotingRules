@@ -971,20 +971,17 @@ sepref_register limit_profile_l
 declare limit_profile_sep.refine [sepref_fr_rules]
 
 lemma "limitp_correct":
-  shows "(uncurry limit_profile_l, uncurry (RETURN oo limit_profile)) \<in> 
-      [\<lambda> (A, pl). finite_profile A pl]\<^sub>f
-   (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel) \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
-proof(unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric], 
-    intro frefI nres_relI, clarify, auto, rename_tac A pl pr)
+  shows "(limit_profile_l, (RETURN oo limit_profile)) \<in> 
+  \<langle>Id\<rangle>set_rel \<rightarrow>  profile_rel \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
+proof(unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric],
+    refine_vcg)
   fix A' A :: "'a set"
   fix pl:: "'a Profile_List" 
   fix pr :: "'a Profile"
   assume fina: "finite A"
   assume prel: " (pl, pr) \<in> profile_rel"
-  assume pro: "profile A pr"
-  from prel pro have bwiseref: " \<forall>i<length pr. (limit_l A (pl ! i) , limit A (pr ! i)) \<in> ballot_rel"
-    using limit_l_eq
-    by (smt (verit) in_br_conv limit_l_sound list_rel_pres_length pair_in_Id_conv param_nth profile_l_def profile_ref)
+  from prel  have bwiseref: " \<forall>i<length pr. (limit_l A (pl ! i) , limit A (pr ! i)) \<in> ballot_rel"
+    using 
   show " nfoldli pl (\<lambda>_. True) (\<lambda>x np. limit_monadic A x \<bind> (\<lambda>newb. RES {np @ [newb]})) []
        \<le> \<Down> profile_rel (RES {map (limit A) pr})"
     apply (refine_vcg limit_monadic_refine fina pro nfoldli_rule[where I = "(\<lambda> proc rem r. 
