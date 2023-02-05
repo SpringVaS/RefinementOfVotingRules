@@ -87,15 +87,15 @@ definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nr
 
 lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l ballot a)"
   unfolding rank_mon_def
-proof (refine_vcg, (simp_all add: rankdef), safe)
-  assume mem: "List.member ballot a"
+proof (refine_vcg, auto)
+  assume mem: "a \<in> set ballot"
   from this have "index ballot a \<noteq> length ballot"
     by (simp add: in_set_member index_size_conv)
   from this show "index_mon ballot a \<le> SPEC (\<lambda>i. i = index ballot a \<and> i \<noteq> length ballot)"
     using index_mon_correct
     by (metis (mono_tags, lifting) SPEC_cons_rule)
 next
-  assume nmem: "\<not> List.member ballot a"
+  assume nmem: "\<not>a \<in> set ballot"
   from this have "index ballot a = length ballot"
     by (simp add: in_set_member)
   from this show "index_mon ballot a \<le> RES {length ballot}"
@@ -301,21 +301,21 @@ lemma top_above:
   shows "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
   unfolding above_l_def
 proof (simp add: rankdef, safe)
-  assume mem: "List.member pl (pl ! 0)"
+  assume mem: "pl ! 0 \<in> set pl"
   assume "a = pl ! 0"
   have "List_Index.index pl (pl ! 0) = 0"
     by (simp add: index_eqI)
   from mem this show "take (Suc (List_Index.index pl (pl ! 0))) pl = [pl ! 0]"
-    by (metis append_Nil in_set_member index_less_size_conv take0 take_Suc_conv_app_nth)
+    by (metis append_Nil index_less_size_conv take0 take_Suc_conv_app_nth)
 next
   (*assume mem: "List.member pl a"*)
   assume "take (Suc (List_Index.index pl a)) pl = [a]"
   from this show "pl ! 0 = a"
     by (metis append_Cons append_Nil append_take_drop_id hd_conv_nth list.sel(1))
 next
-  assume nm: "\<not> List.member pl (pl ! 0)"
+  assume nm: "\<not> pl ! 0 \<in> set pl"
   from this have pl_empty: "pl = []"
-    by (metis length_greater_0_conv member_def nth_mem)
+    by (metis length_greater_0_conv nth_mem)
   from ne this pl_empty show "False"
     by simp
 qed
@@ -971,24 +971,21 @@ sepref_register limit_profile_l
 declare limit_profile_sep.refine [sepref_fr_rules]
 
 lemma "limitp_correct":
-  shows "(limit_profile_l, (RETURN oo limit_profile)) \<in> 
-  \<langle>Id\<rangle>set_rel \<rightarrow>  profile_rel \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
-proof(unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric],
-    refine_vcg)
-  fix A' A :: "'a set"
+  shows "(uncurry limit_profile_l, uncurry (RETURN oo limit_profile)) \<in> 
+  [\<lambda> (A, _). finite A ]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r  profile_rel) \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
+proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric],
+    refine_vcg, auto, rename_tac A pl pr)
+  fix A :: "'a set"
   fix pl:: "'a Profile_List" 
   fix pr :: "'a Profile"
-  assume fina: "finite A"
+  assume fina : "finite A"
   assume prel: " (pl, pr) \<in> profile_rel"
-  from prel  have bwiseref: " \<forall>i<length pr. (limit_l A (pl ! i) , limit A (pr ! i)) \<in> ballot_rel"
-    using 
   show " nfoldli pl (\<lambda>_. True) (\<lambda>x np. limit_monadic A x \<bind> (\<lambda>newb. RES {np @ [newb]})) []
        \<le> \<Down> profile_rel (RES {map (limit A) pr})"
-    apply (refine_vcg limit_monadic_refine fina pro nfoldli_rule[where I = "(\<lambda> proc rem r. 
+    apply (refine_vcg limit_monadic_refine  nfoldli_rule[where I = "(\<lambda> proc rem r. 
               r = map (limit_l A) proc)"])
-       apply (auto)
-    using prel bwiseref unfolding profile_def
-    by (simp add: list_rel_eq_listrel listrel_iff_nth relAPP_def) 
+       apply (auto simp add: fina)
+    sorry
 qed
 
 

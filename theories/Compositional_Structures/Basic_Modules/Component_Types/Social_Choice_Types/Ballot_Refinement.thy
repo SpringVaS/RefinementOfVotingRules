@@ -137,14 +137,22 @@ lemma limit_monadicc:
     and subs : "S \<subseteq> A"
   shows "limit_monadic S bal \<le> \<Down> ballot_rel (RETURN (limit S bar))"
   unfolding limit_monadic_def comp_apply
-  apply (refine_vcg assms WHILET_rule[where 
+  apply (refine_vcg WHILET_rule[where 
         R = "measure (\<lambda>(i, nbal). length ballot - i)" and I = "(\<lambda> (i, nbal).  
     ballot_on (S - (set (drop i ballot))) nbal \<and> (\<forall> a. (a \<in> set (take i ballot) \<and> a \<in> S) 
     \<longleftrightarrow> a \<in> (set nbal))
     \<and> (\<forall> a \<in> set nbal. \<forall> b \<in> set nbal. a \<lesssim>\<^sub>(take i ballot) b \<longrightarrow> a \<lesssim>\<^sub>nbal b ))"])
-  unfolding limit_monadic_d_inv_def well_formed_pl_def
-  unfolding limit.simps in_br_conv apply (clarsimp) 
+unfolding  well_formed_pl_def 
   subgoal by auto
+  subgoal by auto 
+  subgoal 
+  unfolding  linear_order_on_l_def
+  preorder_on_l_def Preference_List.limited_def total_on_l_def refl_on_l_def trans_l_def
+  unfolding limit.simps in_br_conv 
+  using assms apply auto unfolding  well_formed_pl_def 
+    unfolding  linear_order_on_l_def
+  preorder_on_l_def Preference_List.limited_def total_on_l_def refl_on_l_def trans_l_def
+    sorry
   sorry
 
 lemma limit_l_sound:
