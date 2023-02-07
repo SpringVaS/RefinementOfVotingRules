@@ -984,10 +984,13 @@ proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[sy
        \<le> \<Down> profile_rel (RES {map (limit A) pr})"
     apply (refine_vcg limit_monadic_refine  nfoldli_rule[where I = "(\<lambda> proc rem r. 
               r = map (limit_l A) proc)"])
-       apply (auto simp add: fina)
-    sorry
+        apply (auto simp add: fina) 
+    using limit_eq in_br_conv  length_map limit_l_sound list_rel_eq_listrel listrel_iff_nth 
+        nth_map prel relAPP_def
+    by (smt (verit, del_insts))
 qed
 
+lemmas limit_profile_sep_correct [sepref_fr_rules] = limit_profile_sep.refine[FCOMP limitp_correct] 
 
     
 end

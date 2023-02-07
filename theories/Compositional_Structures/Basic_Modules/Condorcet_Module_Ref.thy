@@ -78,14 +78,17 @@ sepref_definition condorcet_elim_sepref is
   apply (rewrite in "RETURN ({}, {}, \<hole>)" hs.fold_custom_empty) 
   apply (rewrite in "RETURN ({}, \<hole>, _)" hs.fold_custom_empty) 
   apply (rewrite in "RETURN ( \<hole>, _, _)" hs.fold_custom_empty) 
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) 
+                                  else RETURN ({}, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) 
+                                  else RETURN ({}, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) 
+                                    else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
   apply sepref_dbg_keep
 
   done
 
-(*lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]*)
+lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]
 
 
 end
