@@ -13,11 +13,7 @@ function loop_comp_helper ::
   "\<not>(t (acc A p) \<or> \<not>((defer (acc \<triangleright> m) A p) \<subset> (defer acc A p)) \<or>
     infinite (defer acc A p)) \<Longrightarrow>
       loop_comp_helper acc m t A p = loop_comp_helper (acc \<triangleright> m) m t A p"
+  sorry
 
-definition loop_composition_ref :: "'a Electoral_Module \<Rightarrow> 'a Electoral_Module_Ref \<Rightarrow>
-        'a Termination_Condition \<Rightarrow> 'a Electoral_Module"
-  where   "loop_composition_ref \<equiv> do {
-    RETURN ({},{},{})
-}"
 
 end

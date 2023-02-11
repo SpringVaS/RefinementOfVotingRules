@@ -80,96 +80,9 @@ lemma is_less_preferred_than_ref:
 
 
 
-definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
-  nbal = limit_l A (take i ballot)"
-
-definition "limit_monadic_d_inv A ballot \<equiv> \<lambda> (i, nbal).
-  (\<forall> a \<in> set nbal. \<forall> b \<in> set nbal . is_less_preferred_than_l a ballot b \<longrightarrow> 
-       is_less_preferred_than_l a nbal b)"
-
-definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
-"limit_monadic A ballot \<equiv> do {
-    (i, nbal) \<leftarrow> WHILET
-  (\<lambda> (i, nbal). i < length ballot) 
-      (\<lambda> (i, nbal). do {
-      ASSERT (i < (length ballot));
-      let c = (ballot!i);
-      RETURN (if (c \<in> A) then
-         (i + 1, nbal @ [c])
-      else
-        (i + 1, nbal))
-    })((0, []));
-    RETURN (nbal)
-  }"                          
-
-
-
-definition  limit_monadic' :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
-"limit_monadic' A ballot \<equiv> do {
-    nfoldli ballot (\<lambda> _. True) 
-    (\<lambda> x l. 
-    RETURN 
-    (if (x \<in> A) then
-         (l @ [x])
-      else
-        l)) []
-  }"                          
-
-
-
-lemma limit_monadic_refine:
-  fixes A :: "'a set" and bal :: "'a Preference_List"
-  assumes fina: "finite A" 
-  shows "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))"
-  unfolding limit_monadic_def
-  by (refine_vcg WHILET_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"
-            and I = "(limit_monadic_inv A bal)"],
-        auto simp add: limit_monadic_inv_def pl_\<alpha>_def  take_Suc_conv_app_nth)
-
-
-lemma limit_l_sound:
-  fixes A :: "'a set"
-  fixes bal :: "'a Preference_List"
-  assumes "well_formed_pl bal"
-  shows "well_formed_pl (limit_l A bal)"
-  using assms unfolding well_formed_pl_def
-  by auto
-
-
-
-lemma limit_monadic_correct:
-  shows "(uncurry limit_monadic, uncurry (RETURN oo limit))
-      \<in> [\<lambda> (A, bal). finite A]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r ballot_rel) \<rightarrow> \<langle>ballot_rel\<rangle>nres_rel"
-proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps, 
-      unfold SPEC_eq_is_RETURN(2)[symmetric], rename_tac A bal bar)
-  fix A :: "'a set"
-  fix bar :: "'a Preference_Relation"
-  fix bal :: "'a Preference_List"
-  assume balrel: "(bal, bar) \<in> ballot_rel"
-  assume fina: "finite A"
-  from balrel have wf: "well_formed_pl bal"
-   using in_br_conv
-   by metis
-  from balrel have abs: "bar = pl_\<alpha> bal" unfolding in_br_conv by simp
-  from fina have refp: "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))" 
-      using limit_monadic_refine by blast
-  from wf  have refb: "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
-    unfolding in_br_conv  using limit_eq limit_l_sound by metis 
-  from this have balref: "(SPEC (\<lambda>x. x = limit_l A bal)) \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
-    by (metis (full_types) RETURN_SPEC_refine lhs_step_SPEC)
-  show "limit_monadic A bal \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
-    using  order_trans[OF refp balref] .
-qed
     
 
-sepref_definition limit_imp is "uncurry (limit_monadic)" ::
-  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (arl_assn nat_assn)"
-  unfolding limit_monadic_def
-  apply (rewrite  in "WHILET  _ _ rewrite_HOLE" arl.fold_custom_empty)
-  apply sepref_dbg_keep
-  done
 
-lemmas limit_imp_correct [sepref_fr_rules] = limit_imp.refine[FCOMP limit_monadic_correct]
 
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
 abbreviation "profile_on_A_rel A \<equiv> \<langle>ballot_on_A_rel A\<rangle>list_rel"
@@ -271,22 +184,92 @@ proof (-)
 qed
 
 
+abbreviation "ballot_impl_assn \<equiv> (arl_assn nat_assn)"
 
+abbreviation "profile_impl_assn \<equiv> (list_assn (ballot_impl_assn))"
 
-abbreviation "cand_impl_assn \<equiv> nat_assn"
-
-abbreviation "ballot_impl_assn \<equiv> (arl_assn cand_impl_assn)"
-
-abbreviation "profile_impl_assn \<equiv> (list_assn ballot_impl_assn)"
-
-abbreviation "alts_set_impl_assn \<equiv> (hs.assn cand_impl_assn)"
+abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
 
 abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
+
+
+definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
+  nbal = limit_l A (take i ballot)"
+
+
+definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
+"limit_monadic A ballot \<equiv> do {
+    (i, nbal) \<leftarrow> WHILET
+  (\<lambda> (i, nbal). i < length ballot) 
+      (\<lambda> (i, nbal). do {
+      ASSERT (i < (length ballot));
+      let c = (ballot!i);
+      RETURN (if (c \<in> A) then
+         (i + 1, nbal @ [c])
+      else
+        (i + 1, nbal))
+    })(0, []);
+    RETURN (nbal)
+  }"                          
+
+
+
+lemma limit_monadic_refine:
+  fixes A :: "'a set" and bal :: "'a Preference_List"
+  assumes fina: "finite A" 
+  shows "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))"
+  unfolding limit_monadic_def
+  by (refine_vcg WHILET_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"
+            and I = "(limit_monadic_inv A bal)"],
+        auto simp add: limit_monadic_inv_def pl_\<alpha>_def  take_Suc_conv_app_nth)
+
+
+lemma limit_l_sound:
+  fixes A :: "'a set"
+  fixes bal :: "'a Preference_List"
+  assumes "well_formed_pl bal"
+  shows "well_formed_pl (limit_l A bal)"
+  using assms unfolding well_formed_pl_def
+  by auto
+
+
+
+lemma limit_monadic_correct:
+  shows "(uncurry limit_monadic, uncurry (RETURN oo limit))
+      \<in> [\<lambda> (A, bal). finite A]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r ballot_rel) \<rightarrow> \<langle>ballot_rel\<rangle>nres_rel"
+proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps, 
+      unfold SPEC_eq_is_RETURN(2)[symmetric], rename_tac A bal bar)
+  fix A :: "'a set"
+  fix bar :: "'a Preference_Relation"
+  fix bal :: "'a Preference_List"
+  assume balrel: "(bal, bar) \<in> ballot_rel"
+  assume fina: "finite A"
+  from balrel have wf: "well_formed_pl bal"
+   using in_br_conv
+   by metis
+  from balrel have abs: "bar = pl_\<alpha> bal" unfolding in_br_conv by simp
+  from fina have refp: "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))" 
+      using limit_monadic_refine by blast
+  from wf  have refb: "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
+    unfolding in_br_conv  using limit_eq limit_l_sound by metis 
+  from this have balref: "(SPEC (\<lambda>x. x = limit_l A bal)) \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
+    by (metis (full_types) RETURN_SPEC_refine lhs_step_SPEC)
+  show "limit_monadic A bal \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
+    using  order_trans[OF refp balref] .
+qed
+
+sepref_definition limit_sep is "uncurry limit_monadic" ::
+  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (arl_assn nat_assn)"
+  unfolding limit_monadic_def[abs_def]
+  apply (rewrite in "WHILET _ _ rewrite_HOLE" arl.fold_custom_empty)
+  by sepref
+
+
 
 definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>set_rel)"
                                  
 
-definition "ballot_ref_assn \<equiv>  hr_comp ballot_impl_assn (\<langle>Id\<rangle>list_rel)"
+definition "ballot_ref_assn \<equiv>  hr_comp (ballot_impl_assn) (\<langle>Id\<rangle>list_rel)"
 
 definition "alts_assn \<equiv> hr_comp alts_ref_assn (\<langle>Id\<rangle>set_rel)"
 
@@ -294,8 +277,7 @@ definition "result_set_one_step \<equiv> hr_comp alts_set_impl_assn (\<langle>Id
 
 definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<rangle>set_rel)"
 
-definition "ballot_assn \<equiv> hr_comp (hr_comp ballot_impl_assn ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
-
+definition "ballot_assn \<equiv> hr_comp (hr_comp (ballot_impl_assn) ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
 
 
 end

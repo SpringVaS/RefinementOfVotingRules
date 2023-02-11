@@ -46,7 +46,7 @@ lemma index_sound:
   
 
 lemma index_mon_correct:
-  shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = List_Index.index ballot a)"
+  shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = index ballot a)"
   unfolding index_mon_def index_mon_inv_def
   apply (intro WHILEIT_rule[where  R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
 proof (safe, simp_all)
@@ -108,13 +108,9 @@ lemma rank_mon_refine:
   shows "(rank_mon, (\<lambda> ballot a. RETURN (rank_l ballot a)))\<in> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   by (refine_vcg rank_mon_correct, simp)
 
-sepref_definition rank_imp_sep
-  is "uncurry rank_mon" :: "((arl_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn)"
-  unfolding rank_mon_def[abs_def] index_mon_def[abs_def]
-  by sepref
 
 
-definition is_less_preferred_than_mon :: "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
+(*definition is_less_preferred_than_mon :: "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
 "is_less_preferred_than_mon a pl b \<equiv> do {
   ra <- rank_mon pl a;
   rb <- rank_mon pl b;
@@ -126,13 +122,40 @@ lemma ilpm_list_refine:
       SPEC (\<lambda> lp. lp =  is_less_preferred_than_l a pl b)" 
   unfolding is_less_preferred_than_mon_def is_less_preferred_than_l.simps 
   apply (refine_vcg rank_mon_correct)
-  by (auto simp add: in_set_member)
+  by (auto simp add: in_set_member)*)
 
-sepref_definition ilp_sep
-  is "uncurry2 is_less_preferred_than_mon" :: 
-    "(nat_assn\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
-  unfolding is_less_preferred_than_mon_def rank_mon_def[abs_def] index_mon_def[abs_def]
-  by sepref
+
+definition is_less_preferred_than_ref ::
+  "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
+    "x p\<lesssim>\<^sub>l y \<equiv>
+     \<^cancel>\<open> *if (x \<in> set l \<and> y \<in> set l) 
+      then \<close> do {
+        idxx <- index_mon l x;
+        idxy <- index_mon l y;
+        RETURN ((idxx \<noteq> length l) \<and> (idxy \<noteq> length l) \<and> idxx \<ge> idxy)}
+    \<^cancel>\<open> * else RETURN False \<close>"
+
+lemma is_less_preferred_than_ref_refine:
+  shows "(is_less_preferred_than_ref, 
+      RETURN ooo  is_less_preferred_than_l) \<in> Id \<rightarrow> \<langle>Id\<rangle>list_rel \<rightarrow> Id \<rightarrow> \<langle>bool_rel\<rangle>nres_rel" 
+  unfolding is_less_preferred_than_ref_def is_less_preferred_than_l.simps
+  unfolding comp_apply
+  by (refine_vcg index_mon_correct, auto)
+
+sepref_definition is_less_preferred_than_sep
+  is "uncurry2 is_less_preferred_than_ref" :: 
+    "(nat_assn\<^sup>k *\<^sub>a (ballot_impl_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+  unfolding is_less_preferred_than_ref_def[abs_def]  index_mon_def[abs_def]
+  apply sepref_dbg_keep
+  done
+
+sepref_register is_less_preferred_than_ref
+
+declare is_less_preferred_than_sep.refine [sepref_fr_rules]
+
+
+lemmas is_less_preferred_than_sep_correct = 
+    is_less_preferred_than_sep.refine[FCOMP is_less_preferred_than_ref_refine]
 
 section \<open>Monadic implementation of counting functions \<close>
 
@@ -634,16 +657,37 @@ definition prefer_count_monadic_imp:: "'a Profile_List \<Rightarrow> 'a \<Righta
 "prefer_count_monadic_imp p a b \<equiv> 
   nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
   do {
-    b_less_a <- is_less_preferred_than_mon b x a;
+    b_less_a <- is_less_preferred_than_ref b x a;
     RETURN  (if b_less_a then (ac+1) else (ac)) 
   }) (0::nat)"
 
 lemma prefer_count_monadic_imp_refine:
-  shows "(prefer_count_monadic_imp, pc_foldli_list) \<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  shows "(prefer_count_monadic_imp, pc_foldli_list) 
+\<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   unfolding prefer_count_monadic_imp_def pc_foldli_list_def
-  apply (refine_vcg ilpm_list_refine)
+  apply (refine_vcg is_less_preferred_than_ref_refine[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+        THEN nres_relD])
   apply (refine_dref_type)
-  by auto
+    apply (auto simp add: is_less_preferred_than_ref_refine simp del : is_less_preferred_than_l.simps)
+proof (rename_tac b a l)
+  fix a b :: 'a
+  fix l :: "'a Preference_List"
+  assume alpb: "a \<lesssim>\<^sub>l b"
+  note iq = is_less_preferred_than_ref_refine[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+        THEN nres_relD] 
+  from alpb iq[where x3= a and x'3 =a and x2 = l and x'2 =l and x1 =b and x'1 =b]
+    show "(a p\<lesssim>\<^sub>l b) \<le> SPEC (\<lambda>b_less_a. b_less_a)"
+      using conc_trans_additional(6) by fastforce
+  next
+    fix a b :: 'a
+  fix l :: "'a Preference_List"
+  assume alpb: "\<not> a \<lesssim>\<^sub>l b"
+  note iq = is_less_preferred_than_ref_refine[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+        THEN nres_relD] 
+  from alpb iq[where x3= a and x'3 =a and x2 = l and x'2 =l and x1 =b and x'1 =b]
+  show "(a p\<lesssim>\<^sub>l b) \<le> SPEC (Not)"
+    using conc_trans_additional(6) by fastforce
+  qed
 
 theorem prefer_count_monadic_imp_correct:
   assumes "(pl, pr) \<in> profile_rel"
@@ -671,9 +715,9 @@ proof (refine_vcg, clarify, unfold comp_apply, (clarsimp simp del: prefer_count.
 qed
 
 sepref_definition prefer_count_sep is
-  "uncurry2 prefer_count_monadic_imp" :: "profile_impl_assn\<^sup>k *\<^sub>a cand_impl_assn\<^sup>k  *\<^sub>a cand_impl_assn\<^sup>k
+  "uncurry2 prefer_count_monadic_imp" :: "(profile_impl_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k  *\<^sub>a nat_assn\<^sup>k
     \<rightarrow>\<^sub>a nat_assn"
-  unfolding prefer_count_monadic_imp_def is_less_preferred_than_mon_def rank_mon_def index_mon_def
+  unfolding prefer_count_monadic_imp_def
   by sepref
 
 sepref_register prefer_count_monadic_imp
@@ -744,8 +788,7 @@ lemma wins_monadic_correct:
 
 sepref_definition wins_imp is "uncurry2 wins_monadic" ::
   "(nat_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
-  unfolding wins_monadic_def prefer_count_monadic_imp_def is_less_preferred_than_mon_def
-  rank_mon_def index_mon_def
+  unfolding wins_monadic_def
   apply sepref_dbg_keep
   done
 
@@ -957,10 +1000,10 @@ definition limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow
         RETURN (op_list_append np newb)}) []"
 
 sepref_register limit_monadic
-declare limit_imp.refine [sepref_fr_rules]
+declare limit_sep.refine [sepref_fr_rules]
 
 sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" :: 
-  "(hs.assn cand_impl_assn)\<^sup>k *\<^sub>a (list_assn (arl_assn cand_impl_assn))\<^sup>k \<rightarrow>\<^sub>a (list_assn (arl_assn cand_impl_assn))"
+  "(alts_set_impl_assn)\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn)"
   unfolding limit_profile_l_def 
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
   apply sepref_dbg_keep
