@@ -184,11 +184,11 @@ proof (-)
 qed
 
 
-abbreviation "ballot_impl_assn \<equiv> (arl_assn nat_assn)"
+abbreviation "ballot_impl_assn \<equiv> (arl_assn id_assn)"
 
 abbreviation "profile_impl_assn \<equiv> (list_assn (ballot_impl_assn))"
 
-abbreviation "alts_set_impl_assn \<equiv> (hs.assn nat_assn)"
+abbreviation "alts_set_impl_assn \<equiv> (hs.assn id_assn)"
 
 abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
 
@@ -197,7 +197,9 @@ definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
   nbal = limit_l A (take i ballot)"
 
 
-definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarrow> 'a Preference_List nres" where
+definition  limit_monadic :: "'a::{default, hashable, heap} set 
+    \<Rightarrow> 'a::{default, hashable, heap} Preference_List 
+      \<Rightarrow> 'a::{default, hashable, heap} Preference_List nres" where
 "limit_monadic A ballot \<equiv> do {
     (i, nbal) \<leftarrow> WHILET
   (\<lambda> (i, nbal). i < length ballot) 
@@ -215,13 +217,14 @@ definition  limit_monadic :: "'a set \<Rightarrow> 'a Preference_List \<Rightarr
 
 
 lemma limit_monadic_refine:
-  fixes A :: "'a set" and bal :: "'a Preference_List"
+  fixes A :: "'a::{default, hashable, heap} set" and bal :: "'a::{default, hashable, heap} Preference_List"
   assumes fina: "finite A" 
   shows "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))"
   unfolding limit_monadic_def
-  by (refine_vcg WHILET_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"
+  apply (refine_vcg WHILET_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"
             and I = "(limit_monadic_inv A bal)"],
         auto simp add: limit_monadic_inv_def pl_\<alpha>_def  take_Suc_conv_app_nth)
+  done
 
 
 lemma limit_l_sound:
@@ -259,11 +262,11 @@ proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps,
 qed
 
 sepref_definition limit_sep is "uncurry limit_monadic" ::
-  "(hs.assn nat_assn)\<^sup>k *\<^sub>a (arl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (arl_assn nat_assn)"
+  "(hs.assn id_assn)\<^sup>k *\<^sub>a (ballot_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (ballot_impl_assn)"
   unfolding limit_monadic_def[abs_def]
   apply (rewrite in "WHILET _ _ rewrite_HOLE" arl.fold_custom_empty)
-  by sepref
-
+  apply sepref_dbg_keep
+  done
 
 
 definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>set_rel)"
@@ -279,5 +282,5 @@ definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<
 
 definition "ballot_assn \<equiv> hr_comp (hr_comp (ballot_impl_assn) ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
 
-
 end
+

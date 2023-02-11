@@ -11,22 +11,14 @@ definition
 thm "elector_sep_def"
 
 locale elector_impl =  
-  fixes m_ref :: "nat Electoral_Module_Ref"
-  fixes m_sep :: "(nat, unit) hashtable
-      \<Rightarrow> (nat array \<times> nat) list
-         \<Rightarrow> ((nat, unit) hashtable \<times> (nat, unit) hashtable \<times> (nat, unit) hashtable) Heap"
+  fixes m_ref :: "'a::{default, linorder, hashable, heap} Electoral_Module_Ref"
+  fixes m_sep :: "('a, unit) hashtable
+      \<Rightarrow> ('a array \<times> nat) list
+         \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
   assumes 
     m_impl: "(uncurry m_sep, uncurry m_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
-begin
 
-interpretation electori:  seqcomp_impl m_ref m_sep elect_module_ref elect_module_sep
-  apply unfold_locales
-  using elect_module_sep.refine m_impl by auto
-
-lemmas elector_sep_refine =  electori.seqt_imp_refine
-
-end
 
 locale elector_ref = elector_impl +
   fixes m :: "nat Electoral_Module"
@@ -38,8 +30,6 @@ assumes m_ref_correct: "(uncurry m_ref, uncurry (RETURN oo m)) \<in>
 begin
 
 lemmas m_t_ref = m_impl[FCOMP m_ref_correct]
-
-
 
 interpretation elector: sequence_refine m_ref m_sep elect_module_ref elect_module_sep m elect_module
   apply unfold_locales
@@ -53,8 +43,13 @@ interpretation elector: sequence_refine m_ref m_sep elect_module_ref elect_modul
     unfolding comp_apply by auto
   done
 
+interpretation elector:  seqcomp_impl m_ref m_sep elect_module_ref elect_module_sep
+  apply unfold_locales .
 
-lemmas elector_sep_refine =  elector.sequence_correct
+lemmas elector_sep_refine =  elector.seqt_sep_refine
 
+lemmas elector_sep_correct =  elector.sequence_correct
+
+end
 
 end

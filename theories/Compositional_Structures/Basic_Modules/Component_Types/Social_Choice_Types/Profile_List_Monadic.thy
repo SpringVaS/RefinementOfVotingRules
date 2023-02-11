@@ -20,20 +20,34 @@ definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
 (*  \<and> (\<not>found \<longrightarrow> (i \<le> List_Index.index ballot a)))"*)
 
 (* low level optimization for pref count *)
-definition index_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+definition index_mon :: "'a::{default, linorder,  heap, hashable} Preference_List 
+  \<Rightarrow> 'a::{default, linorder, heap, hashable}
+   \<Rightarrow> nat nres" where
   "index_mon ballot a \<equiv> do {
-    (i, found) \<leftarrow> WHILEIT ((index_mon_inv ballot a)) 
+    (i, found) \<leftarrow> WHILET  
   (\<lambda>(i, found). (i < (length ballot) \<and> \<not>found)) 
       (\<lambda>(i,_). do {
       ASSERT (i < (length ballot));
-      let (c) = (ballot!i);
+      let (c::'a::{default,linorder, heap, hashable}) = (ballot ! i);
       if (a = c) then
         RETURN (i,True)
       else
         RETURN (i+1,False)
-    })(0, False);
+    })(0::nat, False);
     RETURN (i)
-  }"                          
+  }"          
+
+sepref_definition index_sep is "uncurry index_mon" :: 
+  "(arl_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
+  unfolding index_mon_def
+  apply (rewrite in "rewrite_HOLE" Orderings.eq_iff)
+  apply sepref_dbg_keep
+  done
+
+sepref_register index_mon
+
+declare index_sep.refine [sepref_fr_rules]
+
 
 lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))" by simp
 
@@ -47,9 +61,9 @@ lemma index_sound:
 
 lemma index_mon_correct:
   shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = index ballot a)"
-  unfolding index_mon_def index_mon_inv_def
-  apply (intro WHILEIT_rule[where  R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
-proof (safe, simp_all)
+  unfolding index_mon_def 
+  apply (intro WHILET_rule[where I= "index_mon_inv ballot a" and R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
+proof (unfold index_mon_inv_def, safe, simp_all)
   fix aa::nat
   assume bound: "aa \<le> index ballot (ballot ! aa)"
   (*assume range : "aa < length ballot"*)
@@ -78,7 +92,8 @@ qed
 
 
 
-definition rank_mon :: "'a Preference_List \<Rightarrow> 'a \<Rightarrow> nat nres" where
+definition rank_mon :: "'a::{default, linorder, heap, hashable} Preference_List 
+  \<Rightarrow> 'a::{default, linorder, heap, hashable} \<Rightarrow> nat nres" where
   "rank_mon ballot a \<equiv> do {
     i \<leftarrow> (index_mon ballot a);
     if (i = length ballot) then RETURN 0 else RETURN (i + 1)
@@ -126,14 +141,13 @@ lemma ilpm_list_refine:
 
 
 definition is_less_preferred_than_ref ::
-  "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
-    "x p\<lesssim>\<^sub>l y \<equiv>
-     \<^cancel>\<open> *if (x \<in> set l \<and> y \<in> set l) 
-      then \<close> do {
+  "'a::{default, linorder, heap, hashable} \<Rightarrow> 'a Preference_List 
+  \<Rightarrow> 'a
+   \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
+    "x p\<lesssim>\<^sub>l y \<equiv>  do { 
         idxx <- index_mon l x;
         idxy <- index_mon l y;
-        RETURN ((idxx \<noteq> length l) \<and> (idxy \<noteq> length l) \<and> idxx \<ge> idxy)}
-    \<^cancel>\<open> * else RETURN False \<close>"
+        RETURN (idxx \<noteq> length l \<and> idxy \<noteq> length l \<and>  idxx \<ge> idxy)}"
 
 lemma is_less_preferred_than_ref_refine:
   shows "(is_less_preferred_than_ref, 
@@ -144,8 +158,8 @@ lemma is_less_preferred_than_ref_refine:
 
 sepref_definition is_less_preferred_than_sep
   is "uncurry2 is_less_preferred_than_ref" :: 
-    "(nat_assn\<^sup>k *\<^sub>a (ballot_impl_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
-  unfolding is_less_preferred_than_ref_def[abs_def]  index_mon_def[abs_def]
+    "(id_assn\<^sup>k *\<^sub>a (ballot_impl_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+  unfolding is_less_preferred_than_ref_def[abs_def] 
   apply sepref_dbg_keep
   done
 
@@ -653,7 +667,8 @@ refine_IdD
     by fastforce
 qed
 
-definition prefer_count_monadic_imp:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
+definition prefer_count_monadic_imp:: "'a::{default, linorder, heap, hashable} Profile_List 
+  \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "prefer_count_monadic_imp p a b \<equiv> 
   nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
   do {
@@ -715,16 +730,18 @@ proof (refine_vcg, clarify, unfold comp_apply, (clarsimp simp del: prefer_count.
 qed
 
 sepref_definition prefer_count_sep is
-  "uncurry2 prefer_count_monadic_imp" :: "(profile_impl_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k  *\<^sub>a nat_assn\<^sup>k
+  "uncurry2 prefer_count_monadic_imp" :: "(profile_impl_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k  *\<^sub>a id_assn\<^sup>k
     \<rightarrow>\<^sub>a nat_assn"
   unfolding prefer_count_monadic_imp_def
-  by sepref
+  apply sepref_dbg_keep
+  done
 
 sepref_register prefer_count_monadic_imp
 
 declare prefer_count_sep.refine [sepref_fr_rules]
 
-definition wins_monadic :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
+definition wins_monadic :: "'a::{default, linorder, heap, hashable}
+   \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "wins_monadic x p y \<equiv> do {
     pxy <- prefer_count_monadic_imp p x y;
     pyx <- prefer_count_monadic_imp p y x;
@@ -767,8 +784,8 @@ proof (clarsimp simp del: prefer_count_l.simps, rename_tac pl a b,
 qed
 
 lemma imp_direct_ref: 
-  fixes pl :: "'a Profile_List"
-  fixes a b :: "'a"
+  fixes pl :: "'a::{default, linorder, heap, hashable} Profile_List"
+  fixes a b :: "'a::{default, linorder, heap, hashable}"
   shows"prefer_count_monadic_imp pl a b \<le> RETURN (prefer_count_l pl a b)"
 proof -
   have "(pl, pl) \<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel" using list_rel_id IdI by simp
@@ -787,7 +804,7 @@ lemma wins_monadic_correct:
   by (auto)  
 
 sepref_definition wins_imp is "uncurry2 wins_monadic" ::
-  "(nat_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
+  "(nat_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
   unfolding wins_monadic_def
   apply sepref_dbg_keep
   done
@@ -898,7 +915,8 @@ next
   from altwins a2 this show "con = alt" by blast
 qed
 
-definition condorcet_winner_monadic :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
+definition condorcet_winner_monadic :: "'a::{default, linorder, heap, hashable} set 
+  \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "condorcet_winner_monadic A p w \<equiv> 
     if (w \<in> A) then
     FOREACH A
@@ -911,8 +929,9 @@ definition condorcet_winner_monadic :: "'a set \<Rightarrow> 'a Profile_List \<R
 
 
 sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic" 
-  :: "(alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+  :: "(alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
   unfolding condorcet_winner_monadic_def wins_monadic_def 
+  apply (rewrite in "rewrite_HOLE" Orderings.eq_iff)
   apply sepref_dbg_keep
   done
 
@@ -921,9 +940,9 @@ sepref_register condorcet_winner_monadic
 declare cond_imp.refine [sepref_fr_rules]
 
 lemma condorcet_winner_monadic_correct:
-  fixes A :: "'a set"
-  fixes pl :: "'a Profile_List"
-    and pr :: "'a Profile"
+  fixes A :: "'a::{default, linorder, heap, hashable} set"
+  fixes pl :: "'a::{default, linorder, heap, hashable} Profile_List"
+    and pr :: "'a::{default, linorder, heap, hashable} Profile"
    assumes prel: "(pl, pr) \<in> profile_rel" and profp: "profile A pr" 
   assumes fina: "finite A" 
   shows "condorcet_winner_monadic A pl a
@@ -992,7 +1011,8 @@ lemma cond_winner_unique3_l:
 
 find_theorems nfoldli
 
-definition limit_profile_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Profile_List nres" where
+definition limit_profile_l :: "'a::{default,hashable,heap} set \<Rightarrow> 
+    'a::{default,hashable,heap} Profile_List \<Rightarrow> 'a::{default,hashable,heap} Profile_List nres" where
   "limit_profile_l A p = 
     nfoldli p (\<lambda>_. True)
       (\<lambda> x np. do {
@@ -1003,7 +1023,7 @@ sepref_register limit_monadic
 declare limit_sep.refine [sepref_fr_rules]
 
 sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" :: 
-  "(alts_set_impl_assn)\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn)"
+  "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn )\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn )"
   unfolding limit_profile_l_def 
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
   apply sepref_dbg_keep

@@ -25,7 +25,7 @@ lemma condorcet_aux:
   done
 
 
-sepref_decl_op (no_def) "borda :: nat Electoral_Module" :: "elec_mod_rel_orig_nres nat_rel" 
+sepref_decl_op (no_def) "borda :: 'a Electoral_Module" :: "elec_mod_rel_orig Id" 
   using borda_aux .
 
 
@@ -56,28 +56,7 @@ sepref_decl_impl borda_impl: borda_elim_sepref.refine[FCOMP borda_ref_correct]
 
 sepref_decl_impl defer_eqal_condition_impl: defer_equal_condition_sep.refine .
 
-
-
-
 end
-
-
-
-locale seq_binding = sequence_refine + refine_assns
-begin
-
-sepref_decl_op (no_def)  seqref: "sequential_composition m n  ::
-  nat Electoral_Module" :: 
-  "(elec_mod_rel_orig A)" 
-  where "A = Id"
-  apply standard
-  apply (rule nres_relI)
-  by (auto)
-
-
-
-sepref_decl_impl seq_impl: sequential_composition_sep.refine[FCOMP seq_comp_correct]
-
 
   
 

@@ -4,20 +4,20 @@ theory Condorcet_Module_Ref
 begin
 
 
-definition condorcet_score_ref :: "'a Evaluation_Function_Ref" where
+definition condorcet_score_ref :: "'a::{default, linorder, heap, hashable} Evaluation_Function_Ref" where
   "condorcet_score_ref x A p = do {
     is_x_cond_winner <- (condorcet_winner_monadic A p x);
     RETURN (if (is_x_cond_winner) then 1 else 0)}"
 
-definition condorcet_ref :: "'a Electoral_Module_Ref" where
+definition condorcet_ref :: "'a::{default, linorder, heap, hashable} Electoral_Module_Ref" where
   "condorcet_ref A pl  \<equiv> do {
    scores <- (pre_compute_scores condorcet_score_ref A pl);
    max_eliminator_ref scores A pl
 }"
 
 lemma condorcet_score_ref_correct:
-  fixes A:: "'a set"
-  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
+  fixes A:: "'a::{default, linorder, heap, hashable} set"
+  fixes pl:: "'a::{default, linorder, heap, hashable} Profile_List" and pr:: "'a::{default, linorder, heap, hashable} Profile"
   assumes 
     fina: "finite A"
     and profrel: "(pl, pr) \<in> profile_rel"
@@ -85,10 +85,9 @@ sepref_definition condorcet_elim_sepref is
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) 
                                     else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
   apply sepref_dbg_keep
-
   done
 
-lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]
+(*lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]*)
 
 
 end
