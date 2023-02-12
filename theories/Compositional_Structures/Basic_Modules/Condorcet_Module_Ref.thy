@@ -4,20 +4,20 @@ theory Condorcet_Module_Ref
 begin
 
 
-definition condorcet_score_ref :: "'a::{default, linorder, heap, hashable} Evaluation_Function_Ref" where
+definition condorcet_score_ref :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
   "condorcet_score_ref x A p = do {
     is_x_cond_winner <- (condorcet_winner_monadic A p x);
     RETURN (if (is_x_cond_winner) then 1 else 0)}"
 
-definition condorcet_ref :: "'a::{default, linorder, heap, hashable} Electoral_Module_Ref" where
+definition condorcet_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
   "condorcet_ref A pl  \<equiv> do {
    scores <- (pre_compute_scores condorcet_score_ref A pl);
    max_eliminator_ref scores A pl
 }"
 
 lemma condorcet_score_ref_correct:
-  fixes A:: "'a::{default, linorder, heap, hashable} set"
-  fixes pl:: "'a::{default, linorder, heap, hashable} Profile_List" and pr:: "'a::{default, linorder, heap, hashable} Profile"
+  fixes A:: "'a::{default, heap, hashable} set"
+  fixes pl:: "'a::{default, heap, hashable} Profile_List" and pr:: "'a::{default, heap, hashable} Profile"
   assumes 
     fina: "finite A"
     and profrel: "(pl, pr) \<in> profile_rel"
@@ -65,7 +65,7 @@ proof (unfold condorcet_ref_def comp_apply SPEC_eq_is_RETURN(2)[symmetric],
     by (metis singleton_conv)
 qed
 
-sepref_definition condorcet_elim_sepref is
+sepref_definition condorcet_elim_sep is
   "uncurry condorcet_ref":: 
   "alts_set_impl_assn\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k 
    \<rightarrow>\<^sub>a (result_impl_assn)"
@@ -87,7 +87,7 @@ sepref_definition condorcet_elim_sepref is
   apply sepref_dbg_keep
   done
 
-(*lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sepref.refine[FCOMP condorcet_ref_correct]*)
+(*lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]*)
 
 
 end

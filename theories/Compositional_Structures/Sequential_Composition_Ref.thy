@@ -4,29 +4,35 @@ theory Sequential_Composition_Ref
         Refine_Imperative_HOL.Sepref
 begin
 
-definition sequential_composition_ref_test :: "'a::{default, linorder, hashable, heap} Electoral_Module_Ref 
-\<Rightarrow> 'a Electoral_Module_Ref \<Rightarrow>
-        'a Electoral_Module_Ref" where
-"sequential_composition_ref_test m n A p = do {
-      (mel,mrej,mdef) <- m A p;
+context
+  fixes m_ref :: "'a::{default, hashable, heap} Electoral_Module_Ref"
+  fixes n_ref :: "'a::{default, hashable, heap} Electoral_Module_Ref"
+begin
+
+definition sequential_composition_ref_test :: 
+        "'a::{default, hashable, heap} Electoral_Module_Ref" where
+"sequential_composition_ref_test A p = do {
+      (mel,mrej,mdef) <- m_ref A p;
  
       let newA = mdef;
       new_p <- limit_profile_l newA p;  
     
-      (nel,nrej,ndef) <- n newA new_p;
+      (nel,nrej,ndef) <- n_ref newA new_p;
       
       RETURN (mel \<union> nel, mrej \<union> nrej, ndef)
 }"
+
+end
 
 abbreviation "em_assn R \<equiv> (hs.assn R)\<^sup>k *\<^sub>a (list_assn (arl_assn R))\<^sup>k 
   \<rightarrow>\<^sub>a ((hs.assn R) \<times>\<^sub>a (hs.assn R) \<times>\<^sub>a (hs.assn R))"
 
 locale seqcomp_impl =
-  fixes m_ref :: "'a::{default, linorder, hashable, heap} Electoral_Module_Ref"
+  fixes m_ref :: "'a::{default, hashable, heap} Electoral_Module_Ref"
   fixes m_sep :: "('a, unit) hashtable
       \<Rightarrow> ('a array \<times> nat) list
          \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
-  fixes n_ref :: "'a::{default, linorder, hashable, heap} Electoral_Module_Ref"
+  fixes n_ref :: "'a::{default, hashable, heap} Electoral_Module_Ref"
   fixes n_sep :: "('a, unit) hashtable
       \<Rightarrow> ('a array \<times> nat) list
          \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
@@ -42,27 +48,28 @@ begin
 
   lemma seqcomp_impl_loc: "seqcomp_impl m_ref m_sep n_ref n_sep" by unfold_locales
                                    
-sepref_register "m_ref" :: "'a::{default, linorder, hashable, heap} Electoral_Module_Ref"
+sepref_register "m_ref" :: "'a::{default, hashable, heap} Electoral_Module_Ref"
 declare m_impl [sepref_fr_rules]
 
-sepref_register "n_ref" :: "'a::{default, linorder, hashable, heap} Electoral_Module_Ref"
+sepref_register "n_ref" :: "'a::{default, hashable, heap} Electoral_Module_Ref"
 declare n_impl [sepref_fr_rules]
 
-schematic_goal sequence_impl: "(uncurry ?seq,  uncurry (sequential_composition_ref_test m_ref n_ref))
+schematic_goal sequence_impl: "(uncurry ?seq,  
+uncurry (sequential_composition_ref_test m_ref n_ref))
   \<in> em_assn id_assn"
-  unfolding sequential_composition_ref_test_def defer_monadic_def elect_monadic_def reject_monadic_def
+  unfolding sequential_composition_ref_test_def
   apply sepref_dbg_keep
   done
 
 concrete_definition (in -) sequential_composition_sep uses seqcomp_impl.sequence_impl
   prepare_code_thms (in -) sequential_composition_sep_def
-lemmas seqt_sep_refine = sequential_composition_sep.refine[OF seqcomp_impl_loc]
+lemmas sequential_composition_sep_refine = sequential_composition_sep.refine[OF seqcomp_impl_loc]
 
 end 
 
-locale sequence_refine = seqcomp_impl +
-  fixes m :: "'a::{default, linorder, heap, hashable} Electoral_Module"  and
-  n :: "'a::{default, linorder, heap, hashable} Electoral_Module"
+locale sequence_sepref = seqcomp_impl +
+  fixes m :: "'a::{default, heap, hashable} Electoral_Module"  and
+  n :: "'a::{default, heap, hashable} Electoral_Module"
 assumes module_m: "electoral_module m"
   and module_n: "electoral_module n"
 assumes m_ref_correct: "(uncurry m_ref, uncurry (RETURN oo m)) \<in> 
@@ -84,9 +91,9 @@ lemma seq_comp_correct:
    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
   unfolding sequential_composition_ref_test_def
 proof (intro frefI nres_relI,clarsimp simp del: limit_profile.simps, rename_tac A pl pr)
-  fix A :: "'a::{default, linorder, hashable, heap} set"
-  fix pl :: "'a::{default, linorder, hashable, heap} Profile_List"
-  fix pr :: "'a::{default, linorder, hashable, heap} Profile"
+  fix A :: "'a::{default,  hashable, heap} set"
+  fix pl :: "'a::{default,  hashable, heap} Profile_List"
+  fix pr :: "'a::{default,  hashable, heap} Profile"
   assume prel: "(pl, pr) \<in> profile_rel"
   assume fina: "finite A"
   assume profa: "profile A pr"
@@ -149,9 +156,10 @@ proof (intro frefI nres_relI,clarsimp simp del: limit_profile.simps, rename_tac 
     sorry
 qed
 
-lemmas sequence_correct = seqt_sep_refine[FCOMP seq_comp_correct]
-
+lemmas sequence_correct  = sequential_composition_sep_refine[FCOMP seq_comp_correct]
+                                                                        
 end
+
 
 
 abbreviation sequence_sep

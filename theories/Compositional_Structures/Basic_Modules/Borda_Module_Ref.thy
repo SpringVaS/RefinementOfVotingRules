@@ -3,19 +3,19 @@ theory Borda_Module_Ref
            "Component_Types/Elimination_Module_Ref"
 begin
 
-fun borda_score_mon :: "'a::{default, linorder, heap, hashable} Evaluation_Function_Ref" where
+fun borda_score_mon :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
   "borda_score_mon x A p =
     sum_impl (prefer_count_monadic_imp p x) A"
 
 
-definition borda_ref :: "'a::{default, linorder, heap, hashable} Electoral_Module_Ref" where
+definition borda_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
   "borda_ref A pl \<equiv> do {
    scores <- (pre_compute_scores borda_score_mon A pl);
    max_eliminator_ref scores A pl
 }"
 
 lemma borda_score_correct:
-  fixes A:: "'a::{default, linorder, heap, hashable} set"
+  fixes A:: "'a::{default, heap, hashable} set"
   fixes pl:: "'a Profile_List" and pr:: "'a Profile"
   assumes 
     fina: "finite A"
@@ -81,6 +81,7 @@ sepref_definition borda_elim_sep is
 lemmas borda_elim_sep_correct [sepref_fr_rules]
   = borda_elim_sep.refine[FCOMP borda_ref_correct]
 
+code_thms borda_elim_sep
 
 
 end

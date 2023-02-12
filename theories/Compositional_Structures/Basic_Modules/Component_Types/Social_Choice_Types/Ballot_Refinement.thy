@@ -269,18 +269,7 @@ sepref_definition limit_sep is "uncurry limit_monadic" ::
   done
 
 
-definition "alts_ref_assn \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>set_rel)"
-                                 
 
-definition "ballot_ref_assn \<equiv>  hr_comp (ballot_impl_assn) (\<langle>Id\<rangle>list_rel)"
-
-definition "alts_assn \<equiv> hr_comp alts_ref_assn (\<langle>Id\<rangle>set_rel)"
-
-definition "result_set_one_step \<equiv> hr_comp alts_set_impl_assn (\<langle>Id\<rangle>set_rel)"
-
-definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<rangle>set_rel)"
-
-definition "ballot_assn \<equiv> hr_comp (hr_comp (ballot_impl_assn) ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
 
 end
 

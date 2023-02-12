@@ -11,8 +11,15 @@ fun win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "win_count_l p a = fold (\<lambda>x ac. 
      if (0 < length x \<and> x!0 = a) then (ac+1) else (ac)) p 0"
 
+sepref_decl_op set_empty: "{}" :: "\<langle>A\<rangle>set_rel" .
 
 text \<open> Monadic definition of profile functions \<close>
+
+definition [simp]: "mop_eq = RETURN oo (=)"
+  definition [simp]: "mop_eqi = return oo (=)"
+  lemma [sepref_fr_rules]: "(uncurry mop_eqi,uncurry mop_eq) \<in> id_assn\<^sup>k*\<^sub>aid_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn"
+    by (sep_auto intro!: hfrefI hn_refineI simp: pure_def)
+  sepref_register mop_eq
 
 definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
     (i \<le> List_Index.index ballot a)
@@ -20,16 +27,17 @@ definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
 (*  \<and> (\<not>found \<longrightarrow> (i \<le> List_Index.index ballot a)))"*)
 
 (* low level optimization for pref count *)
-definition index_mon :: "'a::{default, linorder,  heap, hashable} Preference_List 
-  \<Rightarrow> 'a::{default, linorder, heap, hashable}
+definition index_mon :: "'a::{default, heap, hashable} Preference_List 
+  \<Rightarrow> 'a::{default, heap, hashable}
    \<Rightarrow> nat nres" where
   "index_mon ballot a \<equiv> do {
     (i, found) \<leftarrow> WHILET  
   (\<lambda>(i, found). (i < (length ballot) \<and> \<not>found)) 
       (\<lambda>(i,_). do {
       ASSERT (i < (length ballot));
-      let (c::'a::{default,linorder, heap, hashable}) = (ballot ! i);
-      if (a = c) then
+      let (c::'a::{default, heap, hashable}) = (ballot ! i);
+      aeqc <- mop_eq a c;
+      if (aeqc) then
         RETURN (i,True)
       else
         RETURN (i+1,False)
@@ -40,7 +48,6 @@ definition index_mon :: "'a::{default, linorder,  heap, hashable} Preference_Lis
 sepref_definition index_sep is "uncurry index_mon" :: 
   "(arl_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
   unfolding index_mon_def
-  apply (rewrite in "rewrite_HOLE" Orderings.eq_iff)
   apply sepref_dbg_keep
   done
 
@@ -63,7 +70,7 @@ lemma index_mon_correct:
   shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = index ballot a)"
   unfolding index_mon_def 
   apply (intro WHILET_rule[where I= "index_mon_inv ballot a" and R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
-proof (unfold index_mon_inv_def, safe, simp_all)
+proof (unfold index_mon_inv_def, safe, simp_all, refine_vcg, auto)
   fix aa::nat
   assume bound: "aa \<le> index ballot (ballot ! aa)"
   (*assume range : "aa < length ballot"*)
@@ -79,8 +86,7 @@ next
     by fastforce
 next
   assume "index ballot a < length ballot"
-  and "a \<noteq> ballot ! index ballot a"
-  thus "False"
+  thus "a = ballot ! index ballot a"
     by (metis index_eq_iff)
 next
   fix aa
@@ -92,8 +98,8 @@ qed
 
 
 
-definition rank_mon :: "'a::{default, linorder, heap, hashable} Preference_List 
-  \<Rightarrow> 'a::{default, linorder, heap, hashable} \<Rightarrow> nat nres" where
+definition rank_mon :: "'a::{default, heap, hashable} Preference_List 
+  \<Rightarrow> 'a::{default, heap, hashable} \<Rightarrow> nat nres" where
   "rank_mon ballot a \<equiv> do {
     i \<leftarrow> (index_mon ballot a);
     if (i = length ballot) then RETURN 0 else RETURN (i + 1)
@@ -125,23 +131,9 @@ lemma rank_mon_refine:
 
 
 
-(*definition is_less_preferred_than_mon :: "'a \<Rightarrow> 'a Preference_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
-"is_less_preferred_than_mon a pl b \<equiv> do {
-  ra <- rank_mon pl a;
-  rb <- rank_mon pl b;
-  RETURN ((ra > 0) \<and> (rb > 0) \<and> (ra \<ge> rb))
-}"
-
-lemma ilpm_list_refine:
-  shows "is_less_preferred_than_mon a pl b \<le> 
-      SPEC (\<lambda> lp. lp =  is_less_preferred_than_l a pl b)" 
-  unfolding is_less_preferred_than_mon_def is_less_preferred_than_l.simps 
-  apply (refine_vcg rank_mon_correct)
-  by (auto simp add: in_set_member)*)
-
 
 definition is_less_preferred_than_ref ::
-  "'a::{default, linorder, heap, hashable} \<Rightarrow> 'a Preference_List 
+  "'a::{default, heap, hashable} \<Rightarrow> 'a Preference_List 
   \<Rightarrow> 'a
    \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
     "x p\<lesssim>\<^sub>l y \<equiv>  do { 
@@ -667,7 +659,7 @@ refine_IdD
     by fastforce
 qed
 
-definition prefer_count_monadic_imp:: "'a::{default, linorder, heap, hashable} Profile_List 
+definition prefer_count_monadic_imp:: "'a::{default, heap, hashable} Profile_List 
   \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "prefer_count_monadic_imp p a b \<equiv> 
   nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
@@ -740,7 +732,7 @@ sepref_register prefer_count_monadic_imp
 
 declare prefer_count_sep.refine [sepref_fr_rules]
 
-definition wins_monadic :: "'a::{default, linorder, heap, hashable}
+definition wins_monadic :: "'a::{default, heap, hashable}
    \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "wins_monadic x p y \<equiv> do {
     pxy <- prefer_count_monadic_imp p x y;
@@ -784,8 +776,8 @@ proof (clarsimp simp del: prefer_count_l.simps, rename_tac pl a b,
 qed
 
 lemma imp_direct_ref: 
-  fixes pl :: "'a::{default, linorder, heap, hashable} Profile_List"
-  fixes a b :: "'a::{default, linorder, heap, hashable}"
+  fixes pl :: "'a::{default, heap, hashable} Profile_List"
+  fixes a b :: "'a::{default,  heap, hashable}"
   shows"prefer_count_monadic_imp pl a b \<le> RETURN (prefer_count_l pl a b)"
 proof -
   have "(pl, pl) \<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel" using list_rel_id IdI by simp
@@ -915,14 +907,15 @@ next
   from altwins a2 this show "con = alt" by blast
 qed
 
-definition condorcet_winner_monadic :: "'a::{default, linorder, heap, hashable} set 
+definition condorcet_winner_monadic :: "'a::{default, heap, hashable} set 
   \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "condorcet_winner_monadic A p w \<equiv> 
     if (w \<in> A) then
     FOREACH A
      (\<lambda> x b. do {
      winswx <- wins_monadic w p x;
-      RETURN (if (x = w) then b
+      xiw <- mop_eq x w;
+      RETURN (if (xiw) then b
       else (b \<and> (winswx)))
     }) (True)
     else RETURN False"
@@ -930,8 +923,7 @@ definition condorcet_winner_monadic :: "'a::{default, linorder, heap, hashable} 
 
 sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic" 
   :: "(alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
-  unfolding condorcet_winner_monadic_def wins_monadic_def 
-  apply (rewrite in "rewrite_HOLE" Orderings.eq_iff)
+  unfolding condorcet_winner_monadic_def wins_monadic_def
   apply sepref_dbg_keep
   done
 
@@ -940,9 +932,9 @@ sepref_register condorcet_winner_monadic
 declare cond_imp.refine [sepref_fr_rules]
 
 lemma condorcet_winner_monadic_correct:
-  fixes A :: "'a::{default, linorder, heap, hashable} set"
-  fixes pl :: "'a::{default, linorder, heap, hashable} Profile_List"
-    and pr :: "'a::{default, linorder, heap, hashable} Profile"
+  fixes A :: "'a::{default, heap, hashable} set"
+  fixes pl :: "'a::{default, heap, hashable} Profile_List"
+    and pr :: "'a::{default, heap, hashable} Profile"
    assumes prel: "(pl, pr) \<in> profile_rel" and profp: "profile A pr" 
   assumes fina: "finite A" 
   shows "condorcet_winner_monadic A pl a
