@@ -12,9 +12,10 @@ thm "elector_sep_def"
 
 locale elector_impl =  
   fixes m_ref :: "'a::{default, hashable, heap} Electoral_Module_Ref"
-  fixes m_sep :: "('a, unit) hashtable
-      \<Rightarrow> ('a array \<times> nat) list
-         \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
+  fixes m_sep :: "('a::{default, hashable, heap}, unit) hashtable
+      \<Rightarrow> ('a::{default, hashable, heap} array \<times> nat) list
+         \<Rightarrow> (('a::{default, hashable, heap}, unit) hashtable
+   \<times> ('a::{default, hashable, heap}, unit) hashtable \<times> ('a::{default, hashable, heap}, unit) hashtable) Heap"
   assumes 
     m_impl: "(uncurry m_sep, uncurry m_ref)
         \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
@@ -50,7 +51,7 @@ interpretation elector:  seqcomp_impl m_ref m_sep elect_module_ref elect_module_
 lemmas elector_sep_correct_aux =  elector.sequence_correct
 
 lemma elector_sep_correct:
-  shows "(elector_sep m_sep, uncurry (RETURN oo elector m))
+  shows "(uncurry (elector_sep m_sep), uncurry (RETURN oo elector m))
 \<in> [\<lambda>(A, pl).
            finite_profile A pl]\<^sub>a 
   (hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel))\<^sup>k *\<^sub>a

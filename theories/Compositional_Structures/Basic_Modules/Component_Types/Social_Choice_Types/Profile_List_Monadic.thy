@@ -2,7 +2,6 @@ theory Profile_List_Monadic
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
     Ballot_Refinement
-    Refine_Imperative_HOL.IICF
   
 begin
 
@@ -15,11 +14,7 @@ sepref_decl_op set_empty: "{}" :: "\<langle>A\<rangle>set_rel" .
 
 text \<open> Monadic definition of profile functions \<close>
 
-definition [simp]: "mop_eq = RETURN oo (=)"
-  definition [simp]: "mop_eqi = return oo (=)"
-  lemma [sepref_fr_rules]: "(uncurry mop_eqi,uncurry mop_eq) \<in> id_assn\<^sup>k*\<^sub>aid_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn"
-    by (sep_auto intro!: hfrefI hn_refineI simp: pure_def)
-  sepref_register mop_eq
+lemma w_eq_param [sepref_import_param]: "((=), (=)::'a\<Rightarrow>_) \<in> Id \<rightarrow> Id \<rightarrow> Id" by simp
 
 definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
     (i \<le> List_Index.index ballot a)
@@ -36,8 +31,7 @@ definition index_mon :: "'a::{default, heap, hashable} Preference_List
       (\<lambda>(i,_). do {
       ASSERT (i < (length ballot));
       let (c::'a::{default, heap, hashable}) = (ballot ! i);
-      aeqc <- mop_eq a c;
-      if (aeqc) then
+      if (a = c) then
         RETURN (i,True)
       else
         RETURN (i+1,False)
@@ -47,7 +41,7 @@ definition index_mon :: "'a::{default, heap, hashable} Preference_List
 
 sepref_definition index_sep is "uncurry index_mon" :: 
   "(arl_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
-  unfolding index_mon_def
+  unfolding index_mon_def 
   apply sepref_dbg_keep
   done
 
@@ -60,8 +54,8 @@ lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if f
 
 lemma index_sound:
   fixes a:: 'a and l :: "'a list" and i::nat
-  assumes  "i \<le> index l a"
-  shows "(a = l ! i) \<longrightarrow> (i = index l a)"
+  assumes  "i \<le> List_Index.index l a"
+  shows "(a = l ! i) \<longrightarrow> (i = List_Index.index l a)"
   by (metis assms(1) index_first le_eq_less_or_eq)
 
   
@@ -70,11 +64,11 @@ lemma index_mon_correct:
   shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = index ballot a)"
   unfolding index_mon_def 
   apply (intro WHILET_rule[where I= "index_mon_inv ballot a" and R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
-proof (unfold index_mon_inv_def, safe, simp_all, refine_vcg, auto)
+proof (unfold index_mon_inv_def, simp+, safe, auto)
   fix aa::nat
-  assume bound: "aa \<le> index ballot (ballot ! aa)"
+  assume bound: "aa \<le> List_Index.index ballot (ballot ! aa)"
   (*assume range : "aa < length ballot"*)
-  thus "aa = index ballot (ballot ! aa)" by (simp add: index_sound)
+  thus "aa = List_Index.index ballot (ballot ! aa)" by (simp add: index_sound)
 next
   fix i
   assume notnow: "a \<noteq> ballot ! i"
@@ -85,13 +79,15 @@ next
   from notyet this show "Suc i \<le> List_Index.index ballot a"
     by fastforce
 next
-  assume "index ballot a < length ballot"
-  thus "a = ballot ! index ballot a"
+  assume ir: "List_Index.index ballot a < length ballot"
+  assume na: "a \<noteq> ballot ! index ballot a"
+  from ir have "a = ballot ! List_Index.index ballot a"
     by (metis index_eq_iff)
+  from this na show "False" by simp
 next
   fix aa
-  assume "aa \<le> index ballot a"
-    and "aa \<noteq> index ballot a"
+  assume "aa \<le> List_Index.index ballot a"
+    and "aa \<noteq> List_Index.index ballot a"
   thus "aa < length ballot"
     by (metis antisym index_le_size le_neq_implies_less order_trans)
 qed
@@ -110,14 +106,14 @@ lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l b
   unfolding rank_mon_def
 proof (refine_vcg, auto)
   assume mem: "a \<in> set ballot"
-  from this have "index ballot a \<noteq> length ballot"
+  from this have "List_Index.index ballot a \<noteq> length ballot"
     by (simp add: in_set_member index_size_conv)
-  from this show "index_mon ballot a \<le> SPEC (\<lambda>i. i = index ballot a \<and> i \<noteq> length ballot)"
+  from this show "index_mon ballot a \<le> SPEC (\<lambda>i. i = List_Index.index ballot a \<and> i \<noteq> length ballot)"
     using index_mon_correct
     by (metis (mono_tags, lifting) SPEC_cons_rule)
 next
   assume nmem: "\<not>a \<in> set ballot"
-  from this have "index ballot a = length ballot"
+  from this have "List_Index.index ballot a = length ballot"
     by (simp add: in_set_member)
   from this show "index_mon ballot a \<le> RES {length ballot}"
     using index_mon_correct
@@ -512,6 +508,8 @@ theorem wc_fold_correct:
   shows "wc_fold pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using assms ref_two_step[OF wc_fold_refine wc_foreach_top_correct] refine_IdD 
   by (metis) 
+
+
 
 lemma nfwcc: "nofail (wc_fold p a)"
   unfolding wc_fold_def 
@@ -914,8 +912,7 @@ definition condorcet_winner_monadic :: "'a::{default, heap, hashable} set
     FOREACH A
      (\<lambda> x b. do {
      winswx <- wins_monadic w p x;
-      xiw <- mop_eq x w;
-      RETURN (if (xiw) then b
+      RETURN (if (x = w) then b
       else (b \<and> (winswx)))
     }) (True)
     else RETURN False"

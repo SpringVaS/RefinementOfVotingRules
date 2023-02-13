@@ -1,30 +1,31 @@
 theory Plurality_Module_Ref
-  imports "Verified_Voting_Rule_Construction.Plurality_Module"
+  imports 
+          "Verified_Voting_Rule_Construction.Plurality_Rule"
            "Component_Types/Elimination_Module_Ref"
 begin
 
 
-fun plur_score_mon :: "'a Evaluation_Function_Ref" where
-  "plur_score_mon x A p = (wc_fold p x)"
+definition plur_score_ref :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
+  "plur_score_ref x A p = (wc_fold p x)"
 
-definition plurality_monadic :: "'a Electoral_Module_Ref" where
-  "plurality_monadic A pl \<equiv> do {
-   scores <- (pre_compute_scores plur_score_mon A pl);
+definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
+  "plurality_ref A pl \<equiv> do {
+   scores <- (pre_compute_scores plur_score_ref A pl);
    max_eliminator_ref scores A pl
 }"
 
 lemma plur_score_refine_weak:
   fixes A :: "'a set"
-  shows "((\<lambda> x. plur_score_mon x A), (\<lambda> x p. RETURN ( plur_score x A p)))
-    \<in> evalf_profA_rel A"
-  apply refine_vcg
-proof (unfold plur_score_mon.simps plur_score.simps, rename_tac x' x ppl ppr)
-  fix  x':: 'a 
-  fix x:: 'a 
-  fix ppl ppr
-  assume altid: "(x', x) \<in> Id"
-  from this have alteq: "x' = x" by simp
-  assume profrel: "(ppl, ppr) \<in> profile_on_A_rel A"
+  shows "(uncurry plurality_ref, uncurry (RETURN oo plurality)) \<in> 
+  ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+proof (intro frefI nres_relI, unfold comp_apply, clarsimp simp del: plurality.simps, 
+        rename_tac A pr pl)
+  fix A :: "'a set"
+  fix pr pl
+  assume fina: "finite A"
+  assume profrel: "(pl, pr) \<in> profile_on_A_rel A"
   from profrel have profl: "profile_l A ppl" using profile_prop_list
     by blast
   from profrel have prel: "(ppl, ppr) \<in> profile_rel" 
@@ -67,11 +68,11 @@ qed
 
 
 sepref_definition plurality_elim_sepref is
-  "uncurry plurality_monadic":: 
+  "uncurry plurality_ref":: 
     "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
    \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
-  unfolding plurality_monadic_def  max_eliminator_ref.simps plur_score_mon.simps
-    less_eliminator_ref.simps  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
+  unfolding plurality_ref_def  max_eliminator_ref_def plur_score_ref_def
+    less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] wc_fold_def[abs_def] short_circuit_conv
   apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)

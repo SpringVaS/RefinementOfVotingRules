@@ -14,10 +14,10 @@ interpretation borda_rule_impl: elector_sepref borda_ref borda_elim_sep borda
   subgoal apply (intro frefI) using borda_ref_correct[THEN frefD] by auto
   done
 
-lemmas borda_rule_correct_aux  = borda_rule_impl.elector_sep_correct
+lemmas borda_rule_correct_aux [sepref_comb_rules] = borda_rule_impl.elector_sep_correct
 
 lemma  borda_rule_correct:
-  shows "(borda_rule_sep, uncurry (RETURN oo borda_rule))
+  shows "(uncurry borda_rule_sep, uncurry (RETURN oo borda_rule))
     \<in> [\<lambda>(A, pl).
            finite_profile A
             pl]\<^sub>a (hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel))\<^sup>k *\<^sub>a
@@ -31,6 +31,5 @@ lemma  borda_rule_correct:
 
 export_code borda_rule_sep in Scala_imp
 
-definition "ttest == borda_rule_sep hs. "
                                           
 end

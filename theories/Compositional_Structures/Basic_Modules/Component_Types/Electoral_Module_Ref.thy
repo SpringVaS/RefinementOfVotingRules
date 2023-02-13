@@ -28,5 +28,9 @@ abbreviation elec_mod_data_rel :: "('a \<times> 'a) set \<Rightarrow>
   "elec_mod_data_rel R \<equiv> \<langle>R\<rangle>set_rel \<rightarrow> profile_rel 
   \<rightarrow> \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel"
 
+abbreviation elec_mod_nresc_rel :: "('a \<times> 'a) set \<Rightarrow> 
+('a Electoral_Module_Ref \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result)) set" where
+  "elec_mod_nresc_rel R \<equiv> {(emref, em). (emref, RETURN oo em) \<in> elec_mod_data_rel R}"
+
 
 end
