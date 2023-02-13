@@ -25,11 +25,14 @@ theories
 
 (* "Refined Component Types" *)
 (* "Basic Modules" *)
-  "Compositional_Structures/Basic_Modules/Plurality_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Borda_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Condorcet_Module_Ref"
 (* "Refined Basic Modules" *)
 (* "Compositional Structures" *)
 
 (* "Voting Rules" *)
+
+
 
 
 document_files

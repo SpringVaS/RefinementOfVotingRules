@@ -87,6 +87,8 @@ sepref_definition condorcet_elim_sep is
   apply sepref_dbg_keep
   done
 
+term condorcet_elim_sep
+
 (*lemmas cond_ref_correct[sepref_fr_rules] = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]*)
 
 

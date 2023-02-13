@@ -78,6 +78,8 @@ sepref_definition borda_elim_sep is
   apply sepref_dbg_keep
   done
 
+term borda_elim_sep
+
 lemmas borda_elim_sep_correct [sepref_fr_rules]
   = borda_elim_sep.refine[FCOMP borda_ref_correct]
 
