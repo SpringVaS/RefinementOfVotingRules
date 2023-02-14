@@ -22,7 +22,7 @@ subsection \<open>Definition\<close>
 
 
 sepref_definition defer_equal_condition_sep is "uncurry (RETURN oo defer_equal_condition)" ::
-"nat_assn\<^sup>k *\<^sub>a result_impl_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn"
+"nat_assn\<^sup>k *\<^sub>a result_impl_assn id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn"
   unfolding defer_equal_condition.simps
   by sepref
 

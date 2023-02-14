@@ -48,8 +48,8 @@ qed
   
 
 sepref_definition elect_module_sep is 
-  "uncurry elect_module_ref" :: "(alts_set_impl_assn)\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k
-    \<rightarrow>\<^sub>a (result_impl_assn)"
+  "uncurry elect_module_ref" :: "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k
+    \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding elect_module_ref.simps aux_set_copy_def
   apply (rewrite in "\<hole>" hs.fold_custom_empty)+
   by sepref
