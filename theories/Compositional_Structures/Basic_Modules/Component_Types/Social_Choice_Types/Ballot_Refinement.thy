@@ -184,13 +184,13 @@ proof (-)
 qed
 
 
-abbreviation "ballot_impl_assn \<equiv> (arl_assn id_assn)"
+abbreviation "ballot_impl_assn  R \<equiv> (arl_assn R)"
 
-abbreviation "profile_impl_assn \<equiv> (list_assn (ballot_impl_assn))"
+abbreviation "profile_impl_assn  R \<equiv> (list_assn (ballot_impl_assn  R))"
 
-abbreviation "alts_set_impl_assn \<equiv> (hs.assn id_assn)"
+abbreviation "alts_set_impl_assn  R \<equiv> (hs.assn R)"
 
-abbreviation "result_impl_assn \<equiv> alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn \<times>\<^sub>a alts_set_impl_assn"
+abbreviation "result_impl_assn  R \<equiv> alts_set_impl_assn  R \<times>\<^sub>a alts_set_impl_assn  R \<times>\<^sub>a alts_set_impl_assn  R"
 
 
 definition "limit_monadic_inv A ballot \<equiv> \<lambda> (i, nbal).
@@ -262,7 +262,7 @@ proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps,
 qed
 
 sepref_definition limit_sep is "uncurry limit_monadic" ::
-  "(hs.assn id_assn)\<^sup>k *\<^sub>a (ballot_impl_assn)\<^sup>k \<rightarrow>\<^sub>a (ballot_impl_assn)"
+  "(hs.assn id_assn)\<^sup>k *\<^sub>a (ballot_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a (ballot_impl_assn  id_assn)"
   unfolding limit_monadic_def[abs_def]
   apply (rewrite in "WHILET _ _ rewrite_HOLE" arl.fold_custom_empty)
   apply sepref_dbg_keep

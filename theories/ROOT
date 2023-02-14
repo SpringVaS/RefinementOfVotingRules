@@ -24,15 +24,21 @@ theories
 	
 
 (* "Refined Component Types" *)
-(* "Basic Modules" *)
+"Compositional_Structures/Basic_Modules/Component_Types/Electoral_Module_Ref"
+"Compositional_Structures/Basic_Modules/Component_Types/Evaluation_Function_Ref"
+"Compositional_Structures/Basic_Modules/Component_Types/Elimination_Module_Ref"
+(* "Refined Basic Modules" *)
   "Compositional_Structures/Basic_Modules/Borda_Module_Ref"
   "Compositional_Structures/Basic_Modules/Condorcet_Module_Ref"
-(* "Refined Basic Modules" *)
-(* "Compositional Structures" *)
 
+(* "Compositional Structures" *)
+ "Compositional_Structures/Sequential_Composition_Ref"
+ "Compositional_Structures/Elect_Composition_Ref"
 (* "Voting Rules" *)
 
-
+  "Borda_Rule_Ref"
+  "Pairwise_Majority_Rule_Ref"
+  "Blacks_Rule_Ref"
 
 
 document_files

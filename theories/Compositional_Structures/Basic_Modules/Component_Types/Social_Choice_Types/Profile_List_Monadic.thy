@@ -146,7 +146,7 @@ lemma is_less_preferred_than_ref_refine:
 
 sepref_definition is_less_preferred_than_sep
   is "uncurry2 is_less_preferred_than_ref" :: 
-    "(id_assn\<^sup>k *\<^sub>a (ballot_impl_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+    "(id_assn\<^sup>k *\<^sub>a (ballot_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
   unfolding is_less_preferred_than_ref_def[abs_def] 
   apply sepref_dbg_keep
   done
@@ -720,7 +720,7 @@ proof (refine_vcg, clarify, unfold comp_apply, (clarsimp simp del: prefer_count.
 qed
 
 sepref_definition prefer_count_sep is
-  "uncurry2 prefer_count_monadic_imp" :: "(profile_impl_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k  *\<^sub>a id_assn\<^sup>k
+  "uncurry2 prefer_count_monadic_imp" :: "(profile_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k  *\<^sub>a id_assn\<^sup>k
     \<rightarrow>\<^sub>a nat_assn"
   unfolding prefer_count_monadic_imp_def
   apply sepref_dbg_keep
@@ -794,7 +794,7 @@ lemma wins_monadic_correct:
   by (auto)  
 
 sepref_definition wins_imp is "uncurry2 wins_monadic" ::
-  "(nat_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
+  "(nat_assn\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
   unfolding wins_monadic_def
   apply sepref_dbg_keep
   done
@@ -919,7 +919,7 @@ definition condorcet_winner_monadic :: "'a::{default, heap, hashable} set
 
 
 sepref_definition cond_imp is "uncurry2 condorcet_winner_monadic" 
-  :: "(alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+  :: "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn"
   unfolding condorcet_winner_monadic_def wins_monadic_def
   apply sepref_dbg_keep
   done
@@ -1012,7 +1012,7 @@ sepref_register limit_monadic
 declare limit_sep.refine [sepref_fr_rules]
 
 sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" :: 
-  "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn )\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn )"
+  "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn )\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn id_assn )"
   unfolding limit_profile_l_def 
   apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
   apply sepref_dbg_keep

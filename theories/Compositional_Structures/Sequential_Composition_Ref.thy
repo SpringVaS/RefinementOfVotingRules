@@ -70,7 +70,7 @@ prepare_code_thms (in -) seqcompo_sep_def
 lemma recurried_seq_refine:
   shows "(uncurry (seqcompo_sep m_sep n_sep), uncurry (sequential_composition_ref_test m_ref n_ref))
     \<in> (hs.assn id_assn)\<^sup>k *\<^sub>a
-       profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn"
+       (profile_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn"
   using sequential_composition_sep_refine unfolding seqcompo_sep_def comp_apply uncurry_def curry_def
   by simp  
 
@@ -167,8 +167,8 @@ proof (intro frefI nres_relI,clarsimp simp del: limit_profile.simps, rename_tac 
     sorry
 qed
 
-lemmas sequence_correct = recurried_seq_refine[FCOMP seq_comp_correct]
- 
+lemmas sequence_correct[sepref_comb_rules] 
+  = recurried_seq_refine[FCOMP seq_comp_correct, sepref_prep_comb_rule]
                                                                         
 end
 

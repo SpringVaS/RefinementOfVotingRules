@@ -61,8 +61,8 @@ qed
 
 sepref_definition borda_elim_sep is
   "uncurry borda_ref":: 
-    "alts_set_impl_assn\<^sup>k *\<^sub>a (profile_impl_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn)"
+    "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding borda_ref_def  max_eliminator_ref_def borda_score_mon.simps sum_impl_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
@@ -78,12 +78,15 @@ sepref_definition borda_elim_sep is
   apply sepref_dbg_keep
   done
 
+sepref_register borda_ref
+
+declare borda_elim_sep.refine [sepref_fr_rules]
+
 term borda_elim_sep
 
 lemmas borda_elim_sep_correct [sepref_fr_rules]
   = borda_elim_sep.refine[FCOMP borda_ref_correct]
 
-code_thms borda_elim_sep
 
 
 end

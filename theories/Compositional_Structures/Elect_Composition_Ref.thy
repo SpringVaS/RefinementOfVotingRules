@@ -18,7 +18,8 @@ locale elector_impl =
    \<times> ('a::{default, hashable, heap}, unit) hashtable \<times> ('a::{default, hashable, heap}, unit) hashtable) Heap"
   assumes 
     m_impl: "(uncurry m_sep, uncurry m_ref)
-        \<in> (alts_set_impl_assn)\<^sup>k *\<^sub>a profile_impl_assn\<^sup>k \<rightarrow>\<^sub>a result_impl_assn"
+        \<in> (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+      \<rightarrow>\<^sub>a result_impl_assn id_assn"
 
 
 locale elector_sepref = elector_impl +
@@ -44,9 +45,6 @@ interpretation elector: sequence_sepref m_ref m_sep elect_module_ref elect_modul
     unfolding comp_apply by auto
   done
 
-interpretation elector:  seqcomp_impl m_ref m_sep elect_module_ref elect_module_sep
-  apply unfold_locales .
-
 
 lemmas elector_sep_correct_aux =  elector.sequence_correct
 
@@ -56,7 +54,7 @@ lemma elector_sep_correct:
            finite_profile A pl]\<^sub>a 
   (hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel))\<^sup>k *\<^sub>a
                  (list_assn
-                   (hr_comp ballot_impl_assn
+                   (hr_comp (ballot_impl_assn id_assn)
                      ballot_rel))\<^sup>k \<rightarrow> hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
                                        hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
                                        hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel)"
