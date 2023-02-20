@@ -19,17 +19,11 @@ thm "borda_rule_impl.elector_sep_correct"
 
 lemma  borda_rule_correct [sepref_fr_rules]:
   shows "(uncurry borda_rule_sep, uncurry (RETURN oo borda_rule))
-    \<in> [\<lambda>(A, pl).
-           finite_profile A
-            pl]\<^sub>a (hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel))\<^sup>k *\<^sub>a
-                  (list_assn
-                    (hr_comp (arl_assn id_assn)
-                      (br (pl_\<alpha>) (distinct))))\<^sup>k
-
-                                     \<rightarrow> (hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
-                                        hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
-                                        hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel))"
- 
+    \<in> [\<lambda>(a, b).
+           finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
+                 (list_assn
+                   (hr_comp (ballot_impl_assn id_assn)
+                     ballot_rel))\<^sup>k \<rightarrow> result_impl_assn id_assn"
   unfolding borda_rule_sep_def borda_rule.simps 
   using borda_rule_impl.elector_sep_correct unfolding in_br_conv well_formed_pl_def
   .

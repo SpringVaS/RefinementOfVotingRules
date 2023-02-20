@@ -65,11 +65,6 @@ sepref_register borda_ref
 
 declare borda_elim_sep.refine [sepref_fr_rules]
 
-term borda_elim_sep
-
-
-find_theorems name: hr_comp
-
 lemma  borda_elim_sep_correct [sepref_fr_rules]:
   shows "(uncurry borda_elim_sep, uncurry (RETURN \<circ>\<circ> borda))
     \<in> [\<lambda>(a, b).

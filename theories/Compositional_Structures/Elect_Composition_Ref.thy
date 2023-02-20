@@ -31,8 +31,6 @@ assumes m_ref_correct: "(uncurry m_ref, uncurry (RETURN oo m)) \<in>
    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)" 
 begin
 
-lemmas m_t_ref = m_impl[FCOMP m_ref_correct]
-
 interpretation elector: sequence_sepref m_ref m_sep elect_module_ref elect_module_sep m elect_module
   apply unfold_locales
   subgoal using m_impl .
