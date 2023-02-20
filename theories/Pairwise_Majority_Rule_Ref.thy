@@ -17,14 +17,11 @@ interpretation pairwise_majority_rule_impl:
 
 lemma  pairwise_majority_rule_correct [sepref_fr_rules]:
   shows "(uncurry pairwise_majority_rule_sep, uncurry (RETURN oo pairwise_majority_rule))
-    \<in> [\<lambda>(A, pl).
-           finite_profile A
-            pl]\<^sub>a (hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel))\<^sup>k *\<^sub>a
-                  (list_assn
-                    (hr_comp (ballot_impl_assn id_assn)
-                      ballot_rel))\<^sup>k \<rightarrow> hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
-                                        hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
-                                        hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel)"
+   \<in> [\<lambda>(a, b).
+           finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
+                 (list_assn
+                   (hr_comp (ballot_impl_assn id_assn)
+                     ballot_rel))\<^sup>k \<rightarrow> result_impl_assn id_assn"
   unfolding pairwise_majority_rule_sep_def pairwise_majority_rule.simps 
     using pairwise_majority_rule_impl.elector_sep_correct .
 

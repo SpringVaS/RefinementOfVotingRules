@@ -69,15 +69,6 @@ begin
 sepref_decl_impl borda : borda_elim_sep.refine[FCOMP borda_ref_correct] 
   by simp                                                              
 
-definition "dimpls \<equiv> borda {1::nat, 2} [{(1::nat, 2)}]"
-
- sepref_definition second_imple 
-    is "uncurry0 (RETURN dimpls)" ::
- "unit_assn\<^sup>k \<rightarrow>\<^sub>a (alts_assn \<times>\<^sub>a alts_assn \<times>\<^sub>a alts_assn )"
-   unfolding  dimpls_def comp_def
-   apply sepref_dbg_keep
-apply sepref_dbg_trans_keep
-   done
 
 
 end
@@ -93,6 +84,20 @@ definition "impls \<equiv> borda_ref {1::nat, 2} ((([] @ [1::nat])@ [2::nat]) # 
    apply (rewrite in "[(rewrite_HOLE @ [1::nat])@ [2::nat]]" arl.fold_custom_empty)
    apply (rewrite in "_ # rewrite_HOLE" HOL_list.fold_custom_empty)
    apply sepref_dbg_keep
+   done
+
+
+
+definition "dimpls \<equiv> borda {1::nat, 2} [{(1::nat, 2)}]"
+
+ sepref_definition second_imple 
+    is "uncurry0 (RETURN dimpls)" ::
+ "unit_assn\<^sup>k \<rightarrow>\<^sub>a ( hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
+                   hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
+                   hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) )"
+   unfolding  dimpls_def comp_def
+   apply sepref_dbg_keep
+apply sepref_dbg_trans_keep
    done
 
 

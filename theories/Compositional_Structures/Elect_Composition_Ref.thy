@@ -50,14 +50,11 @@ lemmas elector_sep_correct_aux =  elector.sequence_correct
 
 lemma elector_sep_correct:
   shows "(uncurry (elector_sep m_sep), uncurry (RETURN oo elector m))
-\<in> [\<lambda>(A, pl).
-           finite_profile A pl]\<^sub>a 
-  (hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel))\<^sup>k *\<^sub>a
+      \<in> [\<lambda>(a, b).
+           finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
                  (list_assn
                    (hr_comp (ballot_impl_assn id_assn)
-                     ballot_rel))\<^sup>k \<rightarrow> hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
-                                       hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel) \<times>\<^sub>a
-                                       hr_comp (hs.assn id_assn) (\<langle>Id\<rangle>set_rel)"
+                     ballot_rel))\<^sup>k \<rightarrow> result_impl_assn id_assn"                                               
   unfolding elector_sep_def elector.simps 
   using elector_sep_correct_aux by simp
 

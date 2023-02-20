@@ -26,21 +26,15 @@ subsection \<open>Definition\<close>
 type_synonym 'a Evaluation_Function_Ref = "'a  \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat nres"
 
 
-abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+abbreviation "efunrel \<equiv> Id \<rightarrow> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
 
 definition evalf_rel ::
     "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) 
 \<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" 
     where  evalf_rel_def:
 "evalf_rel \<equiv> {(eref,e).(eref, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = e a A pro))) 
-  \<in> Id \<rightarrow> \<langle>Id\<rangle>finite_set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
+  \<in> Id \<rightarrow> \<langle>Id\<rangle>set_rel \<rightarrow> profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
 
-definition evalf_rel_prof ::
-    "(('a \<Rightarrow> 'a set \<Rightarrow> 'a list list \<Rightarrow> nat nres) 
-\<times> ('a \<Rightarrow> 'a set \<Rightarrow> ('a \<times> 'a) set list \<Rightarrow> nat)) set" where
-"evalf_rel_prof \<equiv> {(eref, e). ((\<lambda> a (A, pro). eref a A pro), 
-    (\<lambda> a (A, pro). SPEC (\<lambda> sc. sc = e a A pro))) 
-  \<in> Id \<rightarrow> \<langle>Id\<rangle>alt_and_profile_rel \<rightarrow> \<langle>nat_rel\<rangle>nres_rel}"
 
 lemma evalfeq:   
   fixes "A" :: "'a set"
@@ -54,10 +48,9 @@ lemma evalfeq:
 proof (-)
   from evalref have efrel: "(refn, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = efn a A pro))) \<in> efunrel"
   unfolding evalf_rel_def by simp
-  from fina  have "(A, A) \<in> \<langle>Id\<rangle>finite_set_rel" by (simp add: finite_set_rel_def in_br_conv)
   from this pref efrel[THEN fun_relD, THEN fun_relD,THEN fun_relD,THEN nres_relD,THEN refine_IdD]
   show ?thesis
-    by (metis IdI) 
+    by force   
 qed
 
 

@@ -18,6 +18,23 @@ subsection \<open>Definition\<close>
 
 type_synonym 'a Scores_Map = "('a \<rightharpoonup> nat)"
 
+definition init_map :: "'a set \<Rightarrow> 'a Scores_Map nres" where 
+"init_map A \<equiv>
+  FOREACH A 
+    (\<lambda>x m. 
+      RETURN (m(x\<mapsto>0::nat))) (Map.empty)"
+
+lemma empty_map:
+  fixes A :: "'a set"
+  assumes 
+     fina: "finite A"
+  shows "init_map A \<le>
+   SPEC(\<lambda> map. map =  ((\<lambda>a. Some (0::nat))|`A ))"
+  unfolding init_map_def
+  apply (refine_vcg FOREACH_rule [where I ="(\<lambda>it r. r = (\<lambda> a. Some (0::nat))|`(A - it))"])
+  apply (auto simp add: fina)
+  by (simp add: it_step_insert_iff restrict_map_insert)
+
 definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
  'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
   where "pre_compute_scores ef A p \<equiv>
@@ -129,9 +146,7 @@ proof (refine_vcg FOREACH_rule[where I =
     by presburger
 qed
 
-
-
-theorem elimination_module_ref_correct:
+lemma elimination_module_ref_correct:
   fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
   and pr :: "'a Profile"
@@ -144,7 +159,37 @@ shows "elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le>
         SPEC (\<lambda> em. em = (elimination_module efn t r A pr))"
   by (unfold elimination_module_ref_def, refine_vcg eliminate_correct,
     auto simp add: fina)
-  
+
+
+theorem elimination_module_ref_correct_pc:
+  fixes A :: "'a set"
+  and efn :: "'a Evaluation_Function"
+  and efn_ref :: "'a Evaluation_Function_Ref"
+  and pr :: "'a Profile"
+  and pl :: "'a Profile_List"
+  and t :: "Threshold_Value"
+  and r :: "nat \<Rightarrow> nat \<Rightarrow> bool"
+  assumes fina: "finite A" 
+  and prel: "(pl, pr) \<in> profile_rel"
+  and efnrel: "(efn_ref, RETURN ooo efn) \<in> efunrel"
+shows "(do {
+            score_map <- (pre_compute_scores efn_ref A pl);  
+            elimination_module_ref score_map t r A pl}) \<le>
+            SPEC (\<lambda> em. em = (elimination_module efn t r A pr))"
+proof (refine_vcg fina prel compute_scores_correct[where efn = efn] , safe)
+  fix a :: 'a
+  note efnr = efnrel[THEN fun_relD,THEN fun_relD,THEN fun_relD,
+        THEN nres_relD, THEN refine_IdD]
+  from fina prel efnr show "efn_ref a A pl \<le> SPEC (\<lambda>score. score = efn a A pr)"
+    unfolding comp_apply SPEC_eq_is_RETURN
+    by force
+next
+  note elimination_module_ref_correct
+  thus "elimination_module_ref (pre_computed_map efn A pr) t r A pl
+         \<le> SPEC (\<lambda>em. em = elimination_module efn t r A pr)"
+    using fina prel
+    by blast
+qed
 
 lemma scoremax_correct:
   fixes A :: "'a set"
@@ -213,6 +258,9 @@ proof (-)
    using fina prel elimination_module_ref_correct by blast
 qed
 
+
+
+
 lemma max_eliminator_ref_correct:
   fixes A :: "'a set"
   fixes efn :: "'a Evaluation_Function"
@@ -241,6 +289,30 @@ next
       and \<Phi> = "(\<lambda>max. max = Max {efn a A pr |a. a \<in> A})"
       and \<Psi> = "(\<lambda> t. less_eliminator_ref (pre_computed_map efn A pr) t A pl
                  \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn a A pr |a. a \<in> A}) A pr))"]
+    by blast
+qed
+
+
+theorem max_eliminator_ref_correct_pc:
+  fixes A :: "'a set"
+  and efn :: "'a Evaluation_Function"
+  and efn_ref :: "'a Evaluation_Function_Ref"
+  and pr :: "'a Profile"
+  and pl :: "'a Profile_List"
+  and t :: "Threshold_Value"
+  and r :: "nat \<Rightarrow> nat \<Rightarrow> bool"
+  assumes fina: "finite A" 
+  and prel: "(pl, pr) \<in> profile_rel"
+  and efnrel: "\<forall>a \<in> A. efn_ref a A pl \<le> SPEC (\<lambda> score. score = efn a A pr)"
+shows "(do {
+            score_map <- (pre_compute_scores efn_ref A pl);  
+            max_eliminator_ref score_map A pl}) \<le>
+            SPEC (\<lambda> em. em = (max_eliminator efn A pr))"
+proof (refine_vcg fina prel compute_scores_correct[where efn = efn] efnrel , safe)
+  note max_eliminator_ref_correct
+  thus "max_eliminator_ref (pre_computed_map efn A pr) A pl
+         \<le> SPEC (\<lambda>em. em = max_eliminator efn A pr)"
+    using fina prel
     by blast
 qed
   

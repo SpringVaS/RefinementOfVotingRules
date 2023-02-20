@@ -5,12 +5,12 @@ theory Sequential_Composition_Ref
 begin
 
 
-definition sequential_composition_ref_test :: 
+definition sequential_composition_ref :: 
         
 "'a::{default, hashable, heap} Electoral_Module_Ref
 \<Rightarrow> 'a::{default, hashable, heap} Electoral_Module_Ref
 \<Rightarrow> 'a::{default, hashable, heap} Electoral_Module_Ref" where
-"sequential_composition_ref_test m_ref n_ref A p = do {
+"sequential_composition_ref m_ref n_ref A p = do {
       (mel,mrej,mdef) <- m_ref A p;
  
       let newA = mdef;
@@ -52,26 +52,27 @@ sepref_register "n_ref" :: "'a::{default, hashable, heap} Electoral_Module_Ref"
 declare n_impl [sepref_fr_rules]
 
 schematic_goal sequence_impl: "(uncurry ?seq,  
-uncurry (sequential_composition_ref_test m_ref n_ref))
+uncurry (sequential_composition_ref m_ref n_ref))
   \<in> em_assn id_assn"
-  unfolding sequential_composition_ref_test_def
+  unfolding sequential_composition_ref_def
   apply sepref_dbg_keep
   done
 
-concrete_definition (in -) sequential_composition_sep uses seqcomp_impl.sequence_impl
-  prepare_code_thms (in -) sequential_composition_sep_def
-lemmas sequential_composition_sep_refine  = sequential_composition_sep.refine[OF seqcomp_impl_loc]
+concrete_definition (in -) sequential_composition_sep_aux uses seqcomp_impl.sequence_impl
+  prepare_code_thms (in -) sequential_composition_sep_aux_def
+lemmas sequential_composition_sep_refine  = sequential_composition_sep_aux.refine[OF seqcomp_impl_loc]
 
-definition "recurried_seq  \<equiv> curry oo (sequential_composition_sep)"
-concrete_definition (in -) seqcompo_sep uses seqcomp_impl.recurried_seq_def
-prepare_code_thms (in -) seqcompo_sep_def
+definition "recurried_seq  \<equiv> curry oo (sequential_composition_sep_aux)"
+concrete_definition (in -) sequential_composition_sep uses seqcomp_impl.recurried_seq_def
+prepare_code_thms (in -) sequential_composition_sep_def
 
 
 lemma recurried_seq_refine:
-  shows "(uncurry (seqcompo_sep m_sep n_sep), uncurry (sequential_composition_ref_test m_ref n_ref))
+  shows "(uncurry (sequential_composition_sep m_sep n_sep), uncurry (sequential_composition_ref m_ref n_ref))
     \<in> (hs.assn id_assn)\<^sup>k *\<^sub>a
        (profile_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn"
-  using sequential_composition_sep_refine unfolding seqcompo_sep_def comp_apply uncurry_def curry_def
+  using sequential_composition_sep_refine unfolding sequential_composition_sep_def
+    comp_apply uncurry_def curry_def
   by simp  
 
 end 
@@ -92,15 +93,14 @@ n_ref_correct: "(uncurry n_ref, uncurry (RETURN oo n)) \<in>
 
 begin
 
-definition "seqref = curry (sequential_composition_sep m_sep n_sep)"
 
 lemma seq_comp_correct:
-  shows "(uncurry (sequential_composition_ref_test m_ref n_ref),
+  shows "(uncurry (sequential_composition_ref m_ref n_ref),
   uncurry (RETURN oo (sequential_composition m n)))
   \<in>   ([\<lambda> (A, pl). finite_profile A
             pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
-  unfolding sequential_composition_ref_test_def
+  unfolding sequential_composition_ref_def
 proof (intro frefI nres_relI,clarsimp simp del: limit_profile.simps, rename_tac A pl pr)
   fix A :: "'a::{default,  hashable, heap} set"
   fix pl :: "'a::{default,  hashable, heap} Profile_List"
@@ -168,7 +168,17 @@ proof (intro frefI nres_relI,clarsimp simp del: limit_profile.simps, rename_tac 
 qed
 
 lemmas sequence_correct[sepref_comb_rules] 
-  = recurried_seq_refine[FCOMP seq_comp_correct, sepref_prep_comb_rule]
+  = recurried_seq_refine[FCOMP seq_comp_correct]
+
+lemma sequential_composition_sep_correct:
+  shows "(uncurry (sequential_composition_sep m_sep n_sep), uncurry ((RETURN \<circ>\<circ>\<circ> (\<triangleright>) m) n))
+      \<in> [\<lambda>(a, b).
+           finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
+                 (list_assn
+                   (hr_comp (ballot_impl_assn id_assn)
+                     ballot_rel))\<^sup>k \<rightarrow> result_impl_assn id_assn"
+  using sequence_correct set_rel_id hr_comp_Id2
+  by simp
                                                                         
 end
 
@@ -176,7 +186,7 @@ end
 
 abbreviation sequence_sep
      (infix "\<triangleright>sep" 50) where
-  "m \<triangleright>sep n \<equiv> seqcompo_sep m n"
+  "m \<triangleright>sep n \<equiv> sequential_composition_sep m n"
 
 
 

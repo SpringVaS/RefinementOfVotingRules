@@ -35,6 +35,32 @@ lemma id_same_alts:
   
 abbreviation "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
 
+find_theorems name: linear_order
+
+lemma "linear_order_on {1::nat,2} {(2::nat,1::nat), (2::nat,2::nat)
+, (1::nat,1::nat)}"
+  unfolding linear_order_on_def partial_order_on_def preorder_on_def
+    refl_on_def trans_def antisym_def total_on_def 
+  by auto
+
+lemma "([1::nat,2], {(2::nat,1::nat), (2::nat,2::nat)
+, (1::nat,1::nat)}) \<in> ballot_rel"
+  unfolding in_br_conv well_formed_pl_def pl_\<alpha>_def
+  is_less_preferred_than_l.simps by auto
+
+lemma ballot_refinement_complete:
+  fixes A :: "'a set"
+  and bar:: "'a Preference_Relation"
+assumes fina: "finite A"
+  and lo: "linear_order_on A bar"
+  shows " \<exists> bal :: 'a Preference_List. (bal, bar) \<in> ballot_rel"
+  unfolding in_br_conv well_formed_pl_def is_less_preferred_than_l.simps pl_\<alpha>_def 
+  using assms unfolding linear_order_on_def partial_order_on_def preorder_on_def
+    refl_on_def trans_def antisym_def total_on_def 
+  apply (intro exI)
+  apply clarsimp
+  oops
+
 abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"
 
 lemma ballot_prop_rel:
