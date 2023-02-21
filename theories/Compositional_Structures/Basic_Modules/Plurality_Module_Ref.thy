@@ -55,7 +55,7 @@ definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref"
    max_eliminator_ref scores A pl
 }"
 
-lemma plurality_ref_refine:
+lemma plurality_ref_correct:
   shows "(uncurry plurality_ref, uncurry (RETURN oo plurality_mod)) \<in> 
   ([\<lambda> (A, pl). finite_profile A
             pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
@@ -65,7 +65,7 @@ proof (intro frefI nres_relI,  clarsimp simp del:  plurality_mod.simps plur_scor
      RETURN_SPEC_conv, rename_tac A pl pr)
   note max_eliminator_ref_correct_pc[where A = A and efn_ref = plur_score_ref and
        efn = plur_score]
-  fix A :: "'a set"
+  fix A :: "'a::{default, heap, hashable} set"
   fix pr :: "'a Profile"
   fix pl :: "'a Profile_List"
   assume fina: "finite A"
@@ -77,12 +77,10 @@ proof (intro frefI nres_relI,  clarsimp simp del:  plurality_mod.simps plur_scor
     by metis   
 qed
    
-
-
-sepref_definition plurality_elim_sepref is
+sepref_definition plurality_elim_sep is
   "uncurry plurality_ref":: 
-    "(hs.assn nat_assn)\<^sup>k *\<^sub>a (list_assn (array_assn nat_assn))\<^sup>k 
-   \<rightarrow>\<^sub>a ((hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn) \<times>\<^sub>a (hs.assn nat_assn))"
+    "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding plurality_ref_def  max_eliminator_ref_def plur_score_ref_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] wc_fold_def[abs_def] 
@@ -98,5 +96,14 @@ sepref_definition plurality_elim_sepref is
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
   apply sepref_dbg_keep
   done
+
+lemma plurality_elim_sep_correct [sepref_fr_rules]:
+  shows "(uncurry plurality_elim_sep, uncurry (RETURN \<circ>\<circ> plurality_mod))
+        \<in> [\<lambda>(a, b).
+           finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a 
+    (list_assn (hr_comp (ballot_impl_assn id_assn) ballot_rel))\<^sup>k 
+        \<rightarrow> (result_impl_assn id_assn)"
+  using plurality_elim_sep.refine[FCOMP plurality_ref_correct]
+  set_rel_id hr_comp_Id2 by simp
 
 end

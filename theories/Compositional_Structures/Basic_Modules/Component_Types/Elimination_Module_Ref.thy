@@ -322,20 +322,5 @@ fun leq_eliminator_ref :: "'a Scores_Map \<Rightarrow> Threshold_Value \<Rightar
                             'a Electoral_Module_Ref" where
   "leq_eliminator_ref e t A p = elimination_module_ref e t (\<le>) A p"
 
-fun min_eliminator :: "'a Evaluation_Function \<Rightarrow> 'a Electoral_Module" where
-  "min_eliminator e A p =
-    leq_eliminator e (Min {e x A p | x. x \<in> A}) A p"
-
-fun average :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow>
-                    Threshold_Value" where
-  "average e A p = (\<Sum> x \<in> A. e x A p) div (card A)"
-
-fun less_average_eliminator :: "'a Evaluation_Function \<Rightarrow>
-                                'a Electoral_Module" where
-  "less_average_eliminator e A p = less_eliminator e (average e A p) A p"
-
-fun leq_average_eliminator :: "'a Evaluation_Function \<Rightarrow>
-                                'a Electoral_Module" where
-  "leq_average_eliminator e A p = leq_eliminator e (average e A p) A p"
 
 end

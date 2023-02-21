@@ -30,7 +30,7 @@ lemma  borda_rule_correct [sepref_fr_rules]:
   
 
 
-export_code borda_rule_sep in Scala_imp
+export_code clist borda_rule_sep in Scala_imp
 
                                           
 end

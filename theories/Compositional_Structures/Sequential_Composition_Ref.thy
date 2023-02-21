@@ -68,7 +68,8 @@ prepare_code_thms (in -) sequential_composition_sep_def
 
 
 lemma recurried_seq_refine:
-  shows "(uncurry (sequential_composition_sep m_sep n_sep), uncurry (sequential_composition_ref m_ref n_ref))
+  shows "(uncurry (sequential_composition_sep m_sep n_sep),
+   uncurry (sequential_composition_ref m_ref n_ref))
     \<in> (hs.assn id_assn)\<^sup>k *\<^sub>a
        (profile_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn \<times>\<^sub>a hs.assn id_assn"
   using sequential_composition_sep_refine unfolding sequential_composition_sep_def
@@ -76,6 +77,7 @@ lemma recurried_seq_refine:
   by simp  
 
 end 
+
 
 locale sequence_sepref = seqcomp_impl +
   fixes m :: "'a::{default, heap, hashable} Electoral_Module"  and
@@ -169,6 +171,10 @@ qed
 
 lemmas sequence_correct[sepref_comb_rules] 
   = recurried_seq_refine[FCOMP seq_comp_correct]
+
+lemmas m_direct = m_impl[FCOMP m_ref_correct]
+
+lemmas n_direct = n_impl[FCOMP n_ref_correct]
 
 lemma sequential_composition_sep_correct:
   shows "(uncurry (sequential_composition_sep m_sep n_sep), uncurry ((RETURN \<circ>\<circ>\<circ> (\<triangleright>) m) n))

@@ -58,4 +58,6 @@ sepref_definition elect_module_sep is
 
 lemmas elect_elect_module_sep_correct = elect_module_sep.refine[FCOMP elect_module_ref_correct]
 
+declare elect_elect_module_sep_correct[sepref_fr_rules]
+
 end

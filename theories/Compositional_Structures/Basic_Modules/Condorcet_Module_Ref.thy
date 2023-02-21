@@ -89,7 +89,7 @@ sepref_definition condorcet_elim_sep is
 
 term condorcet_elim_sep
 
-lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]
+(*lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]
 
 lemma  condorcet_elim_sep_correct [sepref_fr_rules]:
   shows "(uncurry condorcet_elim_sep, uncurry (RETURN \<circ>\<circ> condorcet))
@@ -98,6 +98,6 @@ lemma  condorcet_elim_sep_correct [sepref_fr_rules]:
     (list_assn (hr_comp (ballot_impl_assn id_assn) ballot_rel))\<^sup>k 
         \<rightarrow> result_impl_assn id_assn"
   using cond_ref_correct_aux
-  set_rel_id hr_comp_Id2 by simp
+  set_rel_id hr_comp_Id2 by simp*)
 
 end

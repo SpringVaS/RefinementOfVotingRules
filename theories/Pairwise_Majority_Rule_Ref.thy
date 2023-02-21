@@ -26,6 +26,6 @@ lemma  pairwise_majority_rule_correct [sepref_fr_rules]:
     using pairwise_majority_rule_impl.elector_sep_correct .
 
 
-export_code pairwise_majority_rule_sep in Scala_imp
+export_code clist pairwise_majority_rule_sep in Scala_imp
 
 end

@@ -998,7 +998,30 @@ lemma cond_winner_unique3_l:
     cond_winner_unique3[where A = A and p = pr and w = w]
   assms by blast
 
-find_theorems nfoldli
+definition convert_list :: "'a::{default, heap} list \<Rightarrow> 'a list nres"  where
+  "convert_list l = 
+  nfoldli l (\<lambda> x. True)
+ (\<lambda> x nl.
+    RETURN (nl @ [x])) []"
+
+sepref_definition clist is "convert_list" :: "(list_assn id_assn)\<^sup>d
+ \<rightarrow>\<^sub>a (arl_assn nat_assn)"
+  unfolding convert_list_def 
+  apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" arl.fold_custom_empty)
+  by sepref
+
+lemma convert_list_correct:
+  shows "(convert_list, RETURN) \<in> \<langle>Id\<rangle>list_rel \<rightarrow> \<langle>\<langle>Id\<rangle>list_rel\<rangle>nres_rel"
+  unfolding convert_list_def
+  apply (clarsimp, intro nres_relI refine_IdI)
+proof (rename_tac l)
+  fix l :: "'a list"
+  show "nfoldli l (\<lambda>x. True) (\<lambda>x nl. RETURN (nl @ [x])) [] \<le> RETURN l"
+    apply (refine_vcg nfoldli_rule[where I = "(\<lambda> l1 l2 r.
+      (r = l1))"])
+    by auto
+qed
+
 
 definition limit_profile_l :: "'a::{default,hashable,heap} set \<Rightarrow> 
     'a::{default,hashable,heap} Profile_List \<Rightarrow> 'a::{default,hashable,heap} Profile_List nres" where
@@ -1024,7 +1047,7 @@ declare limit_profile_sep.refine [sepref_fr_rules]
 
 lemma "limitp_correct":
   shows "(uncurry limit_profile_l, uncurry (RETURN oo limit_profile)) \<in> 
-  [\<lambda> (A, _). finite A ]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r  profile_rel) \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
+  [\<lambda> (A, pl). finite A ]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r  profile_rel) \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
 proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric],
     refine_vcg, auto, rename_tac A pl pr)
   fix A :: "'a set"
@@ -1042,7 +1065,39 @@ proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[sy
     by (smt (verit, del_insts))
 qed
 
-lemmas limit_profile_sep_correct [sepref_fr_rules] = limit_profile_sep.refine[FCOMP limitp_correct] 
+lemmas limit_profile_sep_correct  = limit_profile_sep.refine[FCOMP limitp_correct] 
 
+sepref_decl_op (no_def) limit_profile: "limit_profile" :: "\<langle>R\<rangle>set_rel \<rightarrow> \<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel 
+                                        \<rightarrow> \<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel" where "R = Id"
+  .
+
+
+definition "alts_ref_assn \<equiv> hr_comp (alts_set_impl_assn id_assn) (\<langle>Id\<rangle>set_rel)"
+                                 
+
+definition "ballot_ref_assn \<equiv>  hr_comp (ballot_impl_assn id_assn) (\<langle>Id\<rangle>list_rel)"
+
+definition "alts_assn \<equiv> hr_comp alts_ref_assn (\<langle>Id\<rangle>set_rel)"
+                                           
+definition "result_set_one_step \<equiv> hr_comp (alts_set_impl_assn id_assn) (\<langle>Id\<rangle>set_rel)"
+
+definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<rangle>set_rel)"
+
+definition "ballot_assn \<equiv> hr_comp (hr_comp (ballot_impl_assn id_assn) ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
+
+
+locale refine_assns =
+ notes  
+       ballot_assn_def[symmetric,fcomp_norm_unfold]
+       alts_ref_assn_def[symmetric,fcomp_norm_unfold] 
+       ballot_ref_assn_def[symmetric,fcomp_norm_unfold]
+       alts_assn_def[symmetric,fcomp_norm_unfold] 
+      
+begin
+
+sepref_decl_impl limit_profile_sep.refine[FCOMP limitp_correct] 
+  by auto
     
+end
+
 end
