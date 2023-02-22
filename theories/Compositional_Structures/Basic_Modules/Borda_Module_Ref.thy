@@ -44,8 +44,8 @@ qed
 
 sepref_definition borda_elim_sep is
   "uncurry borda_ref":: 
-    "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn nat_assn)"
+    "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding borda_ref_def  max_eliminator_ref_def borda_score_mon_def sum_impl_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
@@ -61,11 +61,7 @@ sepref_definition borda_elim_sep is
   apply sepref_dbg_keep
   done
 
-sepref_register borda_ref
-
-declare borda_elim_sep.refine [sepref_fr_rules]
-
-lemma  borda_elim_sep_correct [sepref_fr_rules]:
+lemma  borda_elim_sep_correct:
   shows "(uncurry borda_elim_sep, uncurry (RETURN \<circ>\<circ> borda))
     \<in> [\<lambda>(a, b).
            finite
@@ -73,11 +69,10 @@ lemma  borda_elim_sep_correct [sepref_fr_rules]:
                  (list_assn
                    (hr_comp (ballot_impl_assn id_assn)
                      ballot_rel))\<^sup>k \<rightarrow> result_impl_assn id_assn"
-  using borda_elim_sep.refine[FCOMP borda_ref_correct]
-  set_rel_id hr_comp_Id2 by simp
+  using borda_elim_sep.refine[FCOMP borda_ref_correct, THEN hfrefD] apply (intro hfrefI)
+  using set_rel_id hr_comp_Id2 by auto
 
-declare borda_elim_sep.refine[FCOMP borda_ref_correct,sepref_fr_rules]
-
+declare borda_elim_sep_correct [sepref_fr_rules]
 
 
 end

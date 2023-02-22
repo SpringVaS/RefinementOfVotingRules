@@ -30,6 +30,7 @@ theories
 (* "Refined Basic Modules" *)
   "Compositional_Structures/Basic_Modules/Borda_Module_Ref"
   "Compositional_Structures/Basic_Modules/Condorcet_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Elect_Module_Ref"
 
 (* "Compositional Structures" *)
  "Compositional_Structures/Sequential_Composition_Ref"

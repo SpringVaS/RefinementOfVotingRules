@@ -7,6 +7,7 @@ begin
 definition pairwise_majority_rule_sep where
   "pairwise_majority_rule_sep \<equiv> elector_sep condorcet_elim_sep"
 
+
 interpretation pairwise_majority_rule_impl: 
     elector_sepref condorcet_ref condorcet_elim_sep condorcet
   apply unfold_locales

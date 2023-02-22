@@ -7,7 +7,7 @@ begin
 definition borda_rule_sep where
   "borda_rule_sep \<equiv> elector_sep borda_elim_sep"
 
-                                   
+                          
 interpretation borda_rule_impl: elector_sepref borda_ref borda_elim_sep borda
   apply unfold_locales            
   subgoal using borda_elim_sep.refine .
@@ -17,7 +17,7 @@ interpretation borda_rule_impl: elector_sepref borda_ref borda_elim_sep borda
 
 thm "borda_rule_impl.elector_sep_correct"
 
-lemma  borda_rule_correct [sepref_fr_rules]:
+lemma  borda_rule_correct:
   shows "(uncurry borda_rule_sep, uncurry (RETURN oo borda_rule))
     \<in> [\<lambda>(a, b).
            finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
@@ -27,7 +27,6 @@ lemma  borda_rule_correct [sepref_fr_rules]:
   unfolding borda_rule_sep_def borda_rule.simps 
   using borda_rule_impl.elector_sep_correct unfolding in_br_conv well_formed_pl_def
   .
-  
 
 
 export_code clist borda_rule_sep in Scala_imp

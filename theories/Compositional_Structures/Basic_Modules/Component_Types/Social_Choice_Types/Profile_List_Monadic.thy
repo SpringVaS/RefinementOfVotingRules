@@ -1065,12 +1065,21 @@ proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[sy
     by (smt (verit, del_insts))
 qed
 
-lemmas limit_profile_sep_correct  = limit_profile_sep.refine[FCOMP limitp_correct] 
+lemmas limit_profile_sep_correct_aux  = limit_profile_sep.refine[FCOMP limitp_correct] 
 
-sepref_decl_op (no_def) limit_profile: "limit_profile" :: "\<langle>R\<rangle>set_rel \<rightarrow> \<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel 
-                                        \<rightarrow> \<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel" where "R = Id"
-  .
 
+lemma limit_profile_sep_correct:
+  shows "(uncurry limit_profile_sep, uncurry (RETURN \<circ>\<circ> limit_profile))
+    \<in> [\<lambda>(a, b).
+           finite
+            a]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
+                 (list_assn
+                   (hr_comp (ballot_impl_assn id_assn)
+                     ballot_rel))\<^sup>k \<rightarrow> list_assn
+                                        (hr_comp (ballot_impl_assn id_assn) ballot_rel)"
+  using limit_profile_sep.refine[FCOMP limitp_correct]  set_rel_id hr_comp_Id2 by simp
+
+declare limit_profile_sep_correct [sepref_fr_rules]
 
 definition "alts_ref_assn \<equiv> hr_comp (alts_set_impl_assn id_assn) (\<langle>Id\<rangle>set_rel)"
                                  
@@ -1085,19 +1094,9 @@ definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<
 
 definition "ballot_assn \<equiv> hr_comp (hr_comp (ballot_impl_assn id_assn) ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
 
-
-locale refine_assns =
- notes  
-       ballot_assn_def[symmetric,fcomp_norm_unfold]
-       alts_ref_assn_def[symmetric,fcomp_norm_unfold] 
-       ballot_ref_assn_def[symmetric,fcomp_norm_unfold]
-       alts_assn_def[symmetric,fcomp_norm_unfold] 
-      
-begin
-
-sepref_decl_impl limit_profile_sep.refine[FCOMP limitp_correct] 
-  by auto
-    
-end
+lemma id_assn_comp:
+  shows "alts_ref_assn = alts_set_impl_assn id_assn"
+  unfolding alts_ref_assn_def 
+    using set_rel_id hr_comp_Id2 by simp
 
 end

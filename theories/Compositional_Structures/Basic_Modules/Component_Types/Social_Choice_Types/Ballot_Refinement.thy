@@ -288,7 +288,7 @@ proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps,
 qed
 
 sepref_definition limit_sep is "uncurry limit_monadic" ::
-  "(hs.assn id_assn)\<^sup>k *\<^sub>a (ballot_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a (ballot_impl_assn  id_assn)"
+  "(hs.assn id_assn)\<^sup>k *\<^sub>a (ballot_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a (ballot_impl_assn id_assn)"
   unfolding limit_monadic_def[abs_def]
   apply (rewrite in "WHILET _ _ rewrite_HOLE" arl.fold_custom_empty)
   apply sepref_dbg_keep

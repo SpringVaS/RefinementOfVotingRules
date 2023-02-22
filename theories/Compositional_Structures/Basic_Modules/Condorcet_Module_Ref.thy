@@ -87,16 +87,12 @@ sepref_definition condorcet_elim_sep is
   apply sepref_dbg_keep
   done
 
-term condorcet_elim_sep
 
 (*lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]
 
-lemma  condorcet_elim_sep_correct [sepref_fr_rules]:
+lemma condorcet_elim_sep_correct [sepref_fr_rules]:
   shows "(uncurry condorcet_elim_sep, uncurry (RETURN \<circ>\<circ> condorcet))
-    \<in> [\<lambda>(a, b). finite_profile a b]\<^sub>a 
-  (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a 
-    (list_assn (hr_comp (ballot_impl_assn id_assn) ballot_rel))\<^sup>k 
-        \<rightarrow> result_impl_assn id_assn"
+    \<in> elec_mod_sep_rel id_assn"
   using cond_ref_correct_aux
   set_rel_id hr_comp_Id2 by simp*)
 

@@ -4,6 +4,31 @@ theory Sequential_Composition_Ref
         Refine_Imperative_HOL.Sepref
 begin
 
+definition seq_opt:: "'a Electoral_Module \<Rightarrow> 
+  'a Electoral_Module
+  \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> 
+  'a Result nres" 
+  where "seq_opt m n A p \<equiv> do {
+  let (e, r, d) = m A p;
+  ASSERT (finite d);
+  let newA = d;
+  let newp = limit_profile newA p;
+  let (ne, nr, nd) = n newA newp;
+   RETURN (e \<union> ne, r \<union> nr, nd) }"
+
+lemma seqcomp_opt_correct: 
+  fixes m n :: "'a Electoral_Module" and
+        A :: "'a set" and p :: "'a Profile"
+  assumes finprofa: "finite_profile A p" and
+   em_m: "electoral_module m" and
+  em_n: "electoral_module n"
+  shows "seq_opt m n A p \<le>
+   RETURN (sequential_composition m n A p)"
+  unfolding comp_apply seq_opt_def
+ using assms apply (refine_vcg)
+   apply auto
+  by (metis def_presv_fin_prof snd_conv)
+  
 
 definition sequential_composition_ref :: 
         
@@ -12,12 +37,8 @@ definition sequential_composition_ref ::
 \<Rightarrow> 'a::{default, hashable, heap} Electoral_Module_Ref" where
 "sequential_composition_ref m_ref n_ref A p = do {
       (mel,mrej,mdef) <- m_ref A p;
- 
-      let newA = mdef;
-      new_p <- limit_profile_l newA p;  
-    
-      (nel,nrej,ndef) <- n_ref newA new_p;
-      
+      new_p <- limit_profile_l mdef p;  
+      (nel,nrej,ndef) <- n_ref mdef new_p;
       RETURN (mel \<union> nel, mrej \<union> nrej, ndef)
 }"
 
