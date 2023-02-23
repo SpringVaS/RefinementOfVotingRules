@@ -27,9 +27,41 @@ lemma  borda_rule_correct:
   unfolding borda_rule_sep_def borda_rule.simps 
   using borda_rule_impl.elector_sep_correct unfolding in_br_conv well_formed_pl_def
   .
+sepref_definition borda_rule_sep_direct is "uncurry (seq_opt borda elect_module
+  )"
+  :: "[\<lambda>(x, xa).
+       finite
+        x]\<^sub>a (hs.assn nat_assn)\<^sup>k *\<^sub>a
+             (list_assn (hr_comp (ballot_impl_assn nat_assn) ballot_rel))\<^sup>k \<rightarrow> 
+  result_impl_assn  nat_assn"
+  unfolding seq_opt_def
+  apply sepref_dbg_keep
+  done
 
+sepref_definition borda_rule_sep_inefficient is "uncurry 
+(RETURN oo (borda_rule :: (nat Electoral_Module)))"
+  :: "[\<lambda>(x, xa).
+       finite
+        x]\<^sub>a (hs.assn nat_assn)\<^sup>k *\<^sub>a
+             (list_assn (hr_comp (ballot_impl_assn nat_assn) ballot_rel))\<^sup>k \<rightarrow> 
+  result_impl_assn  nat_assn"
+  unfolding borda_rule.simps elector.simps sequential_composition.simps
+  apply sepref_dbg_keep
+  done
 
-export_code clist borda_rule_sep in Scala_imp
+lemmas opt_seq_borda = seq_opt_correct[OF borda_sound elect_mod_sound]
+lemmas opt_borda_correct_aux = borda_rule_sep_direct.refine[FCOMP opt_seq_borda]
+
+lemma opt_borda_correct:
+  shows "(uncurry borda_rule_sep_direct, uncurry (RETURN oo (borda_rule :: (nat Electoral_Module))))
+  \<in> elec_mod_sep_rel nat_assn"
+  unfolding borda_rule.simps elector.simps 
+  using  opt_borda_correct_aux  prod_rel_id_simp set_rel_id hr_comp_Id2
+  by (metis)
+
+declare opt_borda_correct [sepref_fr_rules]
+
+export_code convert_list_to_hash_set clist borda_rule_sep_direct in Scala_imp
 
                                           
 end

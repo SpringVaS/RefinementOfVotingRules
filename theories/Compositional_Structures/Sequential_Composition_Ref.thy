@@ -16,16 +16,16 @@ definition seq_opt:: "'a Electoral_Module \<Rightarrow>
   let (ne, nr, nd) = n newA newp;
    RETURN (e \<union> ne, r \<union> nr, nd) }"
 
-lemma seqcomp_opt_correct: 
-  fixes m n :: "'a Electoral_Module" and
-        A :: "'a set" and p :: "'a Profile"
-  assumes finprofa: "finite_profile A p" and
-   em_m: "electoral_module m" and
+lemma seq_opt_correct: 
+  fixes m n :: "'a Electoral_Module"
+  assumes em_m: "electoral_module m" and
   em_n: "electoral_module n"
-  shows "seq_opt m n A p \<le>
-   RETURN (sequential_composition m n A p)"
+shows "(uncurry (seq_opt m n), uncurry (RETURN oo (sequential_composition m n))) \<in>
+  [\<lambda> (A, p). finite_profile A p]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel\<rangle>list_rel) \<rightarrow> 
+  \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
   unfolding comp_apply seq_opt_def
- using assms apply (refine_vcg)
+  apply (intro frefI) apply clarsimp
+  using assms apply (refine_vcg)
    apply auto
   by (metis def_presv_fin_prof snd_conv)
   

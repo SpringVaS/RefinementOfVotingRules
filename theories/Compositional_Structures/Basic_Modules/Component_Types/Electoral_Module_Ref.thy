@@ -18,6 +18,12 @@ abbreviation elec_mod_rel_orig :: "('a \<times> 'a) set \<Rightarrow>
   "elec_mod_rel_orig R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel , 
   \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>fun_rel\<rangle>fun_rel" 
 
+abbreviation elec_mod_rel_orig_nres :: "('a \<times> 'a) set \<Rightarrow> 
+  (('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres) \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres))
+   set" where
+  "elec_mod_rel_orig_nres R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel , 
+  \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel" 
+
 abbreviation elec_mod_sep_rel where 
   "elec_mod_sep_rel R \<equiv> [\<lambda>(a, b).
            finite_profile a b]\<^sub>a (alts_set_impl_assn R)\<^sup>k *\<^sub>a 

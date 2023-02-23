@@ -88,12 +88,14 @@ sepref_definition condorcet_elim_sep is
   done
 
 
-(*lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]
+lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]
 
-lemma condorcet_elim_sep_correct [sepref_fr_rules]:
+lemma condorcet_elim_sep_correct:
   shows "(uncurry condorcet_elim_sep, uncurry (RETURN \<circ>\<circ> condorcet))
-    \<in> elec_mod_sep_rel id_assn"
+    \<in> elec_mod_sep_rel nat_assn"
   using cond_ref_correct_aux
-  set_rel_id hr_comp_Id2 by simp*)
+  set_rel_id hr_comp_Id2 by simp
+
+declare condorcet_elim_sep_correct[sepref_fr_rules]
 
 end

@@ -999,7 +999,7 @@ lemma cond_winner_unique3_l:
   assms by blast
 
 definition convert_list :: "'a::{default, heap} list \<Rightarrow> 'a list nres"  where
-  "convert_list l = 
+  "convert_list l \<equiv>
   nfoldli l (\<lambda> x. True)
  (\<lambda> x nl.
     RETURN (nl @ [x])) []"
@@ -1008,6 +1008,19 @@ sepref_definition clist is "convert_list" :: "(list_assn id_assn)\<^sup>d
  \<rightarrow>\<^sub>a (arl_assn nat_assn)"
   unfolding convert_list_def 
   apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" arl.fold_custom_empty)
+  by sepref
+
+definition convert_list_to_set :: "'a::{default, heap} list \<Rightarrow> 'a set nres"  where
+  "convert_list_to_set l \<equiv> 
+  nfoldli l (\<lambda> x. True)
+ (\<lambda> x ns.
+    RETURN (insert x ns)) {}"
+
+
+sepref_definition convert_list_to_hash_set is "convert_list_to_set" :: "(list_assn id_assn)\<^sup>d
+ \<rightarrow>\<^sub>a (hs.assn nat_assn)"
+  unfolding convert_list_to_set_def 
+  apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" hs.fold_custom_empty)
   by sepref
 
 lemma convert_list_correct:
@@ -1072,11 +1085,11 @@ lemma limit_profile_sep_correct:
   shows "(uncurry limit_profile_sep, uncurry (RETURN \<circ>\<circ> limit_profile))
     \<in> [\<lambda>(a, b).
            finite
-            a]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
+            a]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a
                  (list_assn
-                   (hr_comp (ballot_impl_assn id_assn)
+                   (hr_comp (ballot_impl_assn nat_assn)
                      ballot_rel))\<^sup>k \<rightarrow> list_assn
-                                        (hr_comp (ballot_impl_assn id_assn) ballot_rel)"
+                                        (hr_comp (ballot_impl_assn nat_assn) ballot_rel)"
   using limit_profile_sep.refine[FCOMP limitp_correct]  set_rel_id hr_comp_Id2 by simp
 
 declare limit_profile_sep_correct [sepref_fr_rules]
