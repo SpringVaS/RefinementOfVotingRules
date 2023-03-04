@@ -289,6 +289,8 @@ next
     from this seteqo show ?thesis
       using card_length order_trans by blast
   qed      
+  have onFeq: "limit F (pl_\<alpha> newbal) = limit F (bar)"
+    using barolim defbaro by fastforce
   (* TODO: assert that x is inserted at the right position *)
   from rankxgt0 rankib have "((take ((rank bar x) - 1) (balo)) @ [x])!((rank bar x)-1) = x"
     by (metis add_diff_cancel_right' append_take_drop_id diff_diff_cancel length_append length_drop nth_append_length)
@@ -302,53 +304,9 @@ next
               less_Suc_eq_le )
   from this have rankxabs: "rank (pl_\<alpha> newbal) x = (rank bar x)" 
     using rankeq disnb unfolding well_formed_pl_def
-    by metis
-  have trans1: "\<forall> (a, b) \<in> F \<times> F. ((a \<preceq>\<^sub>bar b) \<longrightarrow> (a \<preceq>\<^sub>baro b))"
-    using limit_presv_prefs1 unfolding defbaro
-    by simp
-  have "\<forall> (a, b) \<in> F \<times> F. ((a \<preceq>\<^sub>(pl_\<alpha> newbal) b) \<longrightarrow> (a \<preceq>\<^sub>baro b))"
-    using limit_presv_prefs1 unfolding barolim
-    by simp
-  have trans2: "\<forall> a b. ((a \<preceq>\<^sub>baro b) \<longrightarrow> (a \<preceq>\<^sub>(pl_\<alpha> newbal) b))"
-    unfolding barolim
-    by simp
-  from trans1 trans2 have "\<forall> (a, b) \<in> F \<times> F. ((a \<preceq>\<^sub>bar b) \<longrightarrow> (a \<preceq>\<^sub>(pl_\<alpha> newbal) b))"
-    by simp
-
-  from this  have "\<forall> (a, b) \<in> (insert x F) \<times> (insert x F). 
-      ((a \<preceq>\<^sub>bar b) \<longrightarrow> (a \<preceq>\<^sub>(pl_\<alpha> newbal) b))"
-  proof (auto)
-    from lonb show "(x, x) \<in> pl_\<alpha> newbal"
-      unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by simp
-  next
-    fix a :: 'a
-    assume ainbar: "(a, x) \<in> bar"
-    from this have axF: "a \<in> insert x F"
-      using ih(4) 
-      unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by blast
-      
-    have "(a, x) \<in> pl_\<alpha> newbal"
- proof (cases "a = x")
-   case aisx: True
-   from lonb have "(x, x) \<in> pl_\<alpha> newbal"
-     unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by simp
-    from this aisx show ?thesis by simp
- next
-   case anx:  False
-   have "a \<in> F"
-     using axF anx
-     by auto 
-   from this have ainoldb: "a \<in> set balo"
-     using lobalo unfolding losimp by simp
-    
-   show ?thesis unfolding defnb pl_\<alpha>_def using ainbar
- qed
-
-  from this rankxabs  have "bar = (pl_\<alpha> newbal)"
-    using lonb ih(4)
+    by metis  
+  from onFeq have "bar = (pl_\<alpha> newbal)"
+    using limit_presv_prefs2 unfolding is_less_preferred_than.simps
     sorry
   from this show ?case
     apply (rule_tac x = newbal in exI)
