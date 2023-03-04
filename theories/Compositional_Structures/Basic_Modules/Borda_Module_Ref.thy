@@ -64,8 +64,8 @@ sepref_definition borda_elim_sep is
 lemma  borda_elim_sep_correct:
   shows "(uncurry borda_elim_sep, uncurry (RETURN \<circ>\<circ> borda))
     \<in> [\<lambda>(a, b).
-           finite_profile
-            a b]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a
+           finite
+            a]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a
                  (list_assn
                    (hr_comp (ballot_impl_assn nat_assn)
                      ballot_rel))\<^sup>k \<rightarrow> result_impl_assn nat_assn"
@@ -73,6 +73,16 @@ lemma  borda_elim_sep_correct:
   using set_rel_id hr_comp_Id2 by auto
 
 declare borda_elim_sep_correct [sepref_fr_rules]
+
+
+lemma borda_pres_profile:
+  shows "<(alts_set_impl_assn nat_assn) a hs *
+            (list_assn
+                   (hr_comp (ballot_impl_assn nat_assn)
+                     ballot_rel)) pl hpl * \<up> (finite_profile a pl)> borda_elim_sep hs hpl 
+  < \<lambda>r. \<up> (finite_profile a pl) >\<^sub>t" 
+  apply sep_auto
+  oops
 
 
 end

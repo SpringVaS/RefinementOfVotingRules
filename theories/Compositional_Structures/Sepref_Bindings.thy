@@ -43,16 +43,7 @@ begin
 
 
 
-sepref_definition borda_rule_sep is "uncurry (seq_opt borda elect_module
-  )"
-  :: "[\<lambda>(x, xa).
-       finite
-        x]\<^sub>a (hs.assn nat_assn)\<^sup>k *\<^sub>a
-             (list_assn (hr_comp (ballot_impl_assn nat_assn) ballot_rel))\<^sup>k \<rightarrow> 
-  result_impl_assn  nat_assn"
-  unfolding seq_opt_def
-  apply sepref_dbg_keep
-  done
+
 
 
 definition "impls \<equiv> borda_ref {1::nat, 2} ((([] @ [1::nat])@ [2::nat]) # [])"
@@ -88,19 +79,6 @@ definition "dimpls A p \<equiv> do {
    unfolding  dimpls_def aux_set_copy_def hs.fold_custom_empty
    apply sepref_dbg_keep
    done
-
-lemma seqcomp_opt_correct: 
-  fixes m n :: "'a::{default,hashable,heap} Electoral_Module" and
-        A :: "'a set" and p :: "'a Profile"
-  assumes finprofa: "finite_profile A p" and
-   em_m: "electoral_module m" and
-  em_n: "electoral_module n"
-  shows "seq_opt m n A p \<le>
-   RETURN (sequential_composition' m n A p)"
-  unfolding comp_apply seq_opt_def sequential_composition'.simps
- using assms apply (refine_vcg)
-   apply auto
-  by (metis def_presv_fin_prof snd_conv)
 
 end
 

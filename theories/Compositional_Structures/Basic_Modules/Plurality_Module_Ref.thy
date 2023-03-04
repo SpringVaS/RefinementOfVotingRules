@@ -37,16 +37,12 @@ definition pre_compute_plur_scores :: "'a set \<Rightarrow> 'a Profile_List \<Ri
     ) (zeromap)}"
 
 lemma plurality_map_correct:
-  fixes A:: "'a::{default, heap, hashable} set"
-  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
-  assumes 
-    fina: "finite A"
-    and prel: "(pl, pr) \<in> profile_rel"
-    and profp: "profile A pr"
-  shows "pre_compute_plur_scores A p \<le> pre_compute_scores plur_score_ref A p"
-  unfolding pre_compute_plur_scores_def pre_compute_scores_def
-  plur_score_ref_def wc_fold_def
+  shows "(pre_compute_plur_scores, pre_compute_scores plur_score_ref)
+  \<in> [\<lambda> (A, pl). (finite A) \<and> (profile_l A pl) ]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel)
+    \<rightarrow> \<langle>\<langle>Id, nat_rel\<rangle>map_rel\<rangle>nres_rel"
+  unfolding pre_compute_plur_scores_def
   using assms empty_map
+    apply (refine_vcg empty_map)
   oops
 
 definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where

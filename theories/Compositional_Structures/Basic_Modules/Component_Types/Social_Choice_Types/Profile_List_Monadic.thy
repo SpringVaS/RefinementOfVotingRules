@@ -633,7 +633,7 @@ lemma pc_foldli_list_refine:
   apply (refine_vcg nfoldli_rule)
   apply (auto simp del : is_less_preferred_than_l.simps is_less_preferred_than.simps)
   apply (rename_tac l r)
-  apply (metis in_br_conv less_preffered_l_rel_eq)+
+  apply (metis in_br_conv is_less_preferred_than_eq)+
   done
 
 lemma pc_foldli_list_correct:
@@ -1080,6 +1080,7 @@ qed
 
 lemmas limit_profile_sep_correct_aux  = limit_profile_sep.refine[FCOMP limitp_correct] 
 
+abbreviation "ballot_assn R \<equiv> (hr_comp (ballot_impl_assn R) ballot_rel)"
 
 lemma limit_profile_sep_correct:
   shows "(uncurry limit_profile_sep, uncurry (RETURN \<circ>\<circ> limit_profile))
@@ -1089,27 +1090,75 @@ lemma limit_profile_sep_correct:
                  (list_assn
                    (hr_comp (ballot_impl_assn nat_assn)
                      ballot_rel))\<^sup>k \<rightarrow> list_assn
-                                        (hr_comp (ballot_impl_assn nat_assn) ballot_rel)"
+                                        (ballot_assn nat_assn)"
   using limit_profile_sep.refine[FCOMP limitp_correct]  set_rel_id hr_comp_Id2 by simp
 
 declare limit_profile_sep_correct [sepref_fr_rules]
 
-definition "alts_ref_assn \<equiv> hr_comp (alts_set_impl_assn id_assn) (\<langle>Id\<rangle>set_rel)"
+
+
+find_theorems name: cons_rule
+
+lemma limit_profile_sound_sep:
+  shows "s \<subseteq> A \<and> finite_profile A p \<Longrightarrow> <(alts_set_impl_assn nat_assn) s hs *
+            (list_assn (ballot_assn nat_assn)) p hp> limit_profile_sep hs hp 
+  < \<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp * 
+                (list_assn (ballot_assn nat_assn)) res r * \<up> (finite_profile s res) >\<^sub>t"
+  apply (safe)
+  apply (clarsimp)
+proof -
+  assume sA: "s \<subseteq> A"
+  assume fina: "finite A"
+  assume prof: "profile A p"
+  note limit_profile_sep_correct[THEN hfrefD, THEN hn_refineD, of "(s, p)" "(hs, hp)", simplified]
+  limit_profile_sound[where S = s and p = p and A = A] 
+  from sA fina have fins: "finite s"
+    using rev_finite_subset by blast
+  have postapp: "\<And>x. (\<exists>\<^sub>Axa. alts_set_impl_assn nat_assn s hs *
+                list_assn (ballot_assn nat_assn) p hp *
+                list_assn (ballot_assn nat_assn) xa x *
+                true *
+                \<up> (xa = map (limit s) p)) \<Longrightarrow>\<^sub>A 
+        ( \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
+             list_assn (ballot_assn nat_assn) res x * true *
+             \<up> (finite_profile s res))" using limit_profile_sound[where S = A and p = p and A = s] 
+    apply sep_auto
+    using fins apply blast
+    by (simp add: fina prof sA)
+  from this fins show "<alts_set_impl_assn nat_assn s hs *
+     list_assn (ballot_assn nat_assn) p hp>
+    limit_profile_sep hs hp
+    <\<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
+             list_assn (ballot_assn nat_assn) res r * true *
+             \<up> (finite_profile s res)>" 
+    using limit_profile_sep_correct[THEN hfrefD, THEN hn_refineD, of "(s, p)" "(hs, hp)", simplified]
+          cons_rule[where P = "(alts_set_impl_assn nat_assn) s hs *
+            (list_assn (ballot_assn nat_assn)) p hp"
+          and P' = "(alts_set_impl_assn nat_assn) s hs *
+            (list_assn
+                   (hr_comp (ballot_impl_assn nat_assn)
+                     ballot_rel)) p hp" and Q = "(\<lambda> r. \<exists>\<^sub>Ax. alts_set_impl_assn nat_assn s hs *
+                list_assn (ballot_assn nat_assn) p hp *
+                list_assn (ballot_assn nat_assn) x r *
+                true *
+                \<up> (x = map (limit s) p))"
+           and Q' = "\<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
+             list_assn (ballot_assn nat_assn) res r * true *
+             \<up> (finite_profile s res)"
+            and c = "limit_profile_sep hs hp"]
+      using ent_refl by blast
+    
+qed
+    
+    
+
+  
+  
+
                                  
-
-definition "ballot_ref_assn \<equiv>  hr_comp (ballot_impl_assn id_assn) (\<langle>Id\<rangle>list_rel)"
-
-definition "alts_assn \<equiv> hr_comp alts_ref_assn (\<langle>Id\<rangle>set_rel)"
                                            
-definition "result_set_one_step \<equiv> hr_comp (alts_set_impl_assn id_assn) (\<langle>Id\<rangle>set_rel)"
 
-definition "result_set_assn \<equiv> hr_comp(result_set_one_step) (\<langle>Id\<rangle>set_rel)"
 
-definition "ballot_assn \<equiv> hr_comp (hr_comp (ballot_impl_assn id_assn) ballot_rel) (\<langle>Id \<times>\<^sub>r Id\<rangle>set_rel)"
 
-lemma id_assn_comp:
-  shows "alts_ref_assn = alts_set_impl_assn id_assn"
-  unfolding alts_ref_assn_def 
-    using set_rel_id hr_comp_Id2 by simp
 
 end
