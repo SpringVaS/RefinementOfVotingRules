@@ -1,85 +1,119 @@
+(*  File:       Plurality_Module_Ref.thy
+    Copyright   2022  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
 theory Plurality_Module_Ref
   imports 
-        "Component_Types/Electoral_Module_Ref"
-        "Verified_Voting_Rule_Construction.Plurality_Module"
+          "Verified_Voting_Rule_Construction.Plurality_Rule"
+           "Component_Types/Elimination_Module_Ref"
 begin
 
 
-fun plurality_r :: "'a Electoral_Module_Ref" where
-  "plurality_r A p =
-    ({a \<in> A. \<forall>x \<in> A. win_count_imp_code p x \<le> win_count_imp_code p a},
-     {a \<in> A. \<exists>x \<in> A. win_count_imp_code p x > win_count_imp_code p a},
-     {})"
+definition plur_score_ref :: "'a Evaluation_Function_Ref" where
+  "plur_score_ref x A p = (wc_fold p x)"
 
-lemma datarefplurality:
-  fixes A :: "'a set"
-  shows "(plurality_r A, plurality A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> Id"
-  apply (refine_rcg)
-  apply (auto simp add: 
-    refine_rel_defs win_count_array) 
+lemma plur_score_correct:
+  fixes A:: "'a::{default, heap, hashable} set"
+  fixes pl:: "'a Profile_List" and pr:: "'a Profile"
+  assumes 
+    fina: "finite A"
+    and prel: "(pl, pr) \<in> profile_rel"
+    and profp: "profile A pr"
+  shows "\<forall> a \<in> A. plur_score_ref a A pl \<le> SPEC (\<lambda> sc. sc = (plur_score a A pr))"
+  unfolding plur_score_ref_def plur_score.simps
+proof safe
+  fix a :: 'a
+  from prel profp have profl: "profile_l A pl" using profile_ref by auto 
+  show "wc_fold pl a \<le> SPEC (\<lambda>sc. sc = win_count pr a) "
+    by (refine_vcg fina prel profl wc_fold_correct)
+qed
+
+definition pre_compute_plur_scores :: "'a set
+   \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
+  where "pre_compute_plur_scores A pl \<equiv> do {
+   zeromap:: 'a Scores_Map  <- init_map A;
+  nfoldli pl (\<lambda>_. True) 
+    (\<lambda>ballot map. 
+     RETURN (if (length ballot > 0) then do {
+      let top = ballot!0;
+      let scx = the (map top);
+        (map(top\<mapsto>(Suc scx)))}
+       else map)
+    ) (zeromap)}"
+
+lemma plurality_map_correct:
+  fixes A :: "'a set" and
+        pr :: "'a Profile" and
+        pl :: "'a Profile_List"
+  assumes fina: "finite A" and
+        prel : "(pl, pr) \<in> profile_rel" and
+        profp: "profile_l A pl"
+  assumes wf: "well_formed_pl pl"
+  shows "pre_compute_plur_scores A pl \<le> RETURN (pre_computed_map plur_score A pr)"
+  unfolding pre_compute_plur_scores_def pre_computed_map_def plur_score.simps
+  apply (refine_vcg empty_map fina prel
+          nfoldli_rule[where I = "\<lambda> p1 p2 si. \<forall> a \<in> A. (the (si a) \<le> win_count pr a
+          \<and> the (si a) \<ge> win_count pr a - size p2)"] )
+     apply auto
+  using  prel list_rel_imp_same_length
+  oops
+
+definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
+  "plurality_ref A pl \<equiv> do {
+   scores <- (pre_compute_scores plur_score_ref A pl);
+   max_eliminator_ref scores A pl
+}"
+
+lemma plurality_ref_correct:
+  shows "(uncurry plurality_ref, uncurry (RETURN oo plurality_mod)) \<in> 
+  ([\<lambda> (A, pl). finite_profile A
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+   \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
+proof (intro frefI nres_relI,  clarsimp simp del:  plurality_mod.simps plur_score.simps,
+     unfold plurality_ref_def plurality_mod.simps
+     RETURN_SPEC_conv, rename_tac A pl pr)
+  note max_eliminator_ref_correct_pc[where A = A and efn_ref = plur_score_ref and
+       efn = plur_score]
+  fix A :: "'a::{default, heap, hashable} set"
+  fix pr :: "'a Profile"
+  fix pl :: "'a Profile_List"
+  assume fina: "finite A"
+  assume prel: "(pl, pr) \<in> profile_rel"
+  assume profp: "profile A pr"
+  show " pre_compute_scores plur_score_ref A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
+       \<le> SPEC (\<lambda>x. x = max_eliminator plur_score A pr)"
+    using max_eliminator_ref_correct_pc plur_score_correct fina prel profp
+    by metis   
+qed
+   
+sepref_definition plurality_elim_sep is
+  "uncurry plurality_ref":: 
+    "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
+  unfolding plurality_ref_def  max_eliminator_ref_def plur_score_ref_def
+    less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
+    pre_compute_scores_def[abs_def] scoremax_def[abs_def] wc_fold_def[abs_def] 
+    short_circuit_conv
+  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
+  apply (rewrite in "RETURN ({}, {}, \<hole>)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN ({}, \<hole>, _)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN ( \<hole>, _, _)" hs.fold_custom_empty) 
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
+  apply sepref_dbg_keep
   done
 
-lemma plurality_ref_eq:
-  fixes A :: "'a set" and pa :: "'a Profile_Array"
-  assumes "(profile_a A pa)"
-  shows "plurality_r A pa = plurality A (pa_to_pr pa)"
-  using assms datarefplurality em_onA
-  by blast 
-
-lemma plurality_r_sound:
-  shows "electoral_module_r plurality_r" 
-  unfolding electoral_module_r_def using plurality_sound plurality_ref_eq
-  by (metis electoral_module_def profile_a_rel)
-
-lemma plurality_r_electing2: "\<forall> A pa.
-                              (A \<noteq> {} \<and> finite_profile_a A pa) \<longrightarrow>
-                                elect_r (plurality_r A pa) \<noteq> {}"
-using plurality_electing2 plurality_ref_eq profile_a_rel
-  by metis
-
-theorem plurality_r_electing[simp]: "electing plurality"
-  oops (* Reformulate properties like electing for refined types. Discussion needed*)
-
-(* For further lemmas, Profile definitions have to be transeferred to profile Array
-
-lemma plurality_inv_mono2: "\<forall> A p q a.
-                              (a \<in> elect plurality A p \<and> lifted A p q a) \<longrightarrow>
-                                (elect plurality A q = elect plurality A p \<or>
-                                    elect plurality A q = {a})"*)
-
-(* --------  *)
-  section \<open>Further Refinement: Experiments\<close>
-
-
-type_synonym 'a Electoral_Module_Ref_T = "'a set \<Rightarrow> 'a Profile_Array \<Rightarrow> 'a Result_Ref nres"
-
-definition initmap :: "'a set \<Rightarrow> 'a \<rightharpoonup> nat" where
-  "initmap A = (SOME m. (\<forall>a\<in>A. ((m a) = Some (0::nat))))"
-
-definition "computewcinvar A p \<equiv> \<lambda>(i, wcmap).
-  \<forall>a\<in>A. the (wcmap a) = win_count_imp_code (array_shrink p i) a"
-
-definition computewcforcands :: "'a set \<Rightarrow> 'a Profile_Array \<Rightarrow> ('a \<rightharpoonup> nat) nres" where
-  "computewcforcands A p \<equiv> do {
-    let wcmap = initmap A;               
-    (i, wcmap) \<leftarrow> WHILET (\<lambda>(i, _). i < array_length p) (\<lambda>(i, wcmap). do {
-      ASSERT (i < array_length p);
-      let ballot = (p[[i]]);
-      let wcmap = (if (array_length ballot > 0) then (
-        wcmap ((ballot[[0]]) \<mapsto> (the (wcmap (ballot[[0]]))) + 1)) else wcmap);
-      let i = i + 1;
-     RETURN (i, wcmap)
-    })(0, Map.empty);
-    RETURN wcmap
-  }"
-
-lemma wcmap_correc : assumes "profile_a A p"
-  shows "computewcforcands A p \<le> SPEC (\<lambda> m. \<forall> a \<in> A. (the (m a)) = win_count_imp_code p a)"
-  unfolding computewcforcands_def initmap_def
-  apply (intro WHILET_rule[where I="(computewcinvar A p)" 
-        and R="measure (\<lambda>(i,_). (array_length p) - i)"] refine_vcg)
-  unfolding computewcinvar_def win_count_imp_code_def
-
-  oops (* ambitious goal *)
+lemma plurality_elim_sep_correct [sepref_fr_rules]:
+  shows "(uncurry plurality_elim_sep, uncurry (RETURN \<circ>\<circ> plurality_mod))
+        \<in> [\<lambda>(a, b).
+           finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a 
+    (list_assn (hr_comp (ballot_impl_assn id_assn) ballot_rel))\<^sup>k 
+        \<rightarrow> (result_impl_assn id_assn)"
+  using plurality_elim_sep.refine[FCOMP plurality_ref_correct]
+  set_rel_id hr_comp_Id2 by simp
 
 end

@@ -1,31 +1,34 @@
 theory Electoral_Module_Ref                      
-  imports "Social_Choice_Types/Profile_Array"
-          "Social_Choice_Types/Result_Ref"
+  imports "Social_Choice_Types/Profile_List_Monadic"
+          "Social_Choice_Types/Ballot_Refinement"
           "Verified_Voting_Rule_Construction.Electoral_Module"
+         
 begin                            
 
-type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_Array \<Rightarrow> 'a Result"
 
-definition electoral_module_r :: " 'a Electoral_Module_Ref \<Rightarrow> bool" where
-  "electoral_module_r mr \<equiv> \<forall> A pa. finite_profile_a A pa \<longrightarrow> well_formed A (mr A pa)"
+type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result nres"
 
-lemma em_corres:
-  fixes A :: "'a set" and pa :: "'a Profile_Array"
-  assumes "(em_r, em) \<in> (Id \<rightarrow> (br pa_to_pr (profile_a A)) \<rightarrow> Id)" 
-      and " (profile_a A pa)"
-  shows "(em_r A pa) = (em A (pa_to_pr pa))"
-using assms proof (-)
-  assume p: "profile_a A pa"
-  assume "(em_r, em) \<in> Id \<rightarrow> br pa_to_pr (profile_a A) \<rightarrow> Id"
-  from p this show "em_r A pa = em A (pa_to_pr pa)"
-    by (metis (no_types, opaque_lifting) in_br_conv pair_in_Id_conv tagged_fun_relD_none)
-qed
+type_synonym 'a Electoral_Module_Sep = "('a, unit) hashtable
+      \<Rightarrow> ('a array \<times> nat) list
+         \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
 
-lemma em_onA:
-  fixes A :: "'a set" 
-  assumes "(em_r A, em A) \<in> (br pa_to_pr (profile_a A)) \<rightarrow> Id" 
-    and " (profile_a A pa)"
-  shows "(em_r A pa) = (em A (pa_to_pr pa))"
-  by (metis assms(1) assms(2) brI pair_in_Id_conv tagged_fun_relD_rhs)
+
+abbreviation elec_mod_rel_orig :: "('a \<times> 'a) set \<Rightarrow> 
+  ('a Electoral_Module \<times> 'a Electoral_Module) set" where
+  "elec_mod_rel_orig R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel , 
+  \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>fun_rel\<rangle>fun_rel" 
+
+abbreviation elec_mod_rel_orig_nres :: "('a \<times> 'a) set \<Rightarrow> 
+  (('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres) \<times> ('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres))
+   set" where
+  "elec_mod_rel_orig_nres R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel , 
+  \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel" 
+
+abbreviation elec_mod_sep_rel where 
+  "elec_mod_sep_rel R \<equiv> [\<lambda>(a, b).
+           finite_profile a b]\<^sub>a (alts_set_impl_assn R)\<^sup>k *\<^sub>a 
+    (list_assn (hr_comp (ballot_impl_assn R) ballot_rel))\<^sup>k 
+        \<rightarrow> (result_impl_assn R)"
+
 
 end

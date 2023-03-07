@@ -1,15 +1,20 @@
+(*
+* build document using 
+* isabelle build -o quick_and_dirty -D . -d ../../verifiedVotingRuleConstruction/theories/ *)
+
 chapter browser_info
 
-session Modular_Voting_Rule_Refinement = CAVA_Base +
+session Modular_Voting_Rule_Refinement = Sepref_IICF +
   description "
     Refinement of Modular Voting Rules
   "
   
-options [browser_info, timeout = 300, document = pdf, document_output = "output"]
+options [timeout = 1000, document = pdf, document_output = "output"]
 
 sessions
   "Verified_Voting_Rule_Construction"
   "List-Index"
+  Refine_Imperative_HOL
 
 directories
   "Compositional_Structures"
@@ -19,17 +24,28 @@ directories
 
 theories
 (* "Social-Choice Types" *)
-  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Counting_Functions_Code"
-  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Profile_Array"
-  "Compositional_Structures/Basic_Modules/Component_Types/Electoral_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Ballot_Refinement"
+  "Compositional_Structures/Basic_Modules/Component_Types/Social_Choice_Types/Profile_List_Monadic"
+	
 
 (* "Refined Component Types" *)
-(* "Basic Modules" *)
-  "Compositional_Structures/Basic_Modules/Plurality_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Component_Types/Electoral_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Component_Types/Evaluation_Function_Ref"
+  "Compositional_Structures/Basic_Modules/Component_Types/Elimination_Module_Ref"
 (* "Refined Basic Modules" *)
-(* "Compositional Structures" *)
+  "Compositional_Structures/Basic_Modules/Borda_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Condorcet_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Elect_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Plurality_Module_Ref"
 
+(* "Compositional Structures" *)
+ "Compositional_Structures/Sequential_Composition_Ref"
+ "Compositional_Structures/Elect_Composition_Ref"
 (* "Voting Rules" *)
+
+  "Borda_Rule_Ref"
+  "Pairwise_Majority_Rule_Ref"
+  "Plurality_Rule_Ref"
 
 
 document_files
