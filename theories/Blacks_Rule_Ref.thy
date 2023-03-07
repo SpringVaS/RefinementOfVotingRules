@@ -26,16 +26,6 @@ lemma emcomp: "electoral_module (sequential_composition' condorcet borda)"
   by (simp add: borda_sound condorcet_sound seqcomp_alt_eq)
 
 
-lemma seq_cnd_borda_d:
-  shows "(uncurry (elector_opt ((RETURN \<circ>\<circ>\<circ> sequential_composition' condorcet) borda)),
-       uncurry ((RETURN \<circ>\<circ>\<circ> elector) (sequential_composition' condorcet borda)))
-      \<in> [\<lambda>(A, p).
-             finite_profile A
-              p]\<^sub>f \<langle>Id\<rangle>set_rel \<times>\<^sub>r
-                   \<langle>\<langle>Id \<times>\<^sub>r
-                     Id\<rangle>set_rel\<rangle>list_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel"
-  using emcomp elector_opt_correct[of "(sequential_composition' condorcet borda)"] by simp
-
 lemmas inner_black = seq_opt_correct[of condorcet borda]
 
 lemmas outer = elector_opt_correct_nres[where m_opt= "(seq_opt condorcet borda)" 
@@ -65,11 +55,13 @@ lemmas opt_blacks_correct_aux = blacks_rule_direct.refine[FCOMP comp_outer]
 lemma blacks_direct_correct:
   shows "(uncurry blacks_rule_direct, uncurry (RETURN oo (blacks_rule:: (nat Electoral_Module))))
   \<in> elec_mod_sep_rel nat_assn"
-  unfolding blacks_rule.simps
+  unfolding blacks_rule.simps 
   using  opt_blacks_correct_aux  prod_rel_id_simp set_rel_id hr_comp_Id2
+  by (metis elector.simps seqcomp_alt_eq)
   
 
-declare opt_blacks_correct_aux [sepref_fr_rules]
+declare blacks_direct_correct [sepref_fr_rules]
 
+export_code convert_list_to_hash_set clist blacks_rule_direct in Scala_imp
 
 end

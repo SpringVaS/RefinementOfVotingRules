@@ -9,11 +9,12 @@ session Modular_Voting_Rule_Refinement = Sepref_IICF +
     Refinement of Modular Voting Rules
   "
   
-options [browser_info, timeout = 300, document = pdf, document_output = "output"]
+options [timeout = 1000, document = pdf, document_output = "output"]
 
 sessions
   "Verified_Voting_Rule_Construction"
   "List-Index"
+  Refine_Imperative_HOL
 
 directories
   "Compositional_Structures"
@@ -28,13 +29,14 @@ theories
 	
 
 (* "Refined Component Types" *)
-"Compositional_Structures/Basic_Modules/Component_Types/Electoral_Module_Ref"
-"Compositional_Structures/Basic_Modules/Component_Types/Evaluation_Function_Ref"
-"Compositional_Structures/Basic_Modules/Component_Types/Elimination_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Component_Types/Electoral_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Component_Types/Evaluation_Function_Ref"
+  "Compositional_Structures/Basic_Modules/Component_Types/Elimination_Module_Ref"
 (* "Refined Basic Modules" *)
   "Compositional_Structures/Basic_Modules/Borda_Module_Ref"
   "Compositional_Structures/Basic_Modules/Condorcet_Module_Ref"
   "Compositional_Structures/Basic_Modules/Elect_Module_Ref"
+  "Compositional_Structures/Basic_Modules/Plurality_Module_Ref"
 
 (* "Compositional Structures" *)
  "Compositional_Structures/Sequential_Composition_Ref"
@@ -43,7 +45,7 @@ theories
 
   "Borda_Rule_Ref"
   "Pairwise_Majority_Rule_Ref"
-  "Blacks_Rule_Ref"
+  "Plurality_Rule_Ref"
 
 
 document_files

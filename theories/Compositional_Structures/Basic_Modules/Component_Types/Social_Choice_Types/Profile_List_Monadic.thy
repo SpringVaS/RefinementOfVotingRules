@@ -44,10 +44,11 @@ sepref_definition index_sep is "uncurry index_mon" ::
   unfolding index_mon_def 
   apply sepref_dbg_keep
   done
-
+                      
 sepref_register index_mon
 
-declare index_sep.refine [sepref_fr_rules]
+declare index_sep.refine[sepref_fr_rules]
+
 
 
 lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))" by simp
@@ -57,8 +58,6 @@ lemma index_sound:
   assumes  "i \<le> List_Index.index l a"
   shows "(a = l ! i) \<longrightarrow> (i = List_Index.index l a)"
   by (metis assms(1) index_first le_eq_less_or_eq)
-
-  
 
 lemma index_mon_correct:
   shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = index ballot a)"
@@ -92,7 +91,23 @@ next
     by (metis antisym index_le_size le_neq_implies_less order_trans)
 qed
 
+(* TODO: move to IICF Array List *)
 
+lemma index_mon_impl: 
+  shows "(index_mon, mop_list_index) \<in> \<langle>Id\<rangle>list_rel \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  apply (intro fun_relI nres_relI)
+  apply clarsimp
+  apply (refine_vcg index_mon_correct) by simp
+
+lemmas hallo = index_sep.refine[FCOMP index_mon_impl]
+
+lemma arl_index_nc_correct: "(uncurry index_sep, uncurry mop_list_index)
+    \<in> (arl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn"
+  using index_sep.refine[FCOMP index_mon_impl]
+list_rel_id hr_comp_Id2
+  by metis
+
+(*sepref_decl_impl (ismop) arl_index: arl_index_nc_correct .*)
 
 definition rank_mon :: "'a::{default, heap, hashable} Preference_List 
   \<Rightarrow> 'a::{default, heap, hashable} \<Rightarrow> nat nres" where
@@ -1027,14 +1042,18 @@ lemma convert_list_correct:
   shows "(convert_list, RETURN) \<in> \<langle>Id\<rangle>list_rel \<rightarrow> \<langle>\<langle>Id\<rangle>list_rel\<rangle>nres_rel"
   unfolding convert_list_def
   apply (clarsimp, intro nres_relI refine_IdI)
-proof (rename_tac l)
-  fix l :: "'a list"
-  show "nfoldli l (\<lambda>x. True) (\<lambda>x nl. RETURN (nl @ [x])) [] \<le> RETURN l"
-    apply (refine_vcg nfoldli_rule[where I = "(\<lambda> l1 l2 r.
+  apply (refine_vcg nfoldli_rule[where I = "(\<lambda> l1 l2 r.
       (r = l1))"])
-    by auto
-qed
+  by auto
 
+
+lemma convert_list_to_set_correct:
+  shows "(convert_list_to_set, RETURN o set) \<in> \<langle>Id\<rangle>list_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"
+  unfolding convert_list_to_set_def
+  apply (clarsimp, intro nres_relI refine_IdI)
+  apply (refine_vcg nfoldli_rule[where I = "(\<lambda> l1 l2 r.
+      (r = set l1))"])
+  by auto
 
 definition limit_profile_l :: "'a::{default,hashable,heap} set \<Rightarrow> 
     'a::{default,hashable,heap} Profile_List \<Rightarrow> 'a::{default,hashable,heap} Profile_List nres" where
@@ -1096,9 +1115,6 @@ lemma limit_profile_sep_correct:
 declare limit_profile_sep_correct [sepref_fr_rules]
 
 
-
-find_theorems name: cons_rule
-
 lemma limit_profile_sound_sep:
   shows "s \<subseteq> A \<and> finite_profile A p \<Longrightarrow> <(alts_set_impl_assn nat_assn) s hs *
             (list_assn (ballot_assn nat_assn)) p hp> limit_profile_sep hs hp 
@@ -1149,16 +1165,5 @@ proof -
       using ent_refl by blast
     
 qed
-    
-    
-
-  
-  
-
-                                 
-                                           
-
-
-
 
 end

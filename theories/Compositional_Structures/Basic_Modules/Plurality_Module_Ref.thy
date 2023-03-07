@@ -1,3 +1,8 @@
+(*  File:       Plurality_Module_Ref.thy
+    Copyright   2022  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
 theory Plurality_Module_Ref
   imports 
           "Verified_Voting_Rule_Construction.Plurality_Rule"
@@ -5,7 +10,7 @@ theory Plurality_Module_Ref
 begin
 
 
-definition plur_score_ref :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
+definition plur_score_ref :: "'a Evaluation_Function_Ref" where
   "plur_score_ref x A p = (wc_fold p x)"
 
 lemma plur_score_correct:
@@ -24,7 +29,8 @@ proof safe
     by (refine_vcg fina prel profl wc_fold_correct)
 qed
 
-definition pre_compute_plur_scores :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
+definition pre_compute_plur_scores :: "'a set
+   \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
   where "pre_compute_plur_scores A pl \<equiv> do {
    zeromap:: 'a Scores_Map  <- init_map A;
   nfoldli pl (\<lambda>_. True) 
@@ -37,12 +43,20 @@ definition pre_compute_plur_scores :: "'a set \<Rightarrow> 'a Profile_List \<Ri
     ) (zeromap)}"
 
 lemma plurality_map_correct:
-  shows "(pre_compute_plur_scores, pre_compute_scores plur_score_ref)
-  \<in> [\<lambda> (A, pl). (finite A) \<and> (profile_l A pl) ]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel)
-    \<rightarrow> \<langle>\<langle>Id, nat_rel\<rangle>map_rel\<rangle>nres_rel"
-  unfolding pre_compute_plur_scores_def
-  using assms empty_map
-    apply (refine_vcg empty_map)
+  fixes A :: "'a set" and
+        pr :: "'a Profile" and
+        pl :: "'a Profile_List"
+  assumes fina: "finite A" and
+        prel : "(pl, pr) \<in> profile_rel" and
+        profp: "profile_l A pl"
+  assumes wf: "well_formed_pl pl"
+  shows "pre_compute_plur_scores A pl \<le> RETURN (pre_computed_map plur_score A pr)"
+  unfolding pre_compute_plur_scores_def pre_computed_map_def plur_score.simps
+  apply (refine_vcg empty_map fina prel
+          nfoldli_rule[where I = "\<lambda> p1 p2 si. \<forall> a \<in> A. (the (si a) \<le> win_count pr a
+          \<and> the (si a) \<ge> win_count pr a - size p2)"] )
+     apply auto
+  using  prel list_rel_imp_same_length
   oops
 
 definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where

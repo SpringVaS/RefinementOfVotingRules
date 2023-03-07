@@ -47,8 +47,6 @@ proof (refine_vcg, clarsimp_all)
 qed
   
 
-find_theorems name: linear_order
-
 lemma "linear_order_on {1::nat,2} {(2::nat,1::nat), (2::nat,2::nat)
 , (1::nat,1::nat)}"
   unfolding linear_order_on_def partial_order_on_def preorder_on_def
@@ -60,16 +58,6 @@ lemma "([1::nat,2], {(2::nat,1::nat), (2::nat,2::nat)
   unfolding in_br_conv well_formed_pl_def pl_\<alpha>_def
   is_less_preferred_than_l.simps by auto
 
-definition "construct_list_from_rel A bar \<equiv> do {
-  (barr, bal) <- WHILE (\<lambda>(V,As, l). V\<noteq>{}) (\<lambda>(V, As, l). do {
-      x \<leftarrow> SPEC (\<lambda>x. x \<in> As \<and> (\<forall> c \<in> As. rank V x \<le> rank V c)); 
-      let As = As - {x};
-      let V = limit As V;
-      let l = l @ [x];
-      RETURN (V,As,l)
-    }) (bar, A, []);
-    RETURN bal
-}"
 
 term "(rank bar)`A"
 
@@ -91,22 +79,6 @@ lemma fintarg:
     from conssub fina show ?thesis
       using finite_subset by fastforce
   qed
-
-theorem rank_same:
-  fixes A :: "'a set" and
-        r1 :: "'a Preference_Relation" and
-        r2 :: "'a Preference_Relation"
-  assumes fina : "finite A"
-  assumes lor1: "linear_order_on A r1" and
-          lor2: "linear_order_on A r2"
-  assumes ranksame: "\<forall> a \<in> A. rank r1 a = rank r2 a"
-  shows "r1 = r2" 
-  using ranksame
-proof (safe, clarsimp_all)
-  fix u v :: 'a
-  have a1: "\<forall> a \<in> A. finite {b. (a, b) \<in> r1} " using fintarg lor1 fina by metis
-  have a2: "\<forall> a \<in> A. finite {b. (a, b) \<in> r2} " using fintarg lor2 fina by metis
-  oops
 
 theorem rankeq_imp_ref:
   fixes A :: "'a set" and
@@ -194,125 +166,6 @@ next
   qed
 qed
 
-find_theorems name: take_drop
-
-lemma ballot_refinement_complete:
-  fixes A :: "'a set"
-  and bar:: "'a Preference_Relation"
-assumes fina: "finite A"
-  and lo: "linear_order_on A bar"
-  shows " \<exists> bal :: 'a Preference_List. (bal, bar) \<in> ballot_rel"
-  unfolding in_br_conv well_formed_pl_def pl_\<alpha>_def 
-  using assms
-proof (induction arbitrary: bar)
-  case empty
-  then have "bar = {}"
-    using lin_ord_not_empty by blast
-  then show ?case
-    apply (rule_tac x = "[]" in exI)
-    by simp
-next
-  case ih: (insert x F)
-  obtain baro where defbaro: "baro = limit F bar"
-    by auto
-  from ih(4) have lobaro: "linear_order_on F baro"
-    unfolding defbaro using limit_presv_lin_ord  by blast 
-  from this ih(3)[where bar = baro] obtain balo where balrel: "(balo, baro) \<in> ballot_rel"
-    unfolding in_br_conv well_formed_pl_def pl_\<alpha>_def
-    by blast
-  from this have diso: "distinct balo"
-    unfolding in_br_conv well_formed_pl_def by simp
-  from balrel have absto: "baro = pl_\<alpha> balo"
-    unfolding in_br_conv by simp
-  from lobaro have lobalo: "linear_order_on_l F balo"
-    using balrel linearorder_ref[THEN fun_relD, THEN fun_relD]
-    by auto
-  then have seteqo: "set balo = F" unfolding losimp by simp
-  from ih(1) have finxF: "finite (insert x F)"
-    by simp
-  from ih.prems have nempcons: "{b. (x, b) \<in> bar} \<noteq> {}"
-      unfolding  linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by (metis empty_iff insertI1  mem_Collect_eq)
-  from ih.prems have barbound: "bar \<subseteq> ((insert x F) \<times> (insert x F))"
-      unfolding  linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by simp
-  from barbound have conssub: "{b . (x, b) \<in> bar} \<subseteq> (insert x F)"
-    by blast
-  have  finitecons: "finite {b . (x, b) \<in> bar}"
-  proof -
-    from finxF have finbound: "finite ((insert x F) \<times> (insert x F))"
-      by blast   
-    from ih.prems finxF have finbar: "finite bar"
-      unfolding  linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by (metis finite_SigmaI finite_subset)
-    from conssub finxF show ?thesis
-      using finite_subset by fastforce
-  qed
-  have rankxgt0: "(rank bar x) > 0"
-  proof (unfold rank.simps above_def)
-    from nempcons finitecons show "0 < card {b. (x, b) \<in> bar}"
-      using card_gt_0_iff by blast
-  qed
-    
-  obtain newbal where defnb: "newbal = take ((rank bar x) - 1) balo @ [x] @ drop ((rank bar x) - 1) balo"
-    by auto
-  from seteqo diso ih(2) have disnb: "distinct newbal"
-    unfolding defnb
-    by (metis distinct_insert_nth insert_nth_take_drop)
-  have insx: "set newbal = set balo \<union> {x}"
-    unfolding defnb
-    by (metis inf_sup_aci(5) insert_is_Un insert_nth_take_drop set_insert_nth)
-  then have seteqnb: "set newbal = insert x F"
-    using seteqo
-    by blast
-  from this ih(2) have fdx: "filter (\<lambda>x. x \<in> F) (take ((rank bar x) - 1) balo @ [x] @ drop ((rank bar x) - 1) balo)
-      = filter (\<lambda>x. x \<in> F) (take ((rank bar x) - 1) balo @ drop ((rank bar x) - 1) balo)"
-    by (metis append_Nil filter.simps(2) filter_append)
-  from seteqo have balolim: "balo = limit_l F newbal"
-    unfolding limit_l.simps defnb fdx append_take_drop_id
-    by simp
-  have lonb: "linear_order_on (insert x F) (pl_\<alpha> newbal)"
-    using seteqnb[symmetric] unfolding losimp[symmetric] 
-   linord_eq . 
-  have barolim: "baro = limit F (pl_\<alpha> newbal)"
-    using limit_eq[where bal=newbal and A = F] disnb
-    unfolding well_formed_pl_def balolim[symmetric] absto[symmetric] by simp
-  from ih(1) ih(2) have cardxinc: "card F = card (insert x F) - 1"
-    by simp
-  have rankib: "(rank bar x) - 1 \<le> length balo"
-  proof -
-    have ranklt: "(rank bar x) \<le> card (insert x F)"
-      unfolding rank.simps above_def
-      using conssub finxF card_mono by blast 
-    from this cardxinc rankxgt0 have "(rank bar x) - 1 \<le> card (F)"
-      by linarith
-    from this seteqo show ?thesis
-      using card_length order_trans by blast
-  qed      
-  have onFeq: "limit F (pl_\<alpha> newbal) = limit F (bar)"
-    using barolim defbaro by fastforce
-  (* TODO: assert that x is inserted at the right position *)
-  from rankxgt0 rankib have "((take ((rank bar x) - 1) (balo)) @ [x])!((rank bar x)-1) = x"
-    by (metis add_diff_cancel_right' append_take_drop_id diff_diff_cancel length_append length_drop nth_append_length)
-  from this have "newbal!((rank bar x)-1) = x"
-    unfolding defnb
-    by (metis add_diff_cancel_right' append_Cons append_take_drop_id diff_diff_cancel length_append length_drop nth_append_length rankib)
-  from ih this rankib rankxgt0 seteqnb seteqo disnb diso 
-  have posxl: "rank_l newbal x = (rank bar x)"
-    unfolding rank_l.simps
-    by (metis One_nat_def Suc_eq_plus1 Suc_pred card.insert distinct_card index_nth_id insertCI 
-              less_Suc_eq_le )
-  from this have rankxabs: "rank (pl_\<alpha> newbal) x = (rank bar x)" 
-    using rankeq disnb unfolding well_formed_pl_def
-    by metis  
-  from onFeq have "bar = (pl_\<alpha> newbal)"
-    using limit_presv_prefs2 unfolding is_less_preferred_than.simps
-    sorry
-  from this show ?case
-    apply (rule_tac x = newbal in exI)
-    unfolding pl_\<alpha>_def using disnb by auto
-qed
-
 abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"
 
 lemma ballot_prop_rel:
@@ -320,34 +173,26 @@ lemma ballot_prop_rel:
   assumes "(l,r) \<in> ballot_on_A_rel A"
   shows "(l,r) \<in> ballot_rel"
   using assms by (metis in_br_conv relcompEpair)
-  
-
-
 
 lemma aboveref:                                          
   shows "(above_l, above) \<in> ballot_rel \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>list_set_rel"
   apply (refine_vcg)                                    
-  apply (auto simp add: refine_rel_defs)
   unfolding list_set_rel_def
-  by (metis Id_O_R above_l_def aboveeq brI distinct_take list_rel_id_simp well_formed_pl_def)
+  apply (auto) using aboveeq unfolding well_formed_pl_def in_br_conv above_l_def
+  by (metis distinct_take)
   
 lemma rankref: 
   shows "(rank_l, rank) \<in> ballot_rel \<rightarrow> Id \<rightarrow> nat_rel"
-  apply (refine_vcg rankeq)
+  apply (refine_vcg)
   apply (auto simp only: refine_rel_defs)
   using rankeq
-    by metis
+    by fastforce
 
 lemma is_less_preferred_than_ref:
   shows "(is_less_preferred_than_l, is_less_preferred_than) 
     \<in> Id \<rightarrow> ballot_rel \<rightarrow> Id \<rightarrow> bool_rel"
   apply (refine_vcg)
-  by (auto simp only: refine_rel_defs less_preffered_l_rel_eq)
-
-
-
-
-    
+  by (auto simp only: refine_rel_defs is_less_preferred_than_eq)
 
 
 abbreviation "profile_rel \<equiv> \<langle>ballot_rel\<rangle>list_rel"
@@ -384,8 +229,6 @@ proof (-)
     by (metis in_br_conv  length_map list_rel_pres_length nth_equalityI nth_map) 
 qed
   
-    
-
 lemma profile_type_ref:
   fixes A:: "'a set"
   fixes pl :: "'a Profile_List"
