@@ -43,9 +43,10 @@ theories
  "Compositional_Structures/Elect_Composition_Ref"
 (* "Voting Rules" *)
 
-  "Borda_Rule_Ref"
-  "Pairwise_Majority_Rule_Ref"
-  "Plurality_Rule_Ref"
+  Borda_Rule_Ref
+  Plurality_Rule_Ref
+  Pairwise_Majority_Rule_Ref
+  Blacks_Rule_Ref
 
 
 document_files

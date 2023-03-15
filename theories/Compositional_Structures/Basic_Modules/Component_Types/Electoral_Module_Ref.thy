@@ -1,4 +1,10 @@
-theory Electoral_Module_Ref                      
+(*  File:       Electoral_Module_Ref.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
+
+theory Electoral_Module_Ref
   imports "Social_Choice_Types/Profile_List_Monadic"
           "Social_Choice_Types/Ballot_Refinement"
           "Verified_Voting_Rule_Construction.Electoral_Module"
@@ -24,8 +30,8 @@ abbreviation elec_mod_rel_orig_nres :: "('a \<times> 'a) set \<Rightarrow>
   "elec_mod_rel_orig_nres R \<equiv> \<langle>\<langle>R\<rangle>set_rel , \<langle>\<langle>\<langle>R \<times>\<^sub>r R\<rangle>set_rel\<rangle>list_rel , 
   \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel" 
 
-abbreviation elec_mod_sep_rel where 
-  "elec_mod_sep_rel R \<equiv> [\<lambda>(a, b).
+abbreviation elec_mod_assn where 
+  "elec_mod_assn R \<equiv> [\<lambda>(a, b).
            finite_profile a b]\<^sub>a (alts_set_impl_assn R)\<^sup>k *\<^sub>a 
     (list_assn (hr_comp (ballot_impl_assn R) ballot_rel))\<^sup>k 
         \<rightarrow> (result_impl_assn R)"

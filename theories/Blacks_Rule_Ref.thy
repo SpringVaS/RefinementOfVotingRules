@@ -54,13 +54,28 @@ lemmas opt_blacks_correct_aux = blacks_rule_direct.refine[FCOMP comp_outer]
 
 lemma blacks_direct_correct:
   shows "(uncurry blacks_rule_direct, uncurry (RETURN oo (blacks_rule:: (nat Electoral_Module))))
-  \<in> elec_mod_sep_rel nat_assn"
+  \<in> elec_mod_assn nat_assn"
   unfolding blacks_rule.simps 
   using  opt_blacks_correct_aux  prod_rel_id_simp set_rel_id hr_comp_Id2
   by (metis elector.simps seqcomp_alt_eq)
   
 
 declare blacks_direct_correct [sepref_fr_rules]
+
+theorem black_rule_impl_condorcet:
+  shows "finite_profile A p \<and> condorcet_winner A p w \<Longrightarrow>
+  <(alts_set_impl_assn nat_assn) A hs *
+            (list_assn (ballot_assn nat_assn)) p hp> blacks_rule_direct hs hp 
+  < \<lambda>r. \<exists>\<^sub>Ares. (result_impl_assn (nat_assn)) res r * 
+    \<up> (res = ({w}, A - {w}, {})) >\<^sub>t"
+  using blacks_direct_correct[THEN hfrefD, THEN hn_refineD, of "(A, p)" "(hs, hp)"]
+  apply (clarsimp simp del: condorcet_winner.simps blacks_rule.simps)
+  apply (erule cons_rule[rotated -1])
+  apply (sep_auto simp add : hn_ctxt_def pure_def simp del : condorcet_winner.simps pairwise_majority_rule.simps)
+  apply (sep_auto simp add: hn_ctxt_def simp del : condorcet_winner.simps blacks_rule.simps)
+  using black_condorcet condorcet_consistency3
+   by (metis)
+
 
 export_code convert_list_to_hash_set clist blacks_rule_direct in Scala_imp
 

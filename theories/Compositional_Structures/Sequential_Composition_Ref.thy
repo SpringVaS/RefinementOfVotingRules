@@ -4,7 +4,7 @@ theory Sequential_Composition_Ref
         Refine_Imperative_HOL.Sepref
 begin
 
-definition seq_opt:: "'a Electoral_Module \<Rightarrow> 
+definition seq_opt :: "'a Electoral_Module \<Rightarrow> 
   'a Electoral_Module
   \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> 
   'a Result nres" 
@@ -39,6 +39,5 @@ shows "(uncurry (seq_opt m n), uncurry (RETURN oo (sequential_composition' m n))
 abbreviation sequence_opt
      (infix "\<triangleright>opt" 50) where
   "m \<triangleright>opt n \<equiv> seq_opt m n"
-
 
 end

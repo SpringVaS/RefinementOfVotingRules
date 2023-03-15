@@ -45,7 +45,8 @@ proof (refine_vcg, clarsimp_all)
   using in_br_conv linorder_l_imp_rel linorder_rel_imp_l
     by metis
 qed
-  
+
+
 
 lemma "linear_order_on {1::nat,2} {(2::nat,1::nat), (2::nat,2::nat)
 , (1::nat,1::nat)}"
@@ -53,118 +54,15 @@ lemma "linear_order_on {1::nat,2} {(2::nat,1::nat), (2::nat,2::nat)
     refl_on_def trans_def antisym_def total_on_def 
   by auto
 
+text \<open>We attempted to show a completeness lemma for our refinement of linear order relations
+      to lists. We have not completed it. This lemma sketches, that the abstraction relation is
+      not empty.\<close>
+
 lemma "([1::nat,2], {(2::nat,1::nat), (2::nat,2::nat)
 , (1::nat,1::nat)}) \<in> ballot_rel"
   unfolding in_br_conv well_formed_pl_def pl_\<alpha>_def
   is_less_preferred_than_l.simps by auto
 
-
-term "(rank bar)`A"
-
-lemma fintarg:
-  assumes fina: "finite A" and
-          lobar: "linear_order_on A bar"
-  shows "finite {b . (x, b) \<in> bar}"
-  proof -
-    from fina have finbound: "finite (A \<times> A)"
-      by blast   
-    from lobar fina have barbound: " bar \<subseteq> (A \<times> A)"
-      unfolding  linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by simp
-    from barbound have conssub: "{b . (x, b) \<in> bar} \<subseteq> (A)"
-    by blast
-    from lobar fina have finbar: "finite bar"
-      unfolding  linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-      by (metis finite_SigmaI finite_subset)
-    from conssub fina show ?thesis
-      using finite_subset by fastforce
-  qed
-
-theorem rankeq_imp_ref:
-  fixes A :: "'a set" and
-        l :: "'a Preference_List" and
-        r :: "'a Preference_Relation"
-  assumes fina : "finite A"
-  assumes wf: "well_formed_pl l"
-  assumes lol: "linear_order_on_l A l" and
-          lor: "linear_order_on A r"
-  assumes ranksame: "\<forall> a \<in> A. rank_l l a = rank r a"
-  shows "r = pl_\<alpha> l"
-proof (unfold pl_\<alpha>_def, safe, clarsimp_all, safe)
-  fix a b :: 'a
-  assume tupler: "(a, b) \<in> r"
-  from tupler lor have aA: "a \<in> A"
-    unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-    by blast
-  from lol have "set l = A" unfolding losimp by simp
-  from aA this show "a \<in> set l" by simp
-next
-  fix a b :: 'a
-  assume tupler: "(a, b) \<in> r"
-  from tupler lor have aA: "b \<in> A"
-    unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-    by blast
-  from lol have "set l = A" unfolding losimp by simp
-  from aA this show "b \<in> set l" by simp
-next
-  fix a b :: 'a
-  assume tupler: "(a, b) \<in> r"
-  from lol have Al: "set l = A" unfolding losimp by simp
-  from tupler lor have aA: "a \<in> A"
-    unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-    by blast
-  from tupler lor have bA: "b \<in> A"
-    unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-    by blast
-  from fina lor have "finite r"
-    unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-    using finite_subset
-    by blast
-  have finbs: "finite {b. (a, b) \<in> r}" using fina lor fintarg
-    by fastforce
-  from tupler lor have "{ba. (b, ba) \<in> r} \<subseteq> {b. (a, b) \<in> r}"
-    unfolding rank.simps above_def
-    unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
-              trans_def antisym_def total_on_def
-    by blast
-  from this have rc: "rank r b \<le> rank r a"
-    unfolding rank.simps above_def using card_mono finbs
-    by blast
-  from ranksame aA have rsa: "rank r a = rank_l l a"
-    by simp
-  from ranksame bA have rsb: "rank r b = rank_l l b"
-    by simp
-  from rc aA bA show "index l b \<le> index l a" unfolding rsa rsb
-    rank_l.simps Al by auto
-next
-  fix a b :: 'a
-  assume al: "a \<in> set l"
-  assume bl: "b \<in> set l"
-  assume icmp: "index l b \<le> index l a"
-  from lol have Al: "set l = A" unfolding losimp by simp
-  from al bl have eitheror: "(a,b) \<in> r \<or> (b,a) \<in> r"
-    using lor
-    unfolding Al linear_order_on_def total_on_def
-    by (metis partial_order_onD(1) refl_onD)
-  from al bl icmp have "rank_l l b \<le> rank_l l a"
-    unfolding rank_l.simps by auto
-  from this al bl ranksame have rankcomp: "rank r b \<le> rank r a"
-    unfolding Al by auto
-  from this show "(a,b) \<in> r"
-  proof (unfold rank.simps above_def)
-    assume cardcomp: "card {ba. (b, ba) \<in> r} \<le> card {b. (a, b) \<in> r}"
-    have fin1: "finite {ba. (b, ba) \<in> r}" using fintarg
-        lor fina
-      by metis
-    have fin2: "finite {b. (a, b) \<in> r}" using fintarg
-        lor fina
-      by metis
-    from fin1 fin2 cardcomp eitheror show ?thesis
-    using lor unfolding linear_order_on_def partial_order_on_def antisym_def
-    preorder_on_def trans_def
-    by (smt (verit, del_insts) Collect_mono card_seteq mem_Collect_eq refl_onD refl_on_domain)
-  qed
-qed
 
 abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"
 

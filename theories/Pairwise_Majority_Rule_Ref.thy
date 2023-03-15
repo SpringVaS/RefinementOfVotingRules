@@ -1,3 +1,11 @@
+(*  File:       Pairwise_Majority_Rule_Ref.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
+
+section \<open>Refined Plurality Rule\<close>
+
 theory Pairwise_Majority_Rule_Ref
   imports "Verified_Voting_Rule_Construction.Pairwise_Majority_Rule"
           "Compositional_Structures/Basic_Modules/Condorcet_Module_Ref"  
@@ -5,26 +13,39 @@ theory Pairwise_Majority_Rule_Ref
 begin
 
 
-sepref_definition pairwise_majority_rule_direct is "uncurry (elector_opt (RETURN oo condorcet))"
-  :: "elec_mod_sep_rel nat_assn"
+sepref_definition pairwise_majority_rule_direct_imp is 
+  "uncurry (elector_opt (RETURN oo (condorcet)))" :: "elec_mod_assn nat_assn"
   unfolding elector_opt_def hs.fold_custom_empty
   apply sepref_dbg_keep
   done
 
-lemmas opt_seq_pmc = elector_opt_correct[of condorcet]
-lemmas opt_seq_pmct_aux = pairwise_majority_rule_direct.refine[FCOMP opt_seq_pmc]
+lemmas opt_seq_pmc = elector_opt_correct[OF condorcet_sound]
+lemmas opt_seq_pmct_aux = pairwise_majority_rule_direct_imp.refine[FCOMP opt_seq_pmc]
 
 lemma opt_pmc_correct:
-  shows "(uncurry pairwise_majority_rule_direct, 
-          uncurry (RETURN oo (pairwise_majority_rule:: (nat Electoral_Module))))
-  \<in> elec_mod_sep_rel nat_assn"
-  unfolding pairwise_majority_rule.simps
-  using  condorcet_sound opt_seq_pmct_aux  prod_rel_id_simp set_rel_id hr_comp_Id2
+  shows "(uncurry pairwise_majority_rule_direct_imp, uncurry (RETURN oo (pairwise_majority_rule:: (nat Electoral_Module))))
+  \<in> elec_mod_assn nat_assn"
+  using  opt_seq_pmct_aux  prod_rel_id_simp set_rel_id hr_comp_Id2
+  unfolding pairwise_majority_rule.simps elector.simps seqcomp_alt_eq
   by metis
 
 declare opt_pmc_correct [sepref_fr_rules]
 
+theorem pmc_impl_condorcet:
+  shows "finite_profile A p \<and> condorcet_winner A p w \<Longrightarrow>
+  <(alts_set_impl_assn nat_assn) A hs *
+            (list_assn (ballot_assn nat_assn)) p hp> pairwise_majority_rule_direct_imp hs hp 
+  < \<lambda>r. \<exists>\<^sub>Ares. (result_impl_assn (nat_assn)) res r * 
+    \<up> (res = ({w}, A - {w}, {})) >\<^sub>t"
+  using opt_pmc_correct[THEN hfrefD, THEN hn_refineD, of "(A, p)" "(hs, hp)"]
+  apply (clarsimp simp del: condorcet_winner.simps pairwise_majority_rule.simps)
+  apply (erule cons_rule[rotated -1])
+  apply (sep_auto simp add : hn_ctxt_def pure_def simp del : condorcet_winner.simps pairwise_majority_rule.simps)
+  apply (sep_auto simp add: hn_ctxt_def simp del : condorcet_winner.simps pairwise_majority_rule.simps)
+  using condorcet_condorcet condorcet_consistency3
+  by (metis)
 
-export_code clist convert_list_to_hash_set pairwise_majority_rule_direct in Scala_imp
+export_code clist convert_list_to_hash_set pairwise_majority_rule_direct_imp in Scala_imp
+
 
 end

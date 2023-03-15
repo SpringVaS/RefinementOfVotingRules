@@ -1,3 +1,8 @@
+(*  File:       Elect_Composition_Ref.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
 theory Elect_Composition_Ref
   imports "Basic_Modules/Elect_Module_Ref"
           "Verified_Voting_Rule_Construction.Elect_Composition"

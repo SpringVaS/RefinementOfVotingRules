@@ -1,3 +1,8 @@
+(*  File:       Condorcet_Module_Ref.thy
+    Copyright   2022  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
 theory Condorcet_Module_Ref
   imports "Verified_Voting_Rule_Construction.Condorcet_Module"
            "Component_Types/Elimination_Module_Ref"
@@ -72,18 +77,18 @@ sepref_definition condorcet_elim_sep is
   unfolding condorcet_ref_def  max_eliminator_ref_def condorcet_score_ref_def 
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
-  apply (rewrite in "FOREACH _ _ \<hole>" hm.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ \<hole>" hs.fold_custom_empty)
-  apply (rewrite in "RETURN ({}, {}, \<hole>)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ({}, \<hole>, _)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ( \<hole>, _, _)" hs.fold_custom_empty) 
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (\<hole>, _, rej) 
+  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hm.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
+  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
+  apply (rewrite in "RETURN ({}, {}, rewrite_HOLE)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN ({}, rewrite_HOLE, _)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty) 
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (rewrite_HOLE, _, rej) 
                                   else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, \<hole>, rej) 
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, rewrite_HOLE, rej) 
                                   else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) 
-                                    else RETURN (\<hole>, rej, def))" hs.fold_custom_empty)
+                                    else RETURN (rewrite_HOLE, rej, def))" hs.fold_custom_empty)
   apply sepref_dbg_keep
   done
 
@@ -92,7 +97,7 @@ lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_corr
 
 lemma condorcet_elim_sep_correct:
   shows "(uncurry condorcet_elim_sep, uncurry (RETURN \<circ>\<circ> condorcet))
-    \<in> elec_mod_sep_rel nat_assn"
+    \<in> elec_mod_assn nat_assn"
   using cond_ref_correct_aux
   set_rel_id hr_comp_Id2 by simp
 

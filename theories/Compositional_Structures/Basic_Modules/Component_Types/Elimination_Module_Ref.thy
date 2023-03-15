@@ -1,3 +1,8 @@
+(*  File:       Elimination_Module_Ref.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
 section \<open>Elimination Module\<close>
 
 theory Elimination_Module_Ref
@@ -155,7 +160,7 @@ lemma elimination_module_ref_correct:
   and r :: "Threshold_Relation"
     assumes fina: "finite A"  and
   "(pl, pr) \<in> profile_rel"
-shows "elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le>
+  shows "elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le>
         SPEC (\<lambda> em. em = (elimination_module efn t r A pr))"
   by (unfold elimination_module_ref_def, refine_vcg eliminate_correct,
     auto simp add: fina)
@@ -184,10 +189,9 @@ proof (refine_vcg fina prel compute_scores_correct[where efn = efn] , safe)
     unfolding comp_apply SPEC_eq_is_RETURN
     by force
 next
-  note elimination_module_ref_correct
-  thus "elimination_module_ref (pre_computed_map efn A pr) t r A pl
+  show "elimination_module_ref (pre_computed_map efn A pr) t r A pl
          \<le> SPEC (\<lambda>em. em = elimination_module efn t r A pr)"
-    using fina prel
+    using elimination_module_ref_correct fina prel
     by blast
 qed
 
@@ -198,20 +202,13 @@ lemma scoremax_correct:
   and pr :: "'a Profile"
   shows "scoremax A (pre_computed_map efn A pr)
  \<le> SPEC (\<lambda> max. max = Max {(efn a A pr) | a. a \<in> A})"
-proof (unfold scoremax_def pre_computed_map_def)
-  show "FOREACH A
-     (\<lambda>x max.
-         ASSERT (x \<in> dom ((\<lambda>a. Some (efn a A pr)) |` A)) \<bind>
-         (\<lambda>_. let scx = the (((\<lambda>a. Some (efn a A pr)) |` A) x)
-               in if max < scx then RETURN scx else RETURN max))
-     0
-    \<le> SPEC (\<lambda>max. max = Max {efn a A pr |a. a \<in> A})"
-    apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (efn a A pr) \<le> max)
+  unfolding scoremax_def pre_computed_map_def
+  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (efn a A pr) \<le> max)
       \<and> ((\<exists>a \<in> (A - it). max = (efn a A pr)) \<or> max = 0))"], clarsimp_all simp add:  fina nempa,
          auto)
   using max_score_in[where A= A and f = "(\<lambda> x. efn x A pr)"] fina nempa
             score_bounded[where A= A and f = "(\<lambda> x. efn x A pr)"] 
-  apply (metis DiffI dual_order.trans order_less_imp_le)
+  subgoal by (metis DiffI dual_order.trans order_less_imp_le)
   using max_score_in[where A= A and f = "(\<lambda> x. efn x A pr)"] fina nempa
             score_bounded[where A= A and f = "(\<lambda> x. efn x A pr)"] 
 proof ((metis (mono_tags, lifting) order_antisym_conv))
@@ -222,7 +219,6 @@ proof ((metis (mono_tags, lifting) order_antisym_conv))
     using Max_singleton by blast
   from eq this  show " Max {efn a A pr |a. a \<in> A} = 0"
     by simp
-qed
 qed
 
 subsection \<open>Common Eliminators\<close>
@@ -257,9 +253,6 @@ proof (-)
        \<le> SPEC (\<lambda>em. em = elimination_module efn t (<) A pr) "
    using fina prel elimination_module_ref_correct by blast
 qed
-
-
-
 
 lemma max_eliminator_ref_correct:
   fixes A :: "'a set"

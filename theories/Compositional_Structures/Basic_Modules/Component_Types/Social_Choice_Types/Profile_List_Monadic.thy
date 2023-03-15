@@ -1,10 +1,14 @@
+(*  File:       Profile_List_Monadic.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
 theory Profile_List_Monadic
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
     Ballot_Refinement
   
 begin
-
 
 fun win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "win_count_l p a = fold (\<lambda>x ac. 
@@ -773,6 +777,15 @@ proof (standard, standard, rename_tac a b)
     by simp
 qed
 
+lemma prefer_count_l_eq:
+  fixes pl :: "'a Profile_List"
+  fixes pr :: "'a Profile"
+  assumes prel: "(pl, pr) \<in> profile_rel"
+  shows "prefer_count_l pl a b = prefer_count pr a b"
+  using prefer_count_l_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD,
+      where x2 = pl and x'2 = pr and x1 = a and x'1 = a and x = b and x' = b]
+  assms by auto
+
 
 lemma prefer_count_monadic_imp_ref_l:
   shows "(prefer_count_monadic_imp, RETURN ooo prefer_count_l)
@@ -1069,7 +1082,7 @@ declare limit_sep.refine [sepref_fr_rules]
 sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" :: 
   "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn )\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn id_assn )"
   unfolding limit_profile_l_def 
-  apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
+  apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" HOL_list.fold_custom_empty)
   apply sepref_dbg_keep
   done
 
@@ -1120,14 +1133,10 @@ lemma limit_profile_sound_sep:
             (list_assn (ballot_assn nat_assn)) p hp> limit_profile_sep hs hp 
   < \<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp * 
                 (list_assn (ballot_assn nat_assn)) res r * \<up> (finite_profile s res) >\<^sub>t"
-  apply (safe)
-  apply (clarsimp)
-proof -
+proof (clarsimp)
   assume sA: "s \<subseteq> A"
   assume fina: "finite A"
   assume prof: "profile A p"
-  note limit_profile_sep_correct[THEN hfrefD, THEN hn_refineD, of "(s, p)" "(hs, hp)", simplified]
-  limit_profile_sound[where S = s and p = p and A = A] 
   from sA fina have fins: "finite s"
     using rev_finite_subset by blast
   have postapp: "\<And>x. (\<exists>\<^sub>Axa. alts_set_impl_assn nat_assn s hs *
@@ -1137,7 +1146,8 @@ proof -
                 \<up> (xa = map (limit s) p)) \<Longrightarrow>\<^sub>A 
         ( \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
              list_assn (ballot_assn nat_assn) res x * true *
-             \<up> (finite_profile s res))" using limit_profile_sound[where S = A and p = p and A = s] 
+             \<up> (finite_profile s res))" 
+    using limit_profile_sound[where S = A and p = p and A = s] 
     apply sep_auto
     using fins apply blast
     by (simp add: fina prof sA)
