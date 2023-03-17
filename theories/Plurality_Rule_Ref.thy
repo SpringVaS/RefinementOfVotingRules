@@ -33,7 +33,7 @@ lemmas opt_seq_plur = elector_opt_correct[OF plurmod_sound]
 lemmas opt_plur_correct_aux = plurality_rule_direct_sep.refine[FCOMP opt_seq_plur]
 
 lemma opt_plur_correct:
-  shows "(uncurry plurality_rule_direct_sep, uncurry (RETURN oo (plurality_rule:: (nat Electoral_Module))))
+  shows "(uncurry plurality_rule_direct_sep, uncurry (RETURN oo (plurality_rule)))
   \<in> elec_mod_assn nat_assn"
   unfolding plurality_rule.simps 
   using  opt_plur_correct_aux  

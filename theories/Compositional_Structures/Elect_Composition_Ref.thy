@@ -12,7 +12,7 @@ begin
 definition elector_opt :: "('a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres) \<Rightarrow> 
   'a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Result nres" where
   "elector_opt m A p \<equiv> do { 
-      (e, r, d) <- m A p;
+      (e, r, d) \<leftarrow> m A p;
       RETURN (e \<union> d,r,{}) }"
 
 lemma elector_opt_correct: 

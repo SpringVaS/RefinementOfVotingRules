@@ -34,7 +34,7 @@ qed
 
 fun elect_module_ref :: "'a Electoral_Module_Ref" where
   "elect_module_ref A p = do {
-   B <- aux_set_copy A;
+   B \<leftarrow> aux_set_copy A;
    RETURN (B,{},{})
 }"
 

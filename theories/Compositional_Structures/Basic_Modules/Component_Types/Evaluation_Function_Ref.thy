@@ -44,7 +44,7 @@ lemma evalfeq:
      fina: "finite A" and 
      pref: "(pl, pr) \<in> profile_rel" and
      evalref: "(refn, efn) \<in> evalf_rel"
-   shows "refn a A pl \<le> SPEC (\<lambda>score. score = (efn a A pr))"
+   shows "\<forall> a \<in> A. refn a A pl \<le> SPEC (\<lambda>score. score = (efn a A pr))"
 proof (-)
   from evalref have efrel: "(refn, (\<lambda> a A pro. SPEC (\<lambda> sc. sc = efn a A pro))) \<in> efunrel"
   unfolding evalf_rel_def by simp
@@ -68,8 +68,8 @@ definition condorcet_rating_mon_aux :: "'a Evaluation_Function_Ref
   FOREACH A (\<lambda> x b.
       if (x = w) then RETURN b
       else do {
-      sw <- f w A p;
-      sl <- f x A p;
+      sw \<leftarrow> f w A p;
+      sl \<leftarrow> f x A p;
       RETURN (b \<and> (sl < sw))}) (True)"
          
 subsection \<open>Theorems\<close>
@@ -132,7 +132,7 @@ theorem non_cond_winner_not_max_eval_ref:
     winnerl: "condorcet_winner_l A pl w" and
     linA: "l \<in> A" and
     loser: "w \<noteq> l"
-  shows "do {sl <- eref l A pl; RETURN (sl < Max {efn a A pr | a. a \<in> A})} \<le> RETURN True"  
+  shows "do {sl \<leftarrow> eref l A pl; RETURN (sl < Max {efn a A pr | a. a \<in> A})} \<le> RETURN True"  
 proof -
   from winnerl have winA: "w \<in> A" by simp
   from fina profl profrel have f_prof: "finite_profile A pr" 

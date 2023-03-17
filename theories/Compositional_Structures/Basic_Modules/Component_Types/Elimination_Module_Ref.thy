@@ -21,7 +21,7 @@ text \<open>
 
 subsection \<open>Definition\<close>
 
-type_synonym 'a Scores_Map = "('a \<rightharpoonup> nat)"
+type_synonym 'a Scores_Map = "'a \<rightharpoonup> nat"
 
 definition init_map :: "'a set \<Rightarrow> 'a Scores_Map nres" where 
 "init_map A \<equiv>
@@ -41,7 +41,7 @@ lemma empty_map:
   by (simp add: it_step_insert_iff restrict_map_insert)
 
 definition pre_compute_scores :: "'a Evaluation_Function_Ref \<Rightarrow>
- 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
+ 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
   where "pre_compute_scores ef A p \<equiv>
   FOREACH A 
     (\<lambda>x m. do {
@@ -84,7 +84,7 @@ definition elimination_module_ref ::
 Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref " 
   where                              
   "elimination_module_ref scores threshold r A p \<equiv> do {
-    (rej, def) <- eliminate scores threshold r A;
+    (rej, def) \<leftarrow> eliminate scores threshold r A;
    if (def = {}) then
        \<comment> \<open>Here rej will be a copy of A\<close>
      RETURN ({},{},rej)
@@ -93,8 +93,8 @@ Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref "
   }"
 
 
-definition pre_computed_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> ('a \<rightharpoonup> nat)"  where
-  "pre_computed_map e Alts pro \<equiv> ((\<lambda>a. Some (e a Alts pro))|`Alts )"
+definition scores_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Scores_Map"  where
+  "scores_map e Alts pro \<equiv> ((\<lambda>a. Some (e a Alts pro))|`Alts )"
 
 
 lemma eliminate_correct:
@@ -104,10 +104,10 @@ lemma eliminate_correct:
   and t :: "Threshold_Value"
   and r :: "Threshold_Relation"
   assumes  fina: "finite A" 
-  shows "eliminate (pre_computed_map efn A p) t r A
+  shows "eliminate (scores_map efn A p) t r A
     \<le> SPEC (\<lambda> (rej,def). 
     (rej,def) = ((elimination_set efn t r A p), A - (elimination_set efn t r A p)))"
-  unfolding pre_computed_map_def eliminate_def
+  unfolding scores_map_def eliminate_def
   by (refine_vcg FOREACH_rule
       [where I = "\<lambda> it (rej, def). rej = ((elimination_set efn t r A p) - it)
                 \<and> def = (A - it) - (elimination_set efn t r A p)"],auto simp add: fina)
@@ -124,8 +124,8 @@ lemma compute_scores_correct:
      prel: "(pl, pr) \<in> profile_rel" and
   efnrel:  "\<forall>a \<in> A. efnref a A pl \<le> SPEC (\<lambda>score. score = (efn a A pr))"
   shows "pre_compute_scores efnref A pl \<le>
-   SPEC(\<lambda> map. map = (pre_computed_map efn A pr))"
-  unfolding pre_compute_scores_def pre_computed_map_def
+   SPEC(\<lambda> map. map = (scores_map efn A pr))"
+  unfolding pre_compute_scores_def scores_map_def
 proof (refine_vcg FOREACH_rule[where I = 
         "(\<lambda>it r. r = (\<lambda> a. Some (efn a A pr))|`(A - it))"],
         clarsimp_all simp add: fina)
@@ -160,7 +160,7 @@ lemma elimination_module_ref_correct:
   and r :: "Threshold_Relation"
     assumes fina: "finite A"  and
   "(pl, pr) \<in> profile_rel"
-  shows "elimination_module_ref (pre_computed_map efn A pr) t r A pl \<le>
+  shows "elimination_module_ref (scores_map efn A pr) t r A pl \<le>
         SPEC (\<lambda> em. em = (elimination_module efn t r A pr))"
   by (unfold elimination_module_ref_def, refine_vcg eliminate_correct,
     auto simp add: fina)
@@ -178,7 +178,7 @@ theorem elimination_module_ref_correct_pc:
   and prel: "(pl, pr) \<in> profile_rel"
   and efnrel: "(efn_ref, RETURN ooo efn) \<in> efunrel"
 shows "(do {
-            score_map <- (pre_compute_scores efn_ref A pl);  
+            score_map \<leftarrow> (pre_compute_scores efn_ref A pl);  
             elimination_module_ref score_map t r A pl}) \<le>
             SPEC (\<lambda> em. em = (elimination_module efn t r A pr))"
 proof (refine_vcg fina prel compute_scores_correct[where efn = efn] , safe)
@@ -189,7 +189,7 @@ proof (refine_vcg fina prel compute_scores_correct[where efn = efn] , safe)
     unfolding comp_apply SPEC_eq_is_RETURN
     by force
 next
-  show "elimination_module_ref (pre_computed_map efn A pr) t r A pl
+  show "elimination_module_ref (scores_map efn A pr) t r A pl
          \<le> SPEC (\<lambda>em. em = elimination_module efn t r A pr)"
     using elimination_module_ref_correct fina prel
     by blast
@@ -200,9 +200,9 @@ lemma scoremax_correct:
   assumes fina: "finite A" and nempa: "A \<noteq> {}"
   fixes efn :: "'a Evaluation_Function"
   and pr :: "'a Profile"
-  shows "scoremax A (pre_computed_map efn A pr)
+  shows "scoremax A (scores_map efn A pr)
  \<le> SPEC (\<lambda> max. max = Max {(efn a A pr) | a. a \<in> A})"
-  unfolding scoremax_def pre_computed_map_def
+  unfolding scoremax_def scores_map_def
   apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (efn a A pr) \<le> max)
       \<and> ((\<exists>a \<in> (A - it). max = (efn a A pr)) \<or> max = 0))"], clarsimp_all simp add:  fina nempa,
          auto)
@@ -233,7 +233,7 @@ definition max_eliminator_ref ::  "'a Scores_Map \<Rightarrow>
     if (A = {}) then
       RETURN ({},{},{})
     else do {
-    t <- (scoremax A e); 
+    t \<leftarrow> (scoremax A e); 
     (less_eliminator_ref e t A p)
  }"
 
@@ -245,11 +245,11 @@ lemma less_eliminator_ref_correct:
   and t :: "Threshold_Value"
   assumes fina: "finite A" 
   and prel: "(pl, pr) \<in> profile_rel"
-  shows "(less_eliminator_ref (pre_computed_map efn A pr) t A pl) \<le>
+  shows "(less_eliminator_ref (scores_map efn A pr) t A pl) \<le>
             SPEC (\<lambda> em. em = (less_eliminator efn t A pr))"
   unfolding less_eliminator_ref_def less_eliminator.simps
 proof (-)
- show "elimination_module_ref (pre_computed_map efn A pr) t (<) A pl
+ show "elimination_module_ref (scores_map efn A pr) t (<) A pl
        \<le> SPEC (\<lambda>em. em = elimination_module efn t (<) A pr) "
    using fina prel elimination_module_ref_correct by blast
 qed
@@ -261,32 +261,35 @@ lemma max_eliminator_ref_correct:
   and pl :: "'a Profile_List"
   assumes fina: "finite A"
   assumes prel: "(pl, pr) \<in> profile_rel"
-  shows "(max_eliminator_ref (pre_computed_map efn A pr) A pl
+  shows "(max_eliminator_ref (scores_map efn A pr) A pl
           \<le> SPEC (\<lambda> em. em = max_eliminator efn A pr))"
-proof (unfold max_eliminator_ref_def, refine_vcg)
-  show "A = {} \<Longrightarrow> ({}, {}, {}) = max_eliminator efn A pr" by simp
-next
-  assume nempa: "A \<noteq> {}"
-  from fina nempa have scoremax_ins: "scoremax A (pre_computed_map efn A pr) \<le> SPEC (\<lambda>max. max = Max {efn a A pr |a. a \<in> A})"
-    using scoremax_correct by blast
-  have less_elim_ins: " (\<And>x. x = Max {efn a A pr |a. a \<in> A} \<Longrightarrow>
-          less_eliminator_ref (pre_computed_map efn A pr) x A pl
-          \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn a A pr |a. a \<in> A}) A pr))"
-    using fina prel less_eliminator_ref_correct[where A = A and pl = pl and pr = pr and efn = efn]
-    by fastforce
-  show "scoremax A (pre_computed_map efn A pr)
-    \<le> SPEC (\<lambda>t. less_eliminator_ref (pre_computed_map efn A pr) t A pl
-                 \<le> SPEC (\<lambda>em. em = max_eliminator efn A pr))"
-    unfolding max_eliminator.simps 
-    using scoremax_ins less_elim_ins  SPEC_cons_rule[where m = "scoremax A (pre_computed_map efn A pr)"
-      and \<Phi> = "(\<lambda>max. max = Max {efn a A pr |a. a \<in> A})"
-      and \<Psi> = "(\<lambda> t. less_eliminator_ref (pre_computed_map efn A pr) t A pl
-                 \<le> SPEC (\<lambda>em. em = less_eliminator efn (Max {efn a A pr |a. a \<in> A}) A pr))"]
-    by blast
+  apply (unfold max_eliminator_ref_def max_eliminator.simps less_eliminator_ref_def)
+  apply (refine_vcg scoremax_correct fina )
+   apply (simp)
+  unfolding less_eliminator.simps using elimination_module_ref_correct assms
+  by fastforce 
+  
+ 
+lemma max_eliminator_ref_correct_pc:
+  fixes A :: "'a set"
+  fixes efn :: "'a Evaluation_Function"
+  and pr :: "'a Profile"
+  and pl :: "'a Profile_List"
+  and scores :: "'a Scores_Map"
+  assumes fina: "finite A"
+  and prel: "(pl, pr) \<in> profile_rel"
+  and mapc: "score_map \<le> SPEC (\<lambda> scores. scores = scores_map efn A pr)"  
+  shows "(score_map \<bind> (\<lambda> scores. max_eliminator_ref scores A pl))
+          \<le> SPEC (\<lambda> em. em = max_eliminator efn A pr)"
+proof (refine_vcg mapc)
+  fix map :: "'a Scores_Map"
+  assume perfmap: "map = scores_map efn A pr"
+  show "max_eliminator_ref map A pl \<le> SPEC (\<lambda>em. em = max_eliminator efn A pr)"
+    unfolding perfmap using max_eliminator_ref_correct[OF fina prel] .
 qed
 
 
-theorem max_eliminator_ref_correct_pc:
+theorem max_eliminator_ref_correct_default:
   fixes A :: "'a set"
   and efn :: "'a Evaluation_Function"
   and efn_ref :: "'a Evaluation_Function_Ref"
@@ -297,21 +300,16 @@ theorem max_eliminator_ref_correct_pc:
   assumes fina: "finite A" 
   and prel: "(pl, pr) \<in> profile_rel"
   and efnrel: "\<forall>a \<in> A. efn_ref a A pl \<le> SPEC (\<lambda> score. score = efn a A pr)"
-shows "(do {
-            score_map <- (pre_compute_scores efn_ref A pl);  
+  shows "(do {
+            score_map \<leftarrow> (pre_compute_scores efn_ref A pl);  
             max_eliminator_ref score_map A pl}) \<le>
             SPEC (\<lambda> em. em = (max_eliminator efn A pr))"
-proof (refine_vcg fina prel compute_scores_correct[where efn = efn] efnrel , safe)
-  note max_eliminator_ref_correct
-  thus "max_eliminator_ref (pre_computed_map efn A pr) A pl
-         \<le> SPEC (\<lambda>em. em = max_eliminator efn A pr)"
-    using fina prel
-    by blast
-qed
+  by (refine_vcg compute_scores_correct max_eliminator_ref_correct_pc assms)
+
   
 
 
-fun leq_eliminator_ref :: "'a Scores_Map \<Rightarrow> Threshold_Value \<Rightarrow>
+definition leq_eliminator_ref :: "'a Scores_Map \<Rightarrow> Threshold_Value \<Rightarrow>
                             'a Electoral_Module_Ref" where
   "leq_eliminator_ref e t A p = elimination_module_ref e t (\<le>) A p"
 

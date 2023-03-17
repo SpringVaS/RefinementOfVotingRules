@@ -32,7 +32,7 @@ definition borda_score_opt_mon :: "'a::{default, heap, hashable} Evaluation_Func
   "borda_score_opt_mon a A p =
      nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
         do {
-         ra <- index_mon x a;
+         ra \<leftarrow> index_mon x a;
          let bordac = length x - ra;
          RETURN  (ac + bordac) 
     }) (0::nat)"
@@ -44,13 +44,13 @@ sepref_definition opt_bsc is "uncurry2 borda_score_opt_mon"
 
 definition borda_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
   "borda_ref A pl \<equiv> do {
-   scores <- (pre_compute_scores borda_score_mon A pl);
+   scores \<leftarrow> (pre_compute_scores borda_score_mon A pl);
    max_eliminator_ref scores A pl
 }"
 
 definition borda_ref_opt :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
   "borda_ref_opt A pl \<equiv> do {
-   scores <- (pre_compute_scores borda_score_opt_mon A pl);
+   scores \<leftarrow> (pre_compute_scores borda_score_opt_mon A pl);
    max_eliminator_ref scores A pl
 }"
 
@@ -154,17 +154,16 @@ proof (intro frefI nres_relI, clarsimp simp del: max_eliminator.simps, rename_ta
   assume prel: " (pl, pr) \<in> profile_rel"
   assume fina: "finite A"
   show "borda_ref A pl \<le> RETURN (max_eliminator borda_score A pr)"
-    apply (unfold borda_ref_def RETURN_SPEC_conv)
-    using borda_score_correct max_eliminator_ref_correct_pc fina prel
-    by metis
+    unfolding borda_ref_def RETURN_SPEC_conv
+    by (refine_vcg borda_score_correct max_eliminator_ref_correct_default fina prel)
 qed
 
 definition pre_compute_borda_scores :: "'a set
-   \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
+   \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
   where "pre_compute_borda_scores A pl \<equiv> 
   if (op_set_is_empty A) then RETURN Map.empty else
   do {
-   zeromap:: 'a Scores_Map  <- init_map A;
+   zeromap:: 'a Scores_Map  \<leftarrow> init_map A;
   nfoldli pl (\<lambda>_. True) 
     (\<lambda>ballot map. 
        nfoldli ballot (\<lambda>_. True) 
@@ -184,36 +183,14 @@ proof (intro frefI nres_relI, clarsimp simp del: max_eliminator.simps, rename_ta
   assume prel: " (pl, pr) \<in> profile_rel"
   assume fina: "finite A"
   assume profp: "profile A pr"
-  show "borda_ref_opt A pl \<le> RETURN (max_eliminator borda_score A pr)"
-    apply (unfold borda_ref_opt_def RETURN_SPEC_conv)
-    using borda_score_opt_correct max_eliminator_ref_correct_pc fina profp prel
-    by metis
+  show "borda_ref_opt A pl \<le> RETURN (max_eliminator borda_score A pr)"  unfolding borda_ref_opt_def RETURN_SPEC_conv
+   by (refine_vcg borda_score_opt_correct max_eliminator_ref_correct_default fina profp prel)
 qed
-
-
-sepref_definition borda_elim_sep is
-  "uncurry borda_ref":: 
-    "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
-  unfolding borda_ref_def  max_eliminator_ref_def borda_score_mon_def sum_impl_def
-    less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
-    pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
-  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hm.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
-  apply (rewrite in "RETURN ({}, {}, rewrite_HOLE)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ({}, rewrite_HOLE, _)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty) 
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (rewrite_HOLE, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, rewrite_HOLE, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (rewrite_HOLE, rej, def))" hs.fold_custom_empty)
-  apply sepref_dbg_keep
-  done
 
 sepref_definition borda_elim_sep_opt is
   "uncurry borda_ref_opt":: 
-    "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
+    "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn nat_assn)"
   unfolding borda_ref_opt_def  max_eliminator_ref_def borda_score_opt_mon_def sum_impl_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
@@ -229,18 +206,6 @@ sepref_definition borda_elim_sep_opt is
   apply sepref_dbg_keep
   done
 
-
-lemma  borda_elim_sep_correct:
-  shows "(uncurry borda_elim_sep, uncurry (RETURN \<circ>\<circ> borda))
-    \<in> [\<lambda>(a, b).
-           finite
-            a]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a
-                 (list_assn
-                   (hr_comp (ballot_impl_assn nat_assn)
-                     ballot_rel))\<^sup>k \<rightarrow> result_impl_assn nat_assn"
-  using borda_elim_sep.refine[FCOMP borda_ref_correct, THEN hfrefD] apply (intro hfrefI)
-  using set_rel_id hr_comp_Id2 by auto
-
 lemma  borda_elim_sep_opt_correct:
   shows "(uncurry borda_elim_sep_opt, uncurry (RETURN \<circ>\<circ> borda))
     \<in> [\<lambda>(a, b).
@@ -252,7 +217,7 @@ lemma  borda_elim_sep_opt_correct:
   using borda_elim_sep_opt.refine[FCOMP borda_ref_opt_correct, THEN hfrefD] apply (intro hfrefI)
   using set_rel_id hr_comp_Id2 by auto
 
-
+                      
 declare borda_elim_sep_opt_correct [sepref_fr_rules]
 
 

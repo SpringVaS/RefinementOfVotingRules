@@ -9,7 +9,7 @@ session Modular_Voting_Rule_Refinement = Sepref_IICF +
     Refinement of Modular Voting Rules
   "
   
-options [timeout = 1000, document = pdf, document_output = "output"]
+options [timeout = 10000, document = pdf, document_output = "output"]
 
 sessions
   "Verified_Voting_Rule_Construction"

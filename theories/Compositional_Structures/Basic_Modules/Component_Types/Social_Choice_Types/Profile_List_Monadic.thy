@@ -103,7 +103,6 @@ lemma index_mon_impl:
   apply clarsimp
   apply (refine_vcg index_mon_correct) by simp
 
-lemmas hallo = index_sep.refine[FCOMP index_mon_impl]
 
 lemma arl_index_nc_correct: "(uncurry index_sep, uncurry mop_list_index)
     \<in> (arl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn"
@@ -152,8 +151,8 @@ definition is_less_preferred_than_ref ::
   \<Rightarrow> 'a
    \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
     "x p\<lesssim>\<^sub>l y \<equiv>  do { 
-        idxx <- index_mon l x;
-        idxy <- index_mon l y;
+        idxx \<leftarrow> index_mon l x;
+        idxy \<leftarrow> index_mon l y;
         RETURN (idxx \<noteq> length l \<and> idxy \<noteq> length l \<and>  idxx \<ge> idxy)}"
 
 lemma is_less_preferred_than_ref_refine:
@@ -681,7 +680,7 @@ definition prefer_count_monadic_imp:: "'a::{default, heap, hashable} Profile_Lis
 "prefer_count_monadic_imp p a b \<equiv> 
   nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
   do {
-    b_less_a <- is_less_preferred_than_ref b x a;
+    b_less_a \<leftarrow> is_less_preferred_than_ref b x a;
     RETURN  (if b_less_a then (ac+1) else (ac)) 
   }) (0::nat)"
 
@@ -752,8 +751,8 @@ declare prefer_count_sep.refine [sepref_fr_rules]
 definition wins_monadic :: "'a::{default, heap, hashable}
    \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "wins_monadic x p y \<equiv> do {
-    pxy <- prefer_count_monadic_imp p x y;
-    pyx <- prefer_count_monadic_imp p y x;
+    pxy \<leftarrow> prefer_count_monadic_imp p x y;
+    pyx \<leftarrow> prefer_count_monadic_imp p y x;
     RETURN (pxy > pyx)
 }"
 
@@ -939,7 +938,7 @@ definition condorcet_winner_monadic :: "'a::{default, heap, hashable} set
     if (w \<in> A) then
     FOREACH A
      (\<lambda> x b. do {
-     winswx <- wins_monadic w p x;
+     winswx \<leftarrow> wins_monadic w p x;
       RETURN (if (x = w) then b
       else (b \<and> (winswx)))
     }) (True)
@@ -1073,7 +1072,7 @@ definition limit_profile_l :: "'a::{default,hashable,heap} set \<Rightarrow>
   "limit_profile_l A p = 
     nfoldli p (\<lambda>_. True)
       (\<lambda> x np. do {
-         newb <- (limit_monadic A x);
+         newb \<leftarrow> (limit_monadic A x);
         RETURN (op_list_append np newb)}) []"
 
 sepref_register limit_monadic
@@ -1088,9 +1087,7 @@ sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" ::
 
 sepref_register limit_profile_l
 
-declare limit_profile_sep.refine [sepref_fr_rules]
-
-lemma "limitp_correct":
+lemma limitp_correct:
   shows "(uncurry limit_profile_l, uncurry (RETURN oo limit_profile)) \<in> 
   [\<lambda> (A, pl). finite A ]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r  profile_rel) \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
 proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric],
@@ -1109,8 +1106,6 @@ proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[sy
         nth_map prel relAPP_def
     by (smt (verit, del_insts))
 qed
-
-lemmas limit_profile_sep_correct_aux  = limit_profile_sep.refine[FCOMP limitp_correct] 
 
 abbreviation "ballot_assn R \<equiv> (hr_comp (ballot_impl_assn R) ballot_rel)"
 

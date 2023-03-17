@@ -1,3 +1,8 @@
+(*  File:       Blacks_Rule_Ref.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
 section \<open>Black's Rule\<close>
 
 theory Blacks_Rule_Ref

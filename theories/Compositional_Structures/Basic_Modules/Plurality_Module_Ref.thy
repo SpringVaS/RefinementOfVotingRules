@@ -13,9 +13,6 @@ begin
 definition plur_score_ref :: "'a Evaluation_Function_Ref" where
   "plur_score_ref x A p = (wc_fold p x)"
 
-definition plur_score_l :: "'a \<Rightarrow> 'a set \<Rightarrow> 'a Profile_List \<Rightarrow> nat" where
-  "plur_score_l x A p = (win_count_l p x)"
-
 lemma plur_score_correct:
   fixes A:: "'a::{default, heap, hashable} set"
   fixes pl:: "'a Profile_List" and pr:: "'a Profile"
@@ -33,11 +30,11 @@ proof safe
 qed
 
 definition pre_compute_plur_scores :: "'a set
-   \<Rightarrow> 'a Profile_List \<Rightarrow> ('a \<rightharpoonup> nat) nres" 
+   \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
   where "pre_compute_plur_scores A pl \<equiv> 
   if (A = {}) then RETURN Map.empty else
   do {
-   zeromap:: 'a Scores_Map  <- init_map A;
+   zeromap:: 'a Scores_Map  \<leftarrow> init_map A;
   nfoldli pl (\<lambda>_. True) 
     (\<lambda>ballot map. 
      do{ 
@@ -65,9 +62,8 @@ lemma plurality_map_correct:
   assumes fina: "finite A" and
         prel : "(pl, pr) \<in> profile_rel" and
         profl: "profile_l A pl"
-  shows "(pre_compute_plur_scores A pl) \<le> RETURN ((pre_computed_map plur_score A pr))"
-  unfolding pre_compute_plur_scores_def pre_computed_map_def plur_score.simps
-  apply clarsimp
+  shows "(pre_compute_plur_scores A pl) \<le> SPEC (\<lambda> map. map =(scores_map plur_score A pr))"
+  unfolding pre_compute_plur_scores_def scores_map_def plur_score.simps
   apply (refine_vcg empty_map fina prel profl
           nfoldli_rule[where I = "\<lambda> p1 p2 si. ( \<forall> a \<in> A. ((si a) = Some (win_count_l p1 a)))
           \<and>  (\<forall> a . (a \<notin> A \<longrightarrow> si a = None))"] )
@@ -85,7 +81,7 @@ proof -
 next
   fix xa :: "'a Preference_List"
   fix l1 l2 :: "'a Profile_List"
-  fix sigma :: "('a \<rightharpoonup> nat)"
+  fix sigma :: "'a Scores_Map"
   assume nempxa: "xa \<noteq> []"
   assume "pl = l1 @ xa # l2"
   from this have "set xa = A"
@@ -110,20 +106,20 @@ next
   from this wclmap have wcmap: "(sigma) = (\<lambda>a . Some (win_count pr a))|`A"
     using  win_count_l_correct[THEN fun_relD,THEN fun_relD, where x1 = pl and x'1 = pr and A2 = A]
     by fastforce    
-  assume neg: "(\<lambda>a. Some (card {i. i < length pr \<and> above (pr ! i) a = {a}})) |` A \<noteq> sigma"
+  assume neg: "sigma \<noteq> (\<lambda>a. Some (card {i. i < length pr \<and> above (pr ! i) a = {a}})) |` A"
   from wcmap this show False by auto
 qed
   
 
 definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
   "plurality_ref A pl \<equiv> do {
-   scores <- (pre_compute_scores plur_score_ref A pl);
+   scores \<leftarrow> (pre_compute_scores plur_score_ref A pl);
    max_eliminator_ref scores A pl
 }"
 
 definition plurality_ref_opt :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
   "plurality_ref_opt A pl \<equiv> do {
-   scores <- (pre_compute_plur_scores A pl);
+   scores \<leftarrow> (pre_compute_plur_scores A pl);
    max_eliminator_ref scores A pl
 }"
 
@@ -135,7 +131,7 @@ lemma plurality_ref_correct:
 proof (intro frefI nres_relI,  clarsimp simp del:  plurality_mod.simps plur_score.simps,
      unfold plurality_ref_def plurality_mod.simps
      RETURN_SPEC_conv, rename_tac A pl pr)
-  note max_eliminator_ref_correct_pc[where A = A and efn_ref = plur_score_ref and
+  note max_eliminator_ref_correct_default[where A = A and efn_ref = plur_score_ref and
        efn = plur_score]
   fix A :: "'a::{default, heap, hashable} set"
   fix pr :: "'a Profile"
@@ -145,7 +141,7 @@ proof (intro frefI nres_relI,  clarsimp simp del:  plurality_mod.simps plur_scor
   assume profp: "profile A pr"
   show " pre_compute_scores plur_score_ref A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
        \<le> SPEC (\<lambda>x. x = max_eliminator plur_score A pr)"
-    using max_eliminator_ref_correct_pc plur_score_correct fina prel profp
+    using max_eliminator_ref_correct_default plur_score_correct fina prel profp
     by metis   
 qed
 
@@ -166,12 +162,8 @@ proof (intro frefI nres_relI,  clarsimp simp del:  plurality_mod.simps plur_scor
   from this have profl: "profile_l A pl" using prel profile_ref by blast
   show "pre_compute_plur_scores A pl \<bind> (\<lambda>scores. max_eliminator_ref scores A pl)
        \<le> SPEC (\<lambda>x. x = max_eliminator plur_score A pr)"
-    apply (refine_vcg )
-  using plurality_map_correct[where A = A and pl = pl and pr = pr] unfolding RETURN_SPEC_conv
-    using max_eliminator_ref_correct[where efn = plur_score, where A = A and pl = pl and pr = pr] 
-      fina prel profl     
-    by (metis (mono_tags, lifting) SPEC_cons_rule) 
-  qed
+    by (refine_vcg max_eliminator_ref_correct_pc plurality_map_correct fina prel profl)
+qed
    
 sepref_definition plurality_elim_sep is
   "uncurry plurality_ref":: 
@@ -210,7 +202,7 @@ sepref_definition plurality_elim_sep_opt is
   done
 
 
-lemma plurality_elim_sep_correct [sepref_fr_rules]:
+lemma plurality_elim_sep_correct:
   shows "(uncurry plurality_elim_sep_opt, uncurry (RETURN \<circ>\<circ> plurality_mod))
         \<in> [\<lambda>(a, b).
            finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a 
@@ -218,5 +210,7 @@ lemma plurality_elim_sep_correct [sepref_fr_rules]:
         \<rightarrow> (result_impl_assn id_assn)"
   using plurality_elim_sep_opt.refine[FCOMP plurality_ref_opt_correct]
   set_rel_id hr_comp_Id2 by simp
+
+declare plurality_elim_sep_correct [sepref_fr_rules]
 
 end

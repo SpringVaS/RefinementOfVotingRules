@@ -34,7 +34,7 @@ lemma id_same_alts:
   by (metis (no_types, lifting))
   
 abbreviation "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
-
+            
 lemma linearorder_ref: 
   "(linear_order_on_l, linear_order_on) \<in> \<langle>Id\<rangle>set_rel \<rightarrow> ballot_rel \<rightarrow> bool_rel"                                 
 proof (refine_vcg, clarsimp_all)
@@ -47,18 +47,12 @@ proof (refine_vcg, clarsimp_all)
 qed
 
 
-
-lemma "linear_order_on {1::nat,2} {(2::nat,1::nat), (2::nat,2::nat)
-, (1::nat,1::nat)}"
-  unfolding linear_order_on_def partial_order_on_def preorder_on_def
-    refl_on_def trans_def antisym_def total_on_def 
-  by auto
-
 text \<open>We attempted to show a completeness lemma for our refinement of linear order relations
       to lists. We have not completed it. This lemma sketches, that the abstraction relation is
       not empty.\<close>
 
-lemma "([1::nat,2], {(2::nat,1::nat), (2::nat,2::nat)
+lemma simple_list_abstraction_sketch:
+  shows "([1::nat,2], {(2::nat,1::nat), (2::nat,2::nat)
 , (1::nat,1::nat)}) \<in> ballot_rel"
   unfolding in_br_conv well_formed_pl_def pl_\<alpha>_def
   is_less_preferred_than_l.simps by auto
