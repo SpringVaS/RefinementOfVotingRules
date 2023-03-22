@@ -33,10 +33,40 @@ lemma condorcet_score_ref_correct:
   apply (refine_vcg assms condorcet_winner_monadic_correct)
   by auto
 
+definition pre_compute_cond_scores :: "'a::{default, heap, hashable} set
+   \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
+  where "pre_compute_cond_scores A pl \<equiv> 
+  if (A = {}) then RETURN Map.empty else
+  do {
+   zeromap:: 'a Scores_Map  \<leftarrow> init_map A;
+  (m, _) <- FOREACHc A (\<lambda> (m, f). \<not> f)
+    (\<lambda>x (m, f). do {
+      scx \<leftarrow> (condorcet_score_ref x A pl);
+      RETURN (m(x\<mapsto>scx), (scx = 1))
+  }) (zeromap, False); RETURN m}"
+
+sepref_definition condmap_sep is "uncurry pre_compute_cond_scores" ::
+  "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (hm.assn nat_assn nat_assn)"
+  unfolding pre_compute_cond_scores_def init_map_def op_set_is_empty_def[symmetric] 
+      condorcet_score_ref_def
+     hm.fold_custom_empty
+  apply sepref_dbg_keep
+  done
+
+lemma cond_map_correct:
+  fixes A :: "'a::{default, heap, hashable} set" and
+        pr :: "'a Profile" and
+        pl :: "'a Profile_List"
+  assumes fina: "finite A" and
+        prel : "(pl, pr) \<in> profile_rel" and
+        profr: "profile A pr"
+  shows "(pre_compute_cond_scores A pl) \<le> SPEC (\<lambda> map. map = (scores_map condorcet_score A pr))"
+  oops
+
 lemma condorcet_ref_correct:          
   shows "(uncurry condorcet_ref, uncurry (RETURN oo condorcet)) \<in> 
   ([\<lambda> (A, pl). finite_profile A                         
-            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r profile_rel)
+            pl]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>ballot_rel\<rangle>list_rel)
    \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel \<times>\<^sub>r \<langle>Id\<rangle>set_rel\<rangle>nres_rel)"
 proof (unfold condorcet_ref_def, 
     intro frefI nres_relI ,clarsimp simp del: max_eliminator.simps,
@@ -69,14 +99,13 @@ sepref_definition condorcet_elim_sep is
   apply sepref_dbg_keep
   done
 
-
 lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_correct]
 
 lemma condorcet_elim_sep_correct:
   shows "(uncurry condorcet_elim_sep, uncurry (RETURN \<circ>\<circ> condorcet))
     \<in> elec_mod_assn nat_assn"
-  using cond_ref_correct_aux
-  set_rel_id hr_comp_Id2 by simp
+  using cond_ref_correct_aux unfolding ballot_assn_def 
+  set_rel_id hr_comp_Id2 by (simp)
 
 declare condorcet_elim_sep_correct[sepref_fr_rules]
 

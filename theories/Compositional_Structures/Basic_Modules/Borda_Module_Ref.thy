@@ -208,14 +208,9 @@ sepref_definition borda_elim_sep_opt is
 
 lemma  borda_elim_sep_opt_correct:
   shows "(uncurry borda_elim_sep_opt, uncurry (RETURN \<circ>\<circ> borda))
-    \<in> [\<lambda>(a, b).
-           finite_profile
-            a b]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a
-                 (list_assn
-                   (hr_comp (ballot_impl_assn nat_assn)
-                     ballot_rel))\<^sup>k \<rightarrow> result_impl_assn nat_assn"
+    \<in> elec_mod_assn nat_assn"
   using borda_elim_sep_opt.refine[FCOMP borda_ref_opt_correct, THEN hfrefD] apply (intro hfrefI)
-  using set_rel_id hr_comp_Id2 by auto
+  using set_rel_id hr_comp_Id2 unfolding ballot_assn_def  by (simp)
 
                       
 declare borda_elim_sep_opt_correct [sepref_fr_rules]

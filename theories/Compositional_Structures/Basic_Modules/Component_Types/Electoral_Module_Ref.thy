@@ -33,7 +33,7 @@ abbreviation elec_mod_rel_orig_nres :: "('a \<times> 'a) set \<Rightarrow>
 abbreviation elec_mod_assn where 
   "elec_mod_assn R \<equiv> [\<lambda>(a, b).
            finite_profile a b]\<^sub>a (alts_set_impl_assn R)\<^sup>k *\<^sub>a 
-    (list_assn (hr_comp (ballot_impl_assn R) ballot_rel))\<^sup>k 
+    (list_assn (ballot_assn R))\<^sup>k 
         \<rightarrow> (result_impl_assn R)"
 
 
