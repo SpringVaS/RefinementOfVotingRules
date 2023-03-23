@@ -33,35 +33,6 @@ lemma condorcet_score_ref_correct:
   apply (refine_vcg assms condorcet_winner_monadic_correct)
   by auto
 
-definition pre_compute_cond_scores :: "'a::{default, heap, hashable} set
-   \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
-  where "pre_compute_cond_scores A pl \<equiv> 
-  if (A = {}) then RETURN Map.empty else
-  do {
-   zeromap:: 'a Scores_Map  \<leftarrow> init_map A;
-  (m, _) <- FOREACHc A (\<lambda> (m, f). \<not> f)
-    (\<lambda>x (m, f). do {
-      scx \<leftarrow> (condorcet_score_ref x A pl);
-      RETURN (m(x\<mapsto>scx), (scx = 1))
-  }) (zeromap, False); RETURN m}"
-
-sepref_definition condmap_sep is "uncurry pre_compute_cond_scores" ::
-  "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (hm.assn nat_assn nat_assn)"
-  unfolding pre_compute_cond_scores_def init_map_def op_set_is_empty_def[symmetric] 
-      condorcet_score_ref_def
-     hm.fold_custom_empty
-  apply sepref_dbg_keep
-  done
-
-lemma cond_map_correct:
-  fixes A :: "'a::{default, heap, hashable} set" and
-        pr :: "'a Profile" and
-        pl :: "'a Profile_List"
-  assumes fina: "finite A" and
-        prel : "(pl, pr) \<in> profile_rel" and
-        profr: "profile A pr"
-  shows "(pre_compute_cond_scores A pl) \<le> SPEC (\<lambda> map. map = (scores_map condorcet_score A pr))"
-  oops
 
 lemma condorcet_ref_correct:          
   shows "(uncurry condorcet_ref, uncurry (RETURN oo condorcet)) \<in> 

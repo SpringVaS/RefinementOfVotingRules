@@ -19,6 +19,7 @@ sepref_definition pairwise_majority_rule_direct_imp is
   apply sepref_dbg_keep
   done
 
+
 lemmas opt_seq_pmc = elector_opt_correct[OF condorcet_sound]
 lemmas opt_seq_pmct_aux = pairwise_majority_rule_direct_imp.refine[FCOMP opt_seq_pmc]
 

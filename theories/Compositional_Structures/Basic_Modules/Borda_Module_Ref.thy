@@ -49,7 +49,7 @@ definition borda_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" whe
 }"
 
 definition borda_ref_opt :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
-  "borda_ref_opt A pl \<equiv> do {
+  "borda_ref_opt A pl \<equiv> do {              
    scores \<leftarrow> (pre_compute_scores borda_score_opt_mon A pl);
    max_eliminator_ref scores A pl
 }"

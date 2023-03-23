@@ -21,7 +21,7 @@ definition "blacks_opt \<equiv> elector_opt (seq_opt condorcet borda)"
 sepref_definition blacks_rule_direct is "uncurry (elector_opt (seq_opt condorcet borda))" 
   :: "[\<lambda>(a, b).
            finite_profile a b]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a 
-    (list_assn (hr_comp (ballot_impl_assn nat_assn) ballot_rel))\<^sup>k 
+    (list_assn (ballot_assn nat_assn))\<^sup>k 
         \<rightarrow> (result_impl_assn nat_assn)"
   unfolding elector_opt_def seq_opt_def hs.fold_custom_empty
   apply sepref_dbg_keep
