@@ -13,10 +13,9 @@ begin
 
 sepref_definition borda_rule_sep_direct is "uncurry (elector_opt (RETURN oo borda))"
   :: "[\<lambda>(x, xa).
-       finite_profile
-        x xa ]\<^sub>a (hs.assn nat_assn)\<^sup>k *\<^sub>a
+       finite_profile x xa ]\<^sub>a (hs.assn nat_assn)\<^sup>k *\<^sub>a
              (list_assn (ballot_assn nat_assn))\<^sup>k \<rightarrow> 
-  result_impl_assn nat_assn"
+                  result_impl_assn nat_assn"
   unfolding elector_opt_def hs.fold_custom_empty
   apply sepref_dbg_keep
   done
@@ -31,10 +30,7 @@ lemma borda_rule_direct_correct:
   using  borda_rule_correct_aux  prod_rel_id_simp set_rel_id hr_comp_Id2
   by (metis)
  
-  
-
 declare borda_rule_direct_correct [sepref_fr_rules]
-
 
 export_code convert_list_to_hash_set clist borda_rule_sep_direct in Scala_imp 
 
