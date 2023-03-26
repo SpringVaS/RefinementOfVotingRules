@@ -1071,8 +1071,8 @@ lemma convert_list_to_set_correct:
       (r = set l1))"])
   by auto
 
-definition limit_profile_l :: "'a::{default,hashable,heap} set \<Rightarrow> 
-    'a::{default,hashable,heap} Profile_List \<Rightarrow> 'a::{default,hashable,heap} Profile_List nres" where
+definition limit_profile_l :: "'a::{default, hashable, heap} set \<Rightarrow> 
+    'a Profile_List \<Rightarrow> 'a Profile_List nres" where
   "limit_profile_l A p = 
     nfoldli p (\<lambda>_. True)
       (\<lambda> x np. do {
@@ -1129,10 +1129,10 @@ lemma limit_profile_sep_correct:
   shows "(uncurry limit_profile_sep, uncurry (RETURN \<circ>\<circ> limit_profile))
     \<in> [\<lambda>(a, b).
            finite
-            a]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a
+            a]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
                  (list_assn
-                   (ballot_assn nat_assn))\<^sup>k \<rightarrow> list_assn
-                                        (ballot_assn nat_assn)"
+                   (ballot_assn id_assn))\<^sup>k \<rightarrow> list_assn
+                                        (ballot_assn id_assn)"
 
   using limit_profile_sep.refine[FCOMP limitp_correct]  set_rel_id hr_comp_Id2 
   unfolding ballot_assn_def

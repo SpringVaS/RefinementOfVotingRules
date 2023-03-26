@@ -18,8 +18,8 @@ text \<open>The basic module for plurality has been refined. We use the simplifi
       elect composition to define a sythesizable definition of the plurality rule inline
       and use the sepref-tool to synthesize the implementation\<close>
 
-sepref_definition plurality_rule_direct_sep is "uncurry (elector_opt (RETURN oo plurality_mod))"
-  :: "elec_mod_assn nat_assn"
+sepref_definition plurality_rule_direct_sep is "uncurry (elector_opt (plurality_mod))"
+  :: "elec_mod_seprel nat_assn"
   unfolding elector_opt_def hs.fold_custom_empty ballot_assn_def
   apply sepref_dbg_keep
   done
@@ -29,17 +29,12 @@ text \<open>Using the correctness of the elector and the refinement theorem prov
        sepcification\<close>
 
 
-lemmas opt_seq_plur = elector_opt_correct[OF plurmod_sound]
-lemmas opt_plur_correct_aux = plurality_rule_direct_sep.refine[FCOMP opt_seq_plur]
 
 lemma opt_plur_correct:
   shows "(uncurry plurality_rule_direct_sep, uncurry (RETURN oo (plurality_rule)))
-  \<in> elec_mod_assn nat_assn"
+  \<in> elec_mod_seprel nat_assn"
   unfolding plurality_rule.simps 
-  using  opt_plur_correct_aux  
-    using  prod_rel_id_simp set_rel_id hr_comp_Id2
-    by metis
-  
+  using plurality_rule_direct_sep.refine unfolding elector_opt_eq .
 
 declare opt_plur_correct [sepref_fr_rules]
 

@@ -13,7 +13,7 @@ begin
   but a deep copy\<close>
 
 definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
-  "aux_set_copy A \<equiv>  FOREACH A
+  "aux_set_copy A \<equiv>  FOREACH A 
      (\<lambda> x cp. RETURN (insert x cp)) {}"
 
 lemma aux_set_copy_correct:

@@ -14,20 +14,17 @@ begin
 
 
 sepref_definition pairwise_majority_rule_direct_imp is 
-  "uncurry (elector_opt (RETURN oo (condorcet)))" :: "elec_mod_assn nat_assn"
+  "uncurry (elector_opt ((condorcet)))" :: "elec_mod_seprel nat_assn"
   unfolding elector_opt_def hs.fold_custom_empty
   apply sepref_dbg_keep
   done
 
-
-lemmas opt_seq_pmc = elector_opt_correct[OF condorcet_sound]
-lemmas opt_seq_pmct_aux = pairwise_majority_rule_direct_imp.refine[FCOMP opt_seq_pmc]
-
 lemma opt_pmc_correct:
-  shows "(uncurry pairwise_majority_rule_direct_imp, uncurry (RETURN oo (pairwise_majority_rule:: (nat Electoral_Module))))
-  \<in> elec_mod_assn nat_assn"
-  using  opt_seq_pmct_aux  prod_rel_id_simp set_rel_id hr_comp_Id2
-  unfolding pairwise_majority_rule.simps elector.simps seqcomp_alt_eq
+  shows "(uncurry pairwise_majority_rule_direct_imp, uncurry (RETURN 
+    oo (pairwise_majority_rule:: (nat Electoral_Module))))
+  \<in> elec_mod_seprel nat_assn"
+  using pairwise_majority_rule_direct_imp.refine
+  unfolding pairwise_majority_rule.simps elector_opt_eq
   by metis
 
 declare opt_pmc_correct [sepref_fr_rules]

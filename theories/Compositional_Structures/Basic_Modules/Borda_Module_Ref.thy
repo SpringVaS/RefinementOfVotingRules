@@ -63,7 +63,9 @@ lemma borda_score_correct:
     and profrel: "(pl, pr) \<in> profile_rel"
   shows "\<forall> a \<in> A. borda_score_mon a A pl \<le> SPEC (\<lambda> sc. sc = (borda_score a A pr))"
   unfolding borda_score_mon_def borda_score.simps
-  by (safe, refine_vcg fina sum_impl_correct prefer_count_monadic_imp_correct profrel)
+  apply safe
+  apply (refine_vcg sum_impl_correct fina prefer_count_monadic_imp_correct profrel)
+  done
 
 lemma borda_score_opt_refine:
   fixes A:: "'a::{default, heap, hashable} set"
@@ -189,8 +191,8 @@ qed
 
 sepref_definition borda_elim_sep_opt is
   "uncurry borda_ref_opt":: 
-    "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn nat_assn)"
+    "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding borda_ref_opt_def  max_eliminator_ref_def borda_score_opt_mon_def sum_impl_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
@@ -208,7 +210,7 @@ sepref_definition borda_elim_sep_opt is
 
 lemma  borda_elim_sep_opt_correct:
   shows "(uncurry borda_elim_sep_opt, uncurry (RETURN \<circ>\<circ> borda))
-    \<in> elec_mod_assn nat_assn"
+    \<in> elec_mod_seprel id_assn"
   using borda_elim_sep_opt.refine[FCOMP borda_ref_opt_correct, THEN hfrefD] apply (intro hfrefI)
   using set_rel_id hr_comp_Id2 unfolding ballot_assn_def  by (simp)
 

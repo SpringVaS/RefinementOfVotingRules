@@ -56,8 +56,8 @@ qed
 
 sepref_definition condorcet_elim_sep is
   "uncurry condorcet_ref":: 
-  "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn nat_assn)"
+  "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding condorcet_ref_def  max_eliminator_ref_def condorcet_score_ref_def 
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] op_set_is_empty_def[symmetric]
@@ -74,7 +74,7 @@ lemmas cond_ref_correct_aux = condorcet_elim_sep.refine[FCOMP condorcet_ref_corr
 
 lemma condorcet_elim_sep_correct:
   shows "(uncurry condorcet_elim_sep, uncurry (RETURN \<circ>\<circ> condorcet))
-    \<in> elec_mod_assn nat_assn"
+    \<in> elec_mod_seprel id_assn"
   using cond_ref_correct_aux unfolding ballot_assn_def 
   set_rel_id hr_comp_Id2 by (simp)
 

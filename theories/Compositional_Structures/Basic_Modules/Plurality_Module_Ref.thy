@@ -198,8 +198,7 @@ sepref_definition plurality_elim_sep_opt is
   apply (rewrite in "RETURN ({}, rewrite_HOLE, _)" hs.fold_custom_empty)+
   apply (rewrite in "RETURN (rewrite_HOLE,_, _)" hs.fold_custom_empty)+
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)+
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 
 lemma plurality_elim_sep_correct:
