@@ -9,8 +9,12 @@ theory Elect_Module_Ref
 
 begin
 
+section \<open>Refined Elect Module\<close>
+
+text \<open>This is more or less an experimental artifacts. We use the elector instead\<close>
+
  \<comment> \<open>The elect module should not return just the reference to all alternatives
-  but a deep copy\<close>
+  but a deep copy.\<close>
 
 definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
   "aux_set_copy A \<equiv>  FOREACH A 
@@ -30,7 +34,7 @@ proof (rename_tac A)
     by (auto simp add: fina)
 qed
 
-
+subsection \<open>Defintion\<close>
 
 fun elect_module_ref :: "'a Electoral_Module_Ref" where
   "elect_module_ref A p = do {

@@ -4,7 +4,7 @@
 \<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
 
 
-section \<open>Refined Plurality Rule\<close>
+section \<open>Refined Pairwise Majority Rule\<close>
 
 theory Pairwise_Majority_Rule_Ref
   imports "Verified_Voting_Rule_Construction.Pairwise_Majority_Rule"
@@ -12,6 +12,7 @@ theory Pairwise_Majority_Rule_Ref
           "Compositional_Structures/Elect_Composition_Ref"              
 begin
 
+subsection \<open>Refinement to Imperative/HOL\<close>
 
 sepref_definition pairwise_majority_rule_direct_imp is 
   "uncurry (elector_opt ((condorcet)))" :: "elec_mod_seprel nat_assn"
@@ -19,15 +20,20 @@ sepref_definition pairwise_majority_rule_direct_imp is
   apply sepref_dbg_keep
   done
 
+subsection \<open>Correctness\<close>
+
+
 lemma opt_pmc_correct:
   shows "(uncurry pairwise_majority_rule_direct_imp, uncurry (RETURN 
     oo (pairwise_majority_rule:: (nat Electoral_Module))))
   \<in> elec_mod_seprel nat_assn"
   using pairwise_majority_rule_direct_imp.refine
   unfolding pairwise_majority_rule.simps elector_opt_eq
-  by metis
+  .
 
 declare opt_pmc_correct [sepref_fr_rules]
+
+subsection \<open>Properties in Separation Logic\<close>
 
 theorem pmc_impl_condorcet:
   shows "finite_profile A p \<and> condorcet_winner A p w \<Longrightarrow>

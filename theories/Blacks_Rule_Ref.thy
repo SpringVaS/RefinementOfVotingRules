@@ -3,8 +3,8 @@
 *)
 \<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
 
-section \<open>Black's Rule\<close>
-
+section \<open>Refined Black's Rule\<close>
+                           
 theory Blacks_Rule_Ref
   imports"Verified_Voting_Rule_Construction.Blacks_Rule"
           "Compositional_Structures/Basic_Modules/Condorcet_Module_Ref"  
@@ -32,16 +32,22 @@ lemma seqcomp_cb_sep_correct :
 
 declare seqcomp_cb_sep_correct[sepref_fr_rules]
 
+subsection \<open>Refinement to Imperative/HOL\<close>
+
 sepref_definition blacks_sep is "uncurry (elector_opt ((condorcet \<triangleright> borda)))"
   :: "elec_mod_seprel nat_assn"
   unfolding seqcomp_cb_def[symmetric] elector_opt_def hs.fold_custom_empty 
   by sepref_dbg_keep
 
-lemma blacks_sep_correct:
+subsection \<open>Correctness\<close>
+
+lemma blacks_sep_correct [sepref_fr_rules]:
   shows "(uncurry blacks_sep , uncurry (RETURN oo blacks_rule)) \<in> elec_mod_seprel nat_assn"
   unfolding blacks_rule.simps seqcomp_alt_eq elector.simps[symmetric]
   using blacks_sep.refine 
     unfolding elector_opt_eq .
+
+subsection \<open>Properties in Separation Logic\<close>
 
 
 theorem black_rule_impl_condorcet:
@@ -53,7 +59,8 @@ theorem black_rule_impl_condorcet:
   using blacks_sep_correct[THEN hfrefD, THEN hn_refineD, of "(A, p)" "(hs, hp)"]
   apply (clarsimp simp del: condorcet_winner.simps blacks_rule.simps)
   apply (erule cons_rule[rotated -1])
-  apply (sep_auto simp add : hn_ctxt_def pure_def simp del : condorcet_winner.simps pairwise_majority_rule.simps)
+  apply (sep_auto simp add : hn_ctxt_def pure_def simp del : condorcet_winner.simps 
+        pairwise_majority_rule.simps)
   apply (sep_auto simp add: hn_ctxt_def simp del : condorcet_winner.simps blacks_rule.simps)
   using black_condorcet condorcet_consistency3
    by (metis)

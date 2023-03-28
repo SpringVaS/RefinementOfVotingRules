@@ -20,15 +20,13 @@ text \<open>The basic module for plurality has been refined. We use the simplifi
 
 sepref_definition plurality_rule_direct_sep is "uncurry (elector_opt (plurality_mod))"
   :: "elec_mod_seprel nat_assn"
-  unfolding elector_opt_def hs.fold_custom_empty ballot_assn_def
+  unfolding elector_opt_def hs.fold_custom_empty
   apply sepref_dbg_keep
   done
 
 text \<open>Using the correctness of the elector and the refinement theorem provided by sepref we provide
       a simplified refinement relation of the plurality implementation and the abstract
        sepcification\<close>
-
-
 
 lemma opt_plur_correct:
   shows "(uncurry plurality_rule_direct_sep, uncurry (RETURN oo (plurality_rule)))

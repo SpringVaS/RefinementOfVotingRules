@@ -9,9 +9,18 @@ theory Plurality_Module_Ref
            "Component_Types/Elimination_Module_Ref"
 begin
 
+section \<open>Refined Plurality Module\<close>
+
+subsection \<open>Definition\<close>
 
 definition plur_score_ref :: "'a Evaluation_Function_Ref" where
   "plur_score_ref x A p = (wc_fold p x)"
+
+definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
+  "plurality_ref A pl \<equiv> do {
+   scores \<leftarrow> (pre_compute_scores plur_score_ref A pl);
+   max_eliminator_ref scores A pl
+}"
 
 lemma plur_score_correct:
   fixes A:: "'a::{default, heap, hashable} set"
@@ -29,6 +38,8 @@ proof safe
     by (refine_vcg fina prel profl wc_fold_correct)
 qed
 
+text \<open>Optimized Map Compuation\<close>
+
 definition pre_compute_plur_scores :: "'a set
    \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
   where "pre_compute_plur_scores A pl \<equiv> 
@@ -45,6 +56,7 @@ definition pre_compute_plur_scores :: "'a set
         RETURN (op_map_update top (scx + 1) map)})
      (zeromap)}"
 
+
 sepref_definition plurmap_sep is "uncurry pre_compute_plur_scores" ::
   "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (hm.assn nat_assn nat_assn)"
   unfolding pre_compute_plur_scores_def init_map_def op_set_is_empty_def[symmetric] 
@@ -52,8 +64,17 @@ sepref_definition plurmap_sep is "uncurry pre_compute_plur_scores" ::
   apply sepref_dbg_keep
   done
 
-
 declare plurmap_sep.refine [sepref_fr_rules]
+
+definition plurality_ref_opt :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
+  "plurality_ref_opt A pl \<equiv> do {
+   scores \<leftarrow> (pre_compute_plur_scores A pl);
+   max_eliminator_ref scores A pl
+}"
+
+
+subsection \<open>Refinement Lemmas\<close>
+
 
 lemma plurality_map_correct:
   fixes A :: "'a set" and
@@ -111,17 +132,7 @@ next
 qed
   
 
-definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
-  "plurality_ref A pl \<equiv> do {
-   scores \<leftarrow> (pre_compute_scores plur_score_ref A pl);
-   max_eliminator_ref scores A pl
-}"
 
-definition plurality_ref_opt :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
-  "plurality_ref_opt A pl \<equiv> do {
-   scores \<leftarrow> (pre_compute_plur_scores A pl);
-   max_eliminator_ref scores A pl
-}"
 
 lemma plurality_ref_correct:
   shows "(uncurry plurality_ref, uncurry (RETURN oo plurality_mod)) \<in> 
@@ -164,7 +175,9 @@ proof (intro frefI nres_relI,  clarsimp simp del:  plurality_mod.simps plur_scor
        \<le> SPEC (\<lambda>x. x = max_eliminator plur_score A pr)"
     by (refine_vcg max_eliminator_ref_correct_pc plurality_map_correct fina prel profl)
 qed
-   
+
+subsection \<open>Imperative HOL Synthesis Using Sepref\<close>
+
 sepref_definition plurality_elim_sep is
   "uncurry plurality_ref":: 
     "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
@@ -172,13 +185,12 @@ sepref_definition plurality_elim_sep is
   unfolding plurality_ref_def  max_eliminator_ref_def plur_score_ref_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     pre_compute_scores_def[abs_def] scoremax_def[abs_def] wc_fold_def[abs_def] 
-    short_circuit_conv
-  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hm.fold_custom_empty)
+    short_circuit_conv hm.fold_custom_empty
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
-  apply (rewrite in "RETURN ({}, {}, rewrite_HOLE)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ({}, rewrite_HOLE, _)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN (_, rewrite_HOLE, _)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN (rewrite_HOLE, _, _)" hs.fold_custom_empty) 
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (rewrite_HOLE, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, rewrite_HOLE, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
   apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (rewrite_HOLE, rej, def))" hs.fold_custom_empty)
@@ -187,26 +199,25 @@ sepref_definition plurality_elim_sep is
 
 sepref_definition plurality_elim_sep_opt is
   "uncurry plurality_ref_opt":: 
-    "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn nat_assn)"
+    "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding plurality_ref_opt_def  max_eliminator_ref_def plur_score_ref_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
     scoremax_def[abs_def] op_set_is_empty_def[symmetric]
    pre_compute_plur_scores_def init_map_def op_set_is_empty_def[symmetric] 
-     hm.fold_custom_empty
-  apply (rewrite in "RETURN ({}, {}, rewrite_HOLE)" hs.fold_custom_empty)
-  apply (rewrite in "RETURN ({}, rewrite_HOLE, _)" hs.fold_custom_empty)+
-  apply (rewrite in "RETURN (rewrite_HOLE,_, _)" hs.fold_custom_empty)+
+     hm.fold_custom_empty 
+  apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty)
+  apply (rewrite in "RETURN (_, rewrite_HOLE, _)" hs.fold_custom_empty)+
+  apply (rewrite in "RETURN (rewrite_HOLE, _, _)" hs.fold_custom_empty)+
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)+
   by sepref
 
+subsection \<open>Overall Correctness Lemma for Imperative HOL function\<close>
 
 lemma plurality_elim_sep_correct:
   shows "(uncurry plurality_elim_sep_opt, uncurry (RETURN \<circ>\<circ> plurality_mod))
-        \<in> [\<lambda>(a, b).
-           finite_profile a b]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a 
-    (list_assn (hr_comp (ballot_impl_assn id_assn) ballot_rel))\<^sup>k 
-        \<rightarrow> (result_impl_assn id_assn)"
+        \<in> elec_mod_seprel id_assn"
+  unfolding ballot_assn_def
   using plurality_elim_sep_opt.refine[FCOMP plurality_ref_opt_correct]
   set_rel_id hr_comp_Id2 by simp
 

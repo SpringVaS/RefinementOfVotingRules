@@ -3,10 +3,16 @@
 *)
 \<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
 
+chapter \<open>Refined Basic Modules\<close>
+
 theory Borda_Module_Ref
   imports "Verified_Voting_Rule_Construction.Borda_Module"
            "Component_Types/Elimination_Module_Ref"
 begin
+
+section \<open>Refined Borda Module\<close>
+
+subsection \<open>Definition\<close>
 
 definition borda_score_mon :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
   "borda_score_mon x A p =
@@ -27,6 +33,8 @@ lemma borda_score_l_eq:
   using profrel 
     prefer_count_l_eq
   by (metis) 
+
+subsection \<open>Optimized Monadic Score Computation\<close>
 
 definition borda_score_opt_mon :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
   "borda_score_opt_mon a A p =
@@ -54,6 +62,7 @@ definition borda_ref_opt :: "'a::{default, heap, hashable} Electoral_Module_Ref"
    max_eliminator_ref scores A pl
 }"
 
+subsection \<open>Refinement Lemmas\<close>
 
 lemma borda_score_correct:
   fixes A:: "'a::{default, heap, hashable} set"
@@ -188,6 +197,8 @@ proof (intro frefI nres_relI, clarsimp simp del: max_eliminator.simps, rename_ta
   show "borda_ref_opt A pl \<le> RETURN (max_eliminator borda_score A pr)"  unfolding borda_ref_opt_def RETURN_SPEC_conv
    by (refine_vcg borda_score_opt_correct max_eliminator_ref_correct_default fina profp prel)
 qed
+
+subsection \<open>Imperative HOL Synthesis Using Sepref\<close>
 
 sepref_definition borda_elim_sep_opt is
   "uncurry borda_ref_opt":: 

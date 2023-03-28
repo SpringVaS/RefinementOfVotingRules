@@ -3,7 +3,7 @@
 *)
 \<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
 
-section \<open>Elimination Module\<close>
+section \<open>Refined Elimination Module\<close>
 
 theory Elimination_Module_Ref
   imports "Verified_Voting_Rule_Construction.Elimination_Module"

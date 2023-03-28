@@ -3,6 +3,7 @@
 *)
 \<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
 
+chapter \<open>Refined Component Types\<close>
 
 theory Electoral_Module_Ref
   imports "Social_Choice_Types/Profile_List_Monadic"
@@ -11,13 +12,19 @@ theory Electoral_Module_Ref
          
 begin                            
 
+section \<open>Refined Electoral Module Type\<close>
+
+subsection \<open>Definition\<close>
 
 type_synonym 'a Electoral_Module_Ref = "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Result nres"
+
 
 type_synonym 'a Electoral_Module_Sep = "('a, unit) hashtable
       \<Rightarrow> ('a array \<times> nat) list
          \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
 
+
+subsection \<open>Refinement Relations\<close>
 
 definition elec_mod_rel_orig :: "('b \<times> 'b) set \<Rightarrow> 
   ('b Electoral_Module \<times> 'b Electoral_Module) set" where
@@ -36,9 +43,8 @@ abbreviation elec_mod_seprel where
     (list_assn (ballot_assn R))\<^sup>k 
         \<rightarrow> (result_impl_assn R)"
 
-definition "is_arrayd_list l \<equiv> \<lambda>(a,n). \<exists>\<^sub>Al'. a \<mapsto>\<^sub>a l' * \<up>(n \<le> length l' \<and> l = take n l' \<and> length l'>0)"
 
-find_theorems name:"assn"
+subsection \<open>Experimental defintion for Saeparation Logic Assertion\<close>
 
 definition elec_mod_assn_atom:: 
   "('a  \<Rightarrow> 'a  \<Rightarrow> assn)

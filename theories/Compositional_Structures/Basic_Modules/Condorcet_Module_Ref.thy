@@ -8,7 +8,9 @@ theory Condorcet_Module_Ref
            "Component_Types/Elimination_Module_Ref"
 begin
 
+section \<open>Refined Condorcet Module\<close>
 
+subsection \<open>Definition\<close>
 definition condorcet_score_ref :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
   "condorcet_score_ref x A p = do {
     is_x_cond_winner \<leftarrow> (condorcet_winner_monadic A p x);
@@ -19,6 +21,8 @@ definition condorcet_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref"
    scores \<leftarrow> (pre_compute_scores condorcet_score_ref A pl);
    max_eliminator_ref scores A pl
 }"
+
+subsection \<open>Refinement Lemmas\<close>
 
 lemma condorcet_score_ref_correct:
   fixes A:: "'a::{default, heap, hashable} set"
@@ -53,6 +57,8 @@ proof (unfold condorcet_ref_def,
      unfolding condorcet.simps RETURN_SPEC_conv
      by (refine_vcg condorcet_score_ref_correct max_eliminator_ref_correct_default fina prel profp)
 qed
+
+subsection \<open>Imperative HOL Synthesis Using Sepref\<close>
 
 sepref_definition condorcet_elim_sep is
   "uncurry condorcet_ref":: 

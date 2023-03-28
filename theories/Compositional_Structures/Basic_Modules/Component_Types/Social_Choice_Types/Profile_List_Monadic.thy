@@ -12,13 +12,24 @@ theory Profile_List_Monadic
   
 begin
 
+subsection \<open>Profile Evaluation on List-based Profiles \<close>
+
 fun win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "win_count_l p a = fold (\<lambda>x ac. 
      if (0 < length x \<and> x!0 = a) then (ac+1) else (ac)) p 0"
 
+fun prefer_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat" where
+  "prefer_count_l p a b = fold (\<lambda> x ac. (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac))) p 0"
 
+fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
+  "wins_l x p y =
+    (prefer_count_l p x y > prefer_count_l p y x)"
 
-text \<open> Monadic definition of profile functions \<close>
+fun condorcet_winner_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
+  "condorcet_winner_l A p w =
+      (finite A \<and> profile_l A p \<and>  w \<in> A \<and> (\<forall> x \<in> A - {w} . wins_l w p x))"
+
+subsection \<open> Monadic definition of profile functions \<close>
 
 lemma w_eq_param [sepref_import_param]: "((=), (=)::'a\<Rightarrow>_) \<in> Id \<rightarrow> Id \<rightarrow> Id" by simp
 
@@ -56,13 +67,13 @@ sepref_register index_mon
 declare index_sep.refine[sepref_fr_rules]
 
 
-
-lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))" by simp
+lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))"
+  by simp
 
 lemma index_sound:
   fixes a:: 'a and l :: "'a list" and i::nat
   assumes  "i \<le> List_Index.index l a"
-  shows "(a = l ! i) \<longrightarrow> (i = List_Index.index l a)"
+  shows "(a = l!i) \<longrightarrow> (i = List_Index.index l a)"
   by (metis assms(1) index_first le_eq_less_or_eq)
 
 lemma index_mon_correct:
@@ -179,7 +190,6 @@ declare is_less_preferred_than_sep.refine [sepref_fr_rules]
 lemmas is_less_preferred_than_sep_correct = 
     is_less_preferred_than_sep.refine[FCOMP is_less_preferred_than_ref_refine]
 
-section \<open>Monadic implementation of counting functions \<close>
 
 text \<open>
   win-count, multiple refinement steps
@@ -338,9 +348,10 @@ theorem wc_foreach_rank_correct:
   by fastforce
 
 
-text \<open> Data refinement \<close>
-(* these auxiliary lemmas illustrate the equivalence of checking the the first
-  candidate on a non empty ballot. *)
+subsubsection \<open> Data refinement \<close>
+
+text \<open> these auxiliary lemmas illustrate the equivalence of checking the the first
+  candidate on a non empty ballot. \<close>
 lemma top_above:
   assumes ne: "length pl > 0"
   shows "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
@@ -379,9 +390,6 @@ proof -
   from above_abstract listeq this show ?thesis
     by (simp)
 qed
-
-
-
 
 
 definition "f_inner_list a \<equiv> (\<lambda>x ac::nat.
@@ -616,20 +624,7 @@ next
     by fastforce
 qed
 
-text \<open> Data refinement \<close>
 
-fun prefer_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat" where
-  "prefer_count_l p a b = fold (\<lambda> x ac. (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac))) p 0"
-
-fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
-  "wins_l x p y =
-    (prefer_count_l p x y > prefer_count_l p y x)"
-
-
-
-fun condorcet_winner_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
-  "condorcet_winner_l A p w =
-      (finite A \<and> profile_l A p \<and>  w \<in> A \<and> (\<forall> x \<in> A - {w} . wins_l w p x))"
 
 definition pc_foldli_list:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "pc_foldli_list p a b \<equiv> 
@@ -1029,6 +1024,8 @@ lemma cond_winner_unique3_l:
     cond_winner_unique3[where A = A and p = pr and w = w]
   assms by blast
 
+subsubsection \<open>Convert HOL types to heap data structures\<close>
+
 definition convert_list :: "'a::{default, heap} list \<Rightarrow> 'a list nres"  where
   "convert_list l \<equiv>
   nfoldli l (\<lambda> x. True)
@@ -1070,6 +1067,8 @@ lemma convert_list_to_set_correct:
   apply (refine_vcg nfoldli_rule[where I = "(\<lambda> l1 l2 r.
       (r = set l1))"])
   by auto
+
+subsection \<open>Monadic Implementation for Limiting Profiles\<close>
 
 definition limit_profile_l :: "'a::{default, hashable, heap} set \<Rightarrow> 
     'a Profile_List \<Rightarrow> 'a Profile_List nres" where
