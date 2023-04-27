@@ -245,14 +245,16 @@ next
   unfolding rank.simps above_def pl_\<alpha>_def
   using finitecons unfolding is_less_preferred_than.simps
   linear_order_on_def partial_order_on_def preorder_on_def refl_on_def antisym_def trans_def
-total_on_def is_less_preferred_than_l.simps seteqnb insert_def apply safe
-  apply blast
-  apply blast
-   unfolding  limit.simps defnb 
+total_on_def seteqnb insert_def defnb is_less_preferred_than_l.simps limit.simps index_def
+    apply safe subgoal
+    by (metis SigmaE2 barbound defnb in_mono seteqnb)subgoal
+    by (metis SigmaE2 barbound defnb seteqnb subset_iff) unfolding card_def 
+  
+   unfolding  limit.simps defnb
     sorry
   from this show ?case
     apply (rule_tac x = newbal in exI)
-    unfolding pl_\<alpha>_def using disnb by auto
+    unfolding ballot_rel_def well_formed_pl_def in_br_conv using disnb by auto
 qed
 
 end

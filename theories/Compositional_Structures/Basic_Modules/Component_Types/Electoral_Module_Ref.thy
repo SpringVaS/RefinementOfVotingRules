@@ -38,13 +38,11 @@ abbreviation elec_mod_rel_orig_nres :: "('a \<times> 'a) set \<Rightarrow>
   \<langle>\<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel \<times>\<^sub>r \<langle>R\<rangle>set_rel\<rangle>nres_rel\<rangle>fun_rel\<rangle>fun_rel" 
 
 abbreviation elec_mod_seprel where 
-  "elec_mod_seprel R \<equiv> [\<lambda>(a, b).
-           finite_profile a b]\<^sub>a (alts_set_impl_assn R)\<^sup>k *\<^sub>a 
-    (list_assn (ballot_assn R))\<^sup>k 
-        \<rightarrow> (result_impl_assn R)"
+  "elec_mod_seprel R \<equiv> [\<lambda>(a, b). finite_profile a b]\<^sub>a 
+  (alts_set_impl_assn R)\<^sup>k *\<^sub>a (list_assn (ballot_assn R))\<^sup>k \<rightarrow> (result_impl_assn R)"
 
 
-subsection \<open>Experimental defintion for Saeparation Logic Assertion\<close>
+subsection \<open>Experimental defintion for Separation Logic Assertion\<close>
 
 definition elec_mod_assn_atom:: 
   "('a  \<Rightarrow> 'a  \<Rightarrow> assn)

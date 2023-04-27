@@ -73,7 +73,7 @@ lemma borda_score_correct:
   shows "\<forall> a \<in> A. borda_score_mon a A pl \<le> SPEC (\<lambda> sc. sc = (borda_score a A pr))"
   unfolding borda_score_mon_def borda_score.simps
   apply safe
-  apply (refine_vcg sum_impl_correct fina prefer_count_monadic_imp_correct profrel)
+  apply (refine_vcg sum_impl_correct prefer_count_monadic_imp_correct assms)
   done
 
 lemma borda_score_opt_refine:
