@@ -1,3 +1,10 @@
+(*  File:       Profile_List_Monadic.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
+
+section \<open>Refined Profile Evaluation\<close>
+
 theory Profile_List_Monadic
   imports "Verified_Voting_Rule_Construction.Profile"
     "Verified_Voting_Rule_Construction.Profile_List"
@@ -5,14 +12,24 @@ theory Profile_List_Monadic
   
 begin
 
+subsection \<open>Profile Evaluation on List-based Profiles \<close>
 
 fun win_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat" where
   "win_count_l p a = fold (\<lambda>x ac. 
      if (0 < length x \<and> x!0 = a) then (ac+1) else (ac)) p 0"
 
-sepref_decl_op set_empty: "{}" :: "\<langle>A\<rangle>set_rel" .
+fun prefer_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat" where
+  "prefer_count_l p a b = fold (\<lambda> x ac. (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac))) p 0"
 
-text \<open> Monadic definition of profile functions \<close>
+fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
+  "wins_l x p y =
+    (prefer_count_l p x y > prefer_count_l p y x)"
+
+fun condorcet_winner_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
+  "condorcet_winner_l A p w =
+      (finite A \<and> profile_l A p \<and>  w \<in> A \<and> (\<forall> x \<in> A - {w} . wins_l w p x))"
+
+subsection \<open> Monadic definition of profile functions \<close>
 
 lemma w_eq_param [sepref_import_param]: "((=), (=)::'a\<Rightarrow>_) \<in> Id \<rightarrow> Id \<rightarrow> Id" by simp
 
@@ -50,13 +67,13 @@ sepref_register index_mon
 declare index_sep.refine[sepref_fr_rules]
 
 
-
-lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))" by simp
+lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))"
+  by simp
 
 lemma index_sound:
   fixes a:: 'a and l :: "'a list" and i::nat
   assumes  "i \<le> List_Index.index l a"
-  shows "(a = l ! i) \<longrightarrow> (i = List_Index.index l a)"
+  shows "(a = l!i) \<longrightarrow> (i = List_Index.index l a)"
   by (metis assms(1) index_first le_eq_less_or_eq)
 
 lemma index_mon_correct:
@@ -99,7 +116,6 @@ lemma index_mon_impl:
   apply clarsimp
   apply (refine_vcg index_mon_correct) by simp
 
-lemmas hallo = index_sep.refine[FCOMP index_mon_impl]
 
 lemma arl_index_nc_correct: "(uncurry index_sep, uncurry mop_list_index)
     \<in> (arl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn"
@@ -148,8 +164,8 @@ definition is_less_preferred_than_ref ::
   \<Rightarrow> 'a
    \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
     "x p\<lesssim>\<^sub>l y \<equiv>  do { 
-        idxx <- index_mon l x;
-        idxy <- index_mon l y;
+        idxx \<leftarrow> index_mon l x;
+        idxy \<leftarrow> index_mon l y;
         RETURN (idxx \<noteq> length l \<and> idxy \<noteq> length l \<and>  idxx \<ge> idxy)}"
 
 lemma is_less_preferred_than_ref_refine:
@@ -174,7 +190,6 @@ declare is_less_preferred_than_sep.refine [sepref_fr_rules]
 lemmas is_less_preferred_than_sep_correct = 
     is_less_preferred_than_sep.refine[FCOMP is_less_preferred_than_ref_refine]
 
-section \<open>Monadic implementation of counting functions \<close>
 
 text \<open>
   win-count, multiple refinement steps
@@ -333,9 +348,10 @@ theorem wc_foreach_rank_correct:
   by fastforce
 
 
-text \<open> Data refinement \<close>
-(* these auxiliary lemmas illustrate the equivalence of checking the the first
-  candidate on a non empty ballot. *)
+subsubsection \<open> Data refinement \<close>
+
+text \<open> these auxiliary lemmas illustrate the equivalence of checking the the first
+  candidate on a non empty ballot. \<close>
 lemma top_above:
   assumes ne: "length pl > 0"
   shows "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
@@ -376,9 +392,6 @@ proof -
 qed
 
 
-
-
-
 definition "f_inner_list a \<equiv> (\<lambda>x ac::nat.
      (if (rank_l x a = 1) then RETURN (ac+1) else RETURN (ac)))"
 
@@ -396,7 +409,7 @@ lemma innerf_eq:
   shows "f_inner_list a l n \<le> \<Down> nat_rel (f_inner_rel a r n)"
   unfolding f_inner_list_def f_inner_rel_def
   apply (refine_vcg)
-  using assms rankeq
+  using assms rankeq unfolding ballot_rel_def
   by (metis in_br_conv)
 
 lemma foreachrel:
@@ -434,10 +447,10 @@ lemma wc_foreach_list_rank_refine:
   apply refine_dref_type
      apply (simp add: refine_rel_defs)
      apply blast
-  apply clarsimp_all
-  using innerf_eq
+  apply clarsimp_all  
+  using innerf_eq unfolding ballot_rel_def 
   apply (metis param_hd refine_IdD)
-  using foreachrel by (metis)
+  using foreachrel unfolding ballot_rel_def   by (metis)
 
 lemma win_count_list_r_refine_os: 
   fixes A:: "'a set"
@@ -449,7 +462,7 @@ lemma win_count_list_r_refine_os:
   apply (simp_all only: refine_rel_defs pl_to_pr_\<alpha>_def)
   apply refine_dref_type
      apply (clarsimp_all, safe)
-  using innerf_eq
+  using innerf_eq unfolding ballot_rel_def 
    apply (metis (mono_tags, lifting) brI list.rel_sel refine_IdD)
   using foreachrel
   using list.rel_sel by blast
@@ -611,20 +624,7 @@ next
     by fastforce
 qed
 
-text \<open> Data refinement \<close>
 
-fun prefer_count_l :: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat" where
-  "prefer_count_l p a b = fold (\<lambda> x ac. (if (b \<lesssim>\<^sub>x a) then (ac+1) else (ac))) p 0"
-
-fun wins_l :: "'a \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
-  "wins_l x p y =
-    (prefer_count_l p x y > prefer_count_l p y x)"
-
-
-
-fun condorcet_winner_l :: "'a set \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool" where
-  "condorcet_winner_l A p w =
-      (finite A \<and> profile_l A p \<and>  w \<in> A \<and> (\<forall> x \<in> A - {w} . wins_l w p x))"
 
 definition pc_foldli_list:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> 'a \<Rightarrow> nat nres" where 
 "pc_foldli_list p a b \<equiv> 
@@ -642,6 +642,7 @@ lemma pc_fold_monad_eq:
 lemma pc_foldli_list_refine:
   shows "(pc_foldli_list, pc_foldli)
     \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
+  unfolding   ballot_rel_def
   apply (auto simp del : is_less_preferred_than.simps)
   apply (rename_tac pl pr a b)
   unfolding pc_foldli_list_def pc_foldli_def
@@ -656,7 +657,7 @@ lemma pc_foldli_list_correct:
     \<in> profile_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   apply(refine_vcg) 
   apply (clarsimp_all simp del: prefer_count.simps)
-  apply (rename_tac pl pr a b)
+  apply (rename_tac pl pr a b) 
 proof -
   fix pl :: "'a Profile_List"
   fix pr :: "'a Profile"
@@ -667,7 +668,7 @@ proof -
           THEN fun_relD, THEN nres_relD]
             pc_foldli_correct, where x5 = pl and p1=pr and x4 = a and a1 = a
              and x3 = b and b1 = b] 
-refine_IdD
+refine_IdD 
   from profr this show "pc_foldli_list pl a b \<le> RES {prefer_count pr a b}"
     by fastforce
 qed
@@ -677,7 +678,7 @@ definition prefer_count_monadic_imp:: "'a::{default, heap, hashable} Profile_Lis
 "prefer_count_monadic_imp p a b \<equiv> 
   nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
   do {
-    b_less_a <- is_less_preferred_than_ref b x a;
+    b_less_a \<leftarrow> is_less_preferred_than_ref b x a;
     RETURN  (if b_less_a then (ac+1) else (ac)) 
   }) (0::nat)"
 
@@ -685,10 +686,9 @@ lemma prefer_count_monadic_imp_refine:
   shows "(prefer_count_monadic_imp, pc_foldli_list) 
 \<in> \<langle>\<langle>Id\<rangle>list_rel\<rangle>list_rel \<rightarrow> Id \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   unfolding prefer_count_monadic_imp_def pc_foldli_list_def
-  apply (refine_vcg is_less_preferred_than_ref_refine[THEN fun_relD,THEN fun_relD,THEN fun_relD,
-        THEN nres_relD])
+  apply (refine_vcg is_less_preferred_than_ref_refine)
   apply (refine_dref_type)
-    apply (auto simp add: is_less_preferred_than_ref_refine simp del : is_less_preferred_than_l.simps)
+    apply (auto simp del : is_less_preferred_than_l.simps)
 proof (rename_tac b a l)
   fix a b :: 'a
   fix l :: "'a Preference_List"
@@ -737,7 +737,7 @@ qed
 sepref_definition prefer_count_sep is
   "uncurry2 prefer_count_monadic_imp" :: "(profile_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k  *\<^sub>a id_assn\<^sup>k
     \<rightarrow>\<^sub>a nat_assn"
-  unfolding prefer_count_monadic_imp_def
+  unfolding prefer_count_monadic_imp_def 
   apply sepref_dbg_keep
   done
 
@@ -748,8 +748,8 @@ declare prefer_count_sep.refine [sepref_fr_rules]
 definition wins_monadic :: "'a::{default, heap, hashable}
    \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "wins_monadic x p y \<equiv> do {
-    pxy <- prefer_count_monadic_imp p x y;
-    pyx <- prefer_count_monadic_imp p y x;
+    pxy \<leftarrow> prefer_count_monadic_imp p x y;
+    pyx \<leftarrow> prefer_count_monadic_imp p y x;
     RETURN (pxy > pyx)
 }"
 
@@ -772,6 +772,15 @@ proof (standard, standard, rename_tac a b)
   from meq show "prefer_count_l pl a b = prefer_count pr a b"
     by simp
 qed
+
+lemma prefer_count_l_eq:
+  fixes pl :: "'a Profile_List"
+  fixes pr :: "'a Profile"
+  assumes prel: "(pl, pr) \<in> profile_rel"
+  shows "prefer_count_l pl a b = prefer_count pr a b"
+  using prefer_count_l_correct[THEN fun_relD, THEN fun_relD, THEN fun_relD,
+      where x2 = pl and x'2 = pr and x1 = a and x'1 = a and x = b and x' = b]
+  assms by auto
 
 
 lemma prefer_count_monadic_imp_ref_l:
@@ -924,11 +933,11 @@ definition condorcet_winner_monadic :: "'a::{default, heap, hashable} set
   \<Rightarrow> 'a Profile_List \<Rightarrow> 'a \<Rightarrow> bool nres" where
   "condorcet_winner_monadic A p w \<equiv> 
     if (w \<in> A) then
-    FOREACH A
+    FOREACHc A (\<lambda> sigma. sigma = True)
      (\<lambda> x b. do {
-     winswx <- wins_monadic w p x;
-      RETURN (if (x = w) then b
-      else (b \<and> (winswx)))
+     winswx \<leftarrow> wins_monadic w p x;
+      RETURN (if (x = w) then True
+      else ((winswx)))
     }) (True)
     else RETURN False"
 
@@ -951,17 +960,19 @@ lemma condorcet_winner_monadic_correct:
   assumes fina: "finite A" 
   shows "condorcet_winner_monadic A pl a
   \<le> SPEC (\<lambda> is_win. is_win = condorcet_winner A pr a)"
-proof (unfold condorcet_winner_monadic_def, auto simp del: condorcet_winner.simps)
+proof (unfold condorcet_winner_monadic_def RETURN_SPEC_conv FOREACH_def[symmetric]
+    , auto simp del: condorcet_winner.simps)
   assume winner_in: "a \<in> A"
   note winsc = wins_monadic_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,THEN nres_relD, THEN refine_IdD]
-  from winner_in  have "FOREACH A (\<lambda>x b. wins_monadic a pl x \<bind> (\<lambda>winswx. RETURN (if x = a then b else b \<and> winswx)))
-     True
+  from winner_in  have  " FOREACH\<^sub>C A (\<lambda>sigma. sigma)
+     (\<lambda>x b. wins_monadic a pl x \<bind> (\<lambda>winswx. RES {if x = a then True else winswx})) True
     \<le> SPEC (\<lambda> is_win. is_win =  condorcet_winner A pr a)"
-      apply (refine_vcg  FOREACH_rule [where I =" \<lambda> it b. b =
+      apply (refine_vcg  FOREACHc_rule [where I =" \<lambda> it b. b =
     (\<forall>x\<in>(A - it) - {a}. wins a pr x)"] winsc prel fina profp)
-    by (auto simp add: winner_in fina  profp simp del: wins.simps)
-  from this show "FOREACH A (\<lambda>x b. wins_monadic a pl x \<bind> (\<lambda>winswx. RETURN (if x = a then b else b \<and> winswx)))
-     True
+    by  (auto simp add: winner_in fina  profp simp del: wins.simps)
+  from this show " a \<in> A \<Longrightarrow>
+    FOREACH\<^sub>C A (\<lambda>sigma. sigma)
+     (\<lambda>x b. wins_monadic a pl x \<bind> (\<lambda>winswx. RES {if x = a then True else winswx})) True
     \<le> RES {condorcet_winner A pr a}" by simp
 next
   assume aA: "a \<notin> A"
@@ -1013,6 +1024,8 @@ lemma cond_winner_unique3_l:
     cond_winner_unique3[where A = A and p = pr and w = w]
   assms by blast
 
+subsubsection \<open>Convert HOL types to heap data structures\<close>
+
 definition convert_list :: "'a::{default, heap} list \<Rightarrow> 'a list nres"  where
   "convert_list l \<equiv>
   nfoldli l (\<lambda> x. True)
@@ -1055,12 +1068,14 @@ lemma convert_list_to_set_correct:
       (r = set l1))"])
   by auto
 
-definition limit_profile_l :: "'a::{default,hashable,heap} set \<Rightarrow> 
-    'a::{default,hashable,heap} Profile_List \<Rightarrow> 'a::{default,hashable,heap} Profile_List nres" where
+subsection \<open>Monadic Implementation for Limiting Profiles\<close>
+
+definition limit_profile_l :: "'a::{default, hashable, heap} set \<Rightarrow> 
+    'a Profile_List \<Rightarrow> 'a Profile_List nres" where
   "limit_profile_l A p = 
     nfoldli p (\<lambda>_. True)
       (\<lambda> x np. do {
-         newb <- (limit_monadic A x);
+         newb \<leftarrow> (limit_monadic A x);
         RETURN (op_list_append np newb)}) []"
 
 sepref_register limit_monadic
@@ -1069,15 +1084,13 @@ declare limit_sep.refine [sepref_fr_rules]
 sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" :: 
   "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn )\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn id_assn )"
   unfolding limit_profile_l_def 
-  apply (rewrite in "nfoldli _ _ _ \<hole>" HOL_list.fold_custom_empty)
+  apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" HOL_list.fold_custom_empty)
   apply sepref_dbg_keep
   done
 
 sepref_register limit_profile_l
 
-declare limit_profile_sep.refine [sepref_fr_rules]
-
-lemma "limitp_correct":
+lemma limitp_correct:
   shows "(uncurry limit_profile_l, uncurry (RETURN oo limit_profile)) \<in> 
   [\<lambda> (A, pl). finite A ]\<^sub>f (\<langle>Id\<rangle>set_rel \<times>\<^sub>r  profile_rel) \<rightarrow> \<langle>profile_rel\<rangle>nres_rel"
 proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[symmetric],
@@ -1090,27 +1103,39 @@ proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[sy
   show " nfoldli pl (\<lambda>_. True) (\<lambda>x np. limit_monadic A x \<bind> (\<lambda>newb. RES {np @ [newb]})) []
        \<le> \<Down> profile_rel (RES {map (limit A) pr})"
     apply (refine_vcg limit_monadic_refine  nfoldli_rule[where I = "(\<lambda> proc rem r. 
-              r = map (limit_l A) proc)"])
-        apply (auto simp add: fina) 
-    using limit_eq in_br_conv  length_map limit_l_sound list_rel_eq_listrel listrel_iff_nth 
-        nth_map prel relAPP_def
-    by (smt (verit, del_insts))
+              r = map (limit_l A) proc)"] )
+        apply (auto simp add: fina)  
+    unfolding  ballot_rel_def well_formed_pl_def  relAPP_def in_br_conv
+     in_br_conv  length_map limit_l_sound list_rel_eq_listrel listrel_iff_nth 
+        nth_map prel  relAPP_def
+    apply safe using length_preserving
+    using prel list_rel_imp_same_length prel  apply blast
+    using limit_eq
+      apply (metis ballot_rel_def list_rel_imp_same_length map_in_list_rel_conv nth_map 
+          nth_mem prel  profile_rel_imp_map_ballots)
+     using limit_eq
+      apply (metis ballot_rel_def list_rel_imp_same_length map_in_list_rel_conv nth_map 
+          nth_mem prel  profile_rel_imp_map_ballots)
+     using prel limit_l_sound   
+     by (metis ballot_rel_def  map_in_list_rel_conv nth_map nth_mem 
+         profile_rel_imp_map_ballots well_formed_pl_def)
+  
 qed
 
-lemmas limit_profile_sep_correct_aux  = limit_profile_sep.refine[FCOMP limitp_correct] 
-
-abbreviation "ballot_assn R \<equiv> (hr_comp (ballot_impl_assn R) ballot_rel)"
+definition "ballot_assn R \<equiv> (hr_comp (ballot_impl_assn R) ballot_rel)"
 
 lemma limit_profile_sep_correct:
   shows "(uncurry limit_profile_sep, uncurry (RETURN \<circ>\<circ> limit_profile))
     \<in> [\<lambda>(a, b).
            finite
-            a]\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a
+            a]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
                  (list_assn
-                   (hr_comp (ballot_impl_assn nat_assn)
-                     ballot_rel))\<^sup>k \<rightarrow> list_assn
-                                        (ballot_assn nat_assn)"
-  using limit_profile_sep.refine[FCOMP limitp_correct]  set_rel_id hr_comp_Id2 by simp
+                   (ballot_assn id_assn))\<^sup>k \<rightarrow> list_assn
+                                        (ballot_assn id_assn)"
+
+  using limit_profile_sep.refine[FCOMP limitp_correct]  set_rel_id hr_comp_Id2 
+  unfolding ballot_assn_def
+    by (simp)
 
 declare limit_profile_sep_correct [sepref_fr_rules]
 
@@ -1120,14 +1145,10 @@ lemma limit_profile_sound_sep:
             (list_assn (ballot_assn nat_assn)) p hp> limit_profile_sep hs hp 
   < \<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp * 
                 (list_assn (ballot_assn nat_assn)) res r * \<up> (finite_profile s res) >\<^sub>t"
-  apply (safe)
-  apply (clarsimp)
-proof -
+proof (clarsimp)
   assume sA: "s \<subseteq> A"
   assume fina: "finite A"
   assume prof: "profile A p"
-  note limit_profile_sep_correct[THEN hfrefD, THEN hn_refineD, of "(s, p)" "(hs, hp)", simplified]
-  limit_profile_sound[where S = s and p = p and A = A] 
   from sA fina have fins: "finite s"
     using rev_finite_subset by blast
   have postapp: "\<And>x. (\<exists>\<^sub>Axa. alts_set_impl_assn nat_assn s hs *
@@ -1137,7 +1158,8 @@ proof -
                 \<up> (xa = map (limit s) p)) \<Longrightarrow>\<^sub>A 
         ( \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
              list_assn (ballot_assn nat_assn) res x * true *
-             \<up> (finite_profile s res))" using limit_profile_sound[where S = A and p = p and A = s] 
+             \<up> (finite_profile s res))" 
+    using limit_profile_sound[where S = A and p = p and A = s] 
     apply sep_auto
     using fins apply blast
     by (simp add: fina prof sA)
@@ -1162,7 +1184,8 @@ proof -
              list_assn (ballot_assn nat_assn) res r * true *
              \<up> (finite_profile s res)"
             and c = "limit_profile_sep hs hp"]
-      using ent_refl by blast
+      using ent_refl
+      by (simp add: ballot_assn_def) 
     
 qed
 

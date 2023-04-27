@@ -396,7 +396,7 @@ end
   | "sorted_wrt' R (x#xs) \<longleftrightarrow> list_all (R x) xs \<and> sorted_wrt' R xs"  
 
   lemma sorted_wrt'_eq: "sorted_wrt' = sorted_wrt" 
-  proof (intro ext iffI)
+  proof (intro ext iffI)                
     fix R :: "'a \<Rightarrow> 'a \<Rightarrow> bool" and xs :: "'a list"
     {
       assume "sorted_wrt R xs"

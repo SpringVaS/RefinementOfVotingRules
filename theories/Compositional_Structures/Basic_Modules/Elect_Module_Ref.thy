@@ -1,14 +1,23 @@
+(*  File:       Elect_Module_Ref.thy
+    Copyright   2023  Karlsruhe Institute of Technology (KIT)
+*)
+\<^marker>\<open>creator "Valentin, Karlsruhe Institute of Technology (KIT)"\<close>
+
 theory Elect_Module_Ref
   imports "Verified_Voting_Rule_Construction.Elect_Module"
     "Component_Types/Electoral_Module_Ref"
 
 begin
 
+section \<open>Refined Elect Module\<close>
+
+text \<open>This is more or less an experimental artifacts. We use the elector instead\<close>
+
  \<comment> \<open>The elect module should not return just the reference to all alternatives
-  but a deep copy\<close>
+  but a deep copy.\<close>
 
 definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
-  "aux_set_copy A \<equiv>  FOREACH A
+  "aux_set_copy A \<equiv>  FOREACH A 
      (\<lambda> x cp. RETURN (insert x cp)) {}"
 
 lemma aux_set_copy_correct:
@@ -25,11 +34,11 @@ proof (rename_tac A)
     by (auto simp add: fina)
 qed
 
-
+subsection \<open>Defintion\<close>
 
 fun elect_module_ref :: "'a Electoral_Module_Ref" where
   "elect_module_ref A p = do {
-   B <- aux_set_copy A;
+   B \<leftarrow> aux_set_copy A;
    RETURN (B,{},{})
 }"
 
@@ -71,11 +80,7 @@ sepref_definition elect_module_sep is
   unfolding elect_module_ref.simps aux_set_copy_def hs.fold_custom_empty 
   by sepref
 
-
-
-lemmas elect_elect_module_sep_correct_aux = elect_module_sep.refine[FCOMP elect_module_ref_correct]
-
-lemma elect_elect_module_sep_correct:
+lemma elect_module_sep_correct:
   shows "(uncurry elect_module_sep, uncurry (RETURN \<circ>\<circ> elect_module)) \<in>  [\<lambda>(a, b).
            finite
             a]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
@@ -84,10 +89,8 @@ lemma elect_elect_module_sep_correct:
                      ballot_rel))\<^sup>k \<rightarrow> result_impl_assn id_assn"
   using
  elect_module_sep.refine[FCOMP elect_module_ref_correct]  set_rel_id hr_comp_Id2 by simp
-  
-  
+                                                                                      
 
-
-declare elect_elect_module_sep_correct[sepref_fr_rules]
+declare elect_module_sep_correct[sepref_fr_rules]
 
 end
