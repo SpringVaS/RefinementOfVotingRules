@@ -39,5 +39,4 @@ declare opt_plur_correct [sepref_fr_rules]
 
 export_code clist convert_list_to_hash_set plurality_rule_direct_sep in Scala_imp
 
-
 end

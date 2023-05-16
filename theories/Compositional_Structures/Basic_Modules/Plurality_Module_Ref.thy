@@ -45,7 +45,7 @@ definition pre_compute_plur_scores :: "'a set
   where "pre_compute_plur_scores A pl \<equiv> 
   if (A = {}) then RETURN Map.empty else
   do {
-   zeromap:: 'a Scores_Map  \<leftarrow> init_map A;
+   zeromap:: 'a Scores_Map \<leftarrow> init_map A;
   nfoldli pl (\<lambda>_. True) 
     (\<lambda>ballot map. 
      do{ 
@@ -131,9 +131,6 @@ next
   from wcmap this show False by auto
 qed
   
-
-
-
 lemma plurality_ref_correct:
   shows "(uncurry plurality_ref, uncurry (RETURN oo plurality_mod)) \<in> 
   ([\<lambda> (A, pl). finite_profile A

@@ -23,6 +23,7 @@ subsection \<open>Definition\<close>
 
 type_synonym 'a Scores_Map = "'a \<rightharpoonup> nat"
 
+
 definition init_map :: "'a set \<Rightarrow> 'a Scores_Map nres" where 
 "init_map A \<equiv>
   FOREACH A 
@@ -61,6 +62,20 @@ definition scoremax :: "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nre
       else 
           RETURN(max))
     }) (0::nat)
+}"
+
+definition scoremin :: "'a set \<Rightarrow> 'a Scores_Map \<Rightarrow> nat nres" where 
+ "scoremin A scores \<equiv> do {
+  (min, _) <- FOREACH (A)
+    (\<lambda>x (min, first). do {
+      ASSERT (x \<in> dom scores);
+      let scx = the (scores x);
+      (if ((scx < min) \<or> first) then 
+          RETURN (scx, False) 
+      else 
+          RETURN(min, False))
+    }) (0::nat, True);
+  RETURN (min)
 }"
 
 definition eliminate:: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
@@ -195,6 +210,7 @@ next
     by blast
 qed
 
+
 lemma scoremax_correct:
   fixes A :: "'a set"
   assumes fina: "finite A" and nempa: "A \<noteq> {}"
@@ -221,11 +237,38 @@ proof ((metis (mono_tags, lifting) order_antisym_conv))
     by simp
 qed
 
+
+lemma scoremin_correct:
+  fixes A :: "'a set"
+  assumes fina: "finite A" and nempa: "A \<noteq> {}"
+  fixes efn :: "'a Evaluation_Function"
+  and pr :: "'a Profile"
+  shows "scoremin A (scores_map efn A pr)
+ \<le> SPEC (\<lambda> min. min = Min {(efn a A pr) | a. a \<in> A})"
+  unfolding scoremin_def scores_map_def
+  apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it (min, first). (\<forall>a \<in> (A - it). (efn a A pr) \<ge> min)
+      \<and> (\<not>first \<longrightarrow> (\<exists>a \<in> (A - it). min = (efn a A pr))) \<and> (first \<longrightarrow> A = it))"] fina nempa,
+        auto simp add: nempa)
+  apply (metis DiffI dual_order.trans less_or_eq_imp_le)
+proof (rename_tac alt)
+  fix alt
+  have "finite {(efn a A pr) | a. a \<in> A}" using fina by auto
+  thus "\<forall>a\<in>A. efn alt A pr \<le> efn a A pr \<Longrightarrow>
+           alt \<in> A \<Longrightarrow> efn alt A pr = Min {(efn a A pr) | a. a \<in> A}"
+    using Min_eqI[where A = "{(efn a A pr) | a. a \<in> A}" and x = "efn alt A pr"] 
+        mem_Collect_eq
+    by force
+qed
+     
 subsection \<open>Common Eliminators\<close>
                                    
 definition less_eliminator_ref :: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
                             'a Electoral_Module_Ref" where
   "less_eliminator_ref e t A p \<equiv> elimination_module_ref e t (<) A p"
+
+definition leq_eliminator_ref  :: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
+                            'a Electoral_Module_Ref" where
+  "leq_eliminator_ref e t A p = elimination_module_ref e t (\<le>) A p"
 
 definition max_eliminator_ref ::  "'a Scores_Map \<Rightarrow>
                             'a Electoral_Module_Ref" where
@@ -236,6 +279,17 @@ definition max_eliminator_ref ::  "'a Scores_Map \<Rightarrow>
     t \<leftarrow> (scoremax A e); 
     (less_eliminator_ref e t A p)
  }"
+
+definition min_eliminator_ref ::  "'a Scores_Map \<Rightarrow>
+                            'a Electoral_Module_Ref" where
+  "min_eliminator_ref e A p \<equiv>
+    if (A = {}) then
+      RETURN ({},{},{})
+    else do {
+    t \<leftarrow> (scoremin A e); 
+    (leq_eliminator_ref e t A p)
+ }"
+
 
 lemma less_eliminator_ref_correct:
   fixes A :: "'a set"
@@ -265,6 +319,21 @@ lemma max_eliminator_ref_correct:
           \<le> SPEC (\<lambda> em. em = max_eliminator efn A pr))"
   apply (unfold max_eliminator_ref_def max_eliminator.simps less_eliminator_ref_def)
   apply (refine_vcg scoremax_correct fina )
+   apply (simp)
+  unfolding less_eliminator.simps using elimination_module_ref_correct assms
+  by fastforce 
+
+lemma min_eliminator_ref_correct:
+  fixes A :: "'a set"
+  fixes efn :: "'a Evaluation_Function"
+  and pr :: "'a Profile"
+  and pl :: "'a Profile_List"
+  assumes fina: "finite A"
+  assumes prel: "(pl, pr) \<in> profile_rel"
+  shows "(min_eliminator_ref (scores_map efn A pr) A pl
+          \<le> SPEC (\<lambda> em. em = min_eliminator efn A pr))"
+  apply (unfold min_eliminator_ref_def min_eliminator.simps leq_eliminator_ref_def)
+  apply (refine_vcg scoremin_correct fina )
    apply (simp)
   unfolding less_eliminator.simps using elimination_module_ref_correct assms
   by fastforce 

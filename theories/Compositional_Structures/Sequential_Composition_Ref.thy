@@ -66,8 +66,12 @@ schematic_goal seqcomp_sepcurried:
 
 concrete_definition (in -) seqcomp_sep uses Seqcomp_Impl.seqcomp_sepcurried
 
+
+definition "seqcomp_mn \<equiv> (m \<triangleright> n)"
+definition "seqcomp_mn_sep \<equiv> (seqcomp_sep m_sep n_sep)"
+
 theorem seqcomp_sep_correct:
-  shows "(uncurry (seqcomp_sep m_sep n_sep), uncurry (RETURN oo (PR_CONST (m \<triangleright> n)))) 
+  shows "(uncurry (seqcomp_sep m_sep n_sep), uncurry (RETURN oo (m \<triangleright> n))) 
 \<in> elec_mod_seprel id_assn"
     using seqcomp_sep_ucp_refine[FCOMP seq_opt_correct, OF em_m em_n]
     unfolding seqcomp_alt_eq seqcomp_sep_def

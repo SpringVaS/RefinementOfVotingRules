@@ -66,8 +66,8 @@ sepref_definition condorcet_elim_sep is
    \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding condorcet_ref_def  max_eliminator_ref_def condorcet_score_ref_def 
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
-    pre_compute_scores_def[abs_def] scoremax_def[abs_def] op_set_is_empty_def[symmetric]
-  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hm.fold_custom_empty)
+    pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
+    hm.fold_custom_empty
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty) 

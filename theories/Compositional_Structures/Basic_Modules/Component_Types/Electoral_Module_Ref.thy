@@ -23,6 +23,39 @@ type_synonym 'a Electoral_Module_Sep = "('a, unit) hashtable
       \<Rightarrow> ('a array \<times> nat) list
          \<Rightarrow> (('a, unit) hashtable \<times> ('a, unit) hashtable \<times> ('a, unit) hashtable) Heap"
 
+definition aux_set_copy :: "'a set \<Rightarrow> 'a set nres" where
+  "aux_set_copy A \<equiv>  FOREACH A 
+     (\<lambda> x cp. RETURN (insert x cp)) {}"
+
+ \<comment> \<open>The elect module should not return just the reference to all alternatives
+  but a deep copy.\<close>
+
+
+lemma aux_set_copy_correct:
+  shows "(aux_set_copy, (RETURN o op_set_copy)) 
+    \<in> [\<lambda> s. finite s]\<^sub>f \<langle>Id\<rangle>set_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"  
+  unfolding aux_set_copy_def comp_apply
+  apply (intro frefI nres_relI, clarsimp)
+proof (rename_tac A)
+  fix A :: "'a set"
+  assume fina: "finite A"
+  show "FOREACH A (\<lambda>x cp. RETURN (insert x cp)) {} \<le> RETURN A"
+    apply (refine_vcg FOREACH_rule[where I = "\<lambda> it x. 
+      x = A -it"])
+    by (auto simp add: fina)
+qed
+
+sepref_definition hs_copy_sep is "aux_set_copy" :: 
+  " (hs.assn id_assn)\<^sup>k
+ \<rightarrow>\<^sub>a (hs.assn id_assn)"
+  unfolding aux_set_copy_def hs.fold_custom_empty
+  by sepref
+
+lemma hs_copy_hnr_aux[sepref_fr_rules]: "(hs_copy_sep, RETURN o op_set_copy) 
+  \<in> [\<lambda> s. finite s]\<^sub>a (hs.assn id_assn)\<^sup>k \<rightarrow> hs.assn id_assn"
+  using hs_copy_sep.refine[FCOMP aux_set_copy_correct] by auto
+
+
 
 subsection \<open>Refinement Relations\<close>
 

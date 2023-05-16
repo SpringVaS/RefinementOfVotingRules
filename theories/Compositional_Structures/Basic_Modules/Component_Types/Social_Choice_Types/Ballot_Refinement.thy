@@ -16,6 +16,7 @@ theory Ballot_Refinement
   Verified_Voting_Rule_Construction.Profile_List
 
   Refine_Imperative_HOL.IICF
+  "HOL-Library.LaTeXsugar"
 
 begin
 
