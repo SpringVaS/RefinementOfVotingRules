@@ -206,16 +206,16 @@ sepref_definition borda_elim_sep_opt is
    \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding borda_ref_opt_def  max_eliminator_ref_def borda_score_opt_mon_def sum_impl_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
-    pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
+    pre_compute_scores_def[abs_def] scoremax_def[abs_def] op_set_is_empty_def[symmetric]
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hm.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "RETURN ({}, {}, rewrite_HOLE)" hs.fold_custom_empty) 
   apply (rewrite in "RETURN ({}, rewrite_HOLE, _)" hs.fold_custom_empty) 
   apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty) 
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (rewrite_HOLE, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, rewrite_HOLE, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (rewrite_HOLE, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if _ then RETURN (rewrite_HOLE, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if _ then RETURN (_, rewrite_HOLE, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if _ then RETURN (_, _, rej) else RETURN (rewrite_HOLE, rej, def))" hs.fold_custom_empty)
   apply sepref_dbg_keep
   done
 

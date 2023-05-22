@@ -34,13 +34,14 @@ definition minimax_score_ref :: "'a::{default, heap, hashable} Evaluation_Functi
 (* Min {prefer_count_l p x y | y . y \<in> A - {x}}*)
 definition minimax_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
   "minimax_ref A p = do {
-    if (card A \<le> 1) then RETURN ({},{},A) else do{
+    ASSERT (finite A);
+    if (card A \<le> 1) then do {let Ac = op_set_copy A; RETURN ({},{},Ac)} else do{
     scores \<leftarrow> (pre_compute_scores minimax_score_ref A p);
     max_eliminator_ref scores A p }
   }"
 
 sepref_definition minimax_score_sep is "uncurry2 minimax_score_ref"
-  :: "nat_assn\<^sup>k *\<^sub>a (hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a id_assn"
+  :: "nat_assn\<^sup>k *\<^sub>a (hs.assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
   unfolding minimax_score_ref_def  pre_compute_scores_def scoremin_def
   hm.fold_custom_empty hs.fold_custom_empty  
   apply sepref_dbg_keep
@@ -49,16 +50,16 @@ sepref_definition minimax_score_sep is "uncurry2 minimax_score_ref"
 declare minimax_score_sep.refine[sepref_fr_rules]
 
 sepref_definition minimax_sep is "uncurry minimax_ref"
-  :: "(hs.assn nat_assn)\<^sup>d *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
+  :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
    \<rightarrow>\<^sub>a (result_impl_assn nat_assn)"
   unfolding minimax_ref_def  max_eliminator_ref_def 
     less_eliminator_ref_def  
     elimination_module_ref_def[abs_def] eliminate_def[abs_def]
-    pre_compute_scores_def scoremin_def
-  scoremax_def[abs_def] op_set_is_empty_def[symmetric] hm.fold_custom_empty op_set_copy_def 
+    pre_compute_scores_def 
+  scoremax_def[abs_def] op_set_is_empty_def[symmetric] hm.fold_custom_empty 
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
-  apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty) 
+  apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty) +
   apply (rewrite in "RETURN (_, rewrite_HOLE, _)" hs.fold_custom_empty) +
   apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty)+ 
   apply sepref_dbg_keep
@@ -184,10 +185,12 @@ qed
 
 lemmas minimax_sep_correct_aux = minimax_sep.refine[FCOMP minimax_ref_correct]
                                              
-lemma  minimax_sep_correct:
+lemma  minimax_sep_correct[sepref_fr_rules]:
   shows "(uncurry minimax_sep, uncurry (RETURN \<circ>\<circ> minimax))
     \<in> elec_mod_seprel nat_assn"
-  using minimax_sep_correct_aux set_rel_id hr_comp_Id2  unfolding ballot_assn_def Id_def
+  using minimax_sep_correct_aux set_rel_id hr_comp_Id2 unfolding ballot_assn_def
+  by simp
+
   
 
 end

@@ -378,9 +378,5 @@ theorem max_eliminator_ref_correct_default:
   
 
 
-definition leq_eliminator_ref :: "'a Scores_Map \<Rightarrow> Threshold_Value \<Rightarrow>
-                            'a Electoral_Module_Ref" where
-  "leq_eliminator_ref e t A p = elimination_module_ref e t (\<le>) A p"
-
 
 end
