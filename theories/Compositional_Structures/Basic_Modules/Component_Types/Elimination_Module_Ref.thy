@@ -216,11 +216,11 @@ lemma scoremax_correct:
   apply (refine_vcg FOREACH_rule[where I = "(\<lambda>it max. (\<forall>a \<in> (A - it). (efn a A pr) \<le> max)
       \<and> ((\<exists>a \<in> (A - it). max = (efn a A pr)) \<or> max = 0))"], clarsimp_all simp add:  fina nempa,
          auto)
-  using max_score_in[where A= A and f = "(\<lambda> x. efn x A pr)"] fina nempa
-            score_bounded[where A= A and f = "(\<lambda> x. efn x A pr)"] 
+  using max_score_contained[where A= A and e = "(\<lambda> x. efn x A pr)"] fina nempa
+            score_bounded[where A= A and e= "(\<lambda> x. efn x A pr)"] 
   subgoal by (metis DiffI dual_order.trans order_less_imp_le)
-  using max_score_in[where A= A and f = "(\<lambda> x. efn x A pr)"] fina nempa
-            score_bounded[where A= A and f = "(\<lambda> x. efn x A pr)"] 
+  using max_score_contained[where A= A and e = "(\<lambda> x. efn x A pr)"] fina nempa
+            score_bounded[where A= A and e = "(\<lambda> x. efn x A pr)"] 
 proof ((metis (mono_tags, lifting) order_antisym_conv))
   assume all0: "\<forall>a\<in>A. efn a A pr = 0"
   from all0 have eq: "{efn a A pr |a. a \<in> A} = {0}"

@@ -74,7 +74,7 @@ theorem seqcomp_sep_correct:
   shows "(uncurry (seqcomp_sep m_sep n_sep), uncurry (RETURN oo (m \<triangleright> n))) 
 \<in> elec_mod_seprel id_assn"
     using seqcomp_sep_ucp_refine[FCOMP seq_opt_correct, OF em_m em_n]
-    unfolding seqcomp_alt_eq seqcomp_sep_def
+    unfolding seq_comp_alt_eq seqcomp_sep_def
     by (simp)
 
 end

@@ -97,7 +97,7 @@ proof -
   from this have nempa: "A \<noteq> {}" by auto
   assume "pl = l1 @ [] # l2"
   from this profl show "False"
-    unfolding profile_l_def well_formed_pl_def losimp using nempa
+    unfolding profile_l_def lin_order_equiv_A using nempa
     by (metis in_set_conv_decomp in_set_conv_nth list.set(1))
 next
   fix xa :: "'a Preference_List"
@@ -106,7 +106,7 @@ next
   assume nempxa: "xa \<noteq> []"
   assume "pl = l1 @ xa # l2"
   from this have "set xa = A"
-    using profl  unfolding profile_l_def well_formed_pl_def losimp
+    using profl  unfolding profile_l_def well_formed_pl_def lin_order_equiv_A
     by (metis in_set_conv_decomp in_set_conv_nth)
   from this nempxa have innit: "xa ! 0 \<in> A" by auto
   assume somev: 

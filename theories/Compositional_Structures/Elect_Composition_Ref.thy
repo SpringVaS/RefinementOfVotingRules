@@ -27,7 +27,7 @@ shows "(uncurry (elector_opt (m)), uncurry (RETURN oo (elector m))) \<in>
 
 lemma elector_opt_eq:
   shows "elector_opt \<equiv> (RETURN \<circ>\<circ>\<circ> (elector))"
-  unfolding elector_opt_def elector.simps seqcomp_alt_eq[symmetric]
+  unfolding elector_opt_def elector.simps
   sequential_composition'.simps comp_apply
   apply auto
   by (simp add: case_prod_beta')

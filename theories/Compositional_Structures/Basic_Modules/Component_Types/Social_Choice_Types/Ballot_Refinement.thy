@@ -24,7 +24,7 @@ subsection \<open>Refinement Relation for Ballots\<close>
 
   
 definition ballot_rel_def [refine_rel_defs]:
-  "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_pl)"
+  "ballot_rel \<equiv> br (pl_\<alpha>) (well_formed_l)"
 
 lemma sv_bal_rel: "single_valued ballot_rel"
   unfolding ballot_rel_def
@@ -37,9 +37,8 @@ proof (refine_vcg, clarsimp_all)
   fix bal:: "'a Preference_List" and bar:: "'a Preference_Relation"
   assume "(bal, bar) \<in> ballot_rel"
   from this show " linear_order_on_l alts bal = linear_order_on alts bar"
-    using in_br_conv linorder_l_imp_rel linorder_rel_imp_l
-    unfolding ballot_rel_def
-    by metis
+    unfolding ballot_rel_def in_br_conv
+    using lin_ord_eq  by blast    
 qed
 
 
@@ -51,7 +50,7 @@ declare member_def[simp]
 
 lemma simple_list_abstraction_sketch:
   shows "([1::nat,2], {(2::nat,1), (2::nat,2), (1::nat,1)}) \<in> ballot_rel"
-  unfolding in_br_conv well_formed_pl_def ballot_rel_def pl_\<alpha>_def
+  unfolding in_br_conv ballot_rel_def pl_\<alpha>_def 
   by (auto)
   
      
@@ -69,21 +68,21 @@ lemma aboveref:
   shows "(above_l, above) \<in> ballot_rel \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>list_set_rel"
   apply (refine_vcg)                                    
   unfolding list_set_rel_def
-  apply (auto) using aboveeq unfolding well_formed_pl_def in_br_conv above_l_def ballot_rel_def
+  apply (auto) using above_eq unfolding  in_br_conv above_l_def ballot_rel_def 
   by (metis distinct_take)
   
 lemma rankref: 
   shows "(rank_l, rank) \<in> ballot_rel \<rightarrow> Id \<rightarrow> nat_rel"
   apply (refine_vcg)
   apply (auto simp only: refine_rel_defs)
-  using rankeq
+  using rank_eq
     by fastforce
 
 lemma is_less_preferred_than_ref:              
   shows "(is_less_preferred_than_l, is_less_preferred_than) 
     \<in> Id \<rightarrow> ballot_rel \<rightarrow> Id \<rightarrow> bool_rel"
-  apply (refine_vcg)
-  by (auto simp only: refine_rel_defs less_preffered_l_rel_eq)
+  apply (refine_vcg)                                     
+  by (auto simp only: refine_rel_defs less_preferred_l_rel_eq)
 
 subsection \<open>Refinement Relation for Profile\<close>
 
@@ -152,8 +151,8 @@ proof (-)
     by (simp add: list_rel_pres_length param_nth)
   from prel this show "profile_l A pl \<longleftrightarrow> profile A pr" 
     unfolding  ballot_rel_def
-     profile_def profile_l_def in_br_conv
-    by (metis linorder_l_imp_rel linorder_rel_imp_l list_rel_pres_length)
+     profile_def profile_l_def in_br_conv            
+    by (metis lin_ord_eq lin_ord_eq list_rel_pres_length)
 qed
 
 lemma profile_prop_rel:
@@ -167,7 +166,7 @@ proof (-)
     using profile_type_ref by metis
   from profl this show "profile A pr"
     using profile_ref  unfolding ballot_rel_def
-    by (simp add: in_br_conv linorder_l_imp_rel list_rel_eq_listrel listrel_iff_nth 
+    by (simp add: in_br_conv lin_ord_eq list_rel_eq_listrel listrel_iff_nth 
         profile_def profile_l_def relAPP_def)
 qed
 
@@ -199,9 +198,9 @@ subsection \<open>Correctness\<close>
 lemma limit_l_sound:
   fixes A :: "'a set"
   fixes bal :: "'a Preference_List"
-  assumes "well_formed_pl bal"
-  shows "well_formed_pl (limit_l A bal)"
-  using assms unfolding well_formed_pl_def
+  assumes "well_formed_l bal"
+  shows "well_formed_l (limit_l A bal)"
+  using assms
   by auto
 
 
@@ -210,11 +209,10 @@ lemma limit_monadic_refine:
   assumes fina: "finite A" 
   shows "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))"
   unfolding limit_monadic_def
-  apply (refine_vcg WHILET_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"
+  by (refine_vcg WHILET_rule[where R = "measure (\<lambda>(i, newb). length bal - i)"
             and I = "(limit_monadic_inv A bal)"],
         auto simp add: limit_monadic_inv_def pl_\<alpha>_def  take_Suc_conv_app_nth)
-  done
-
+  
 
 lemma limit_monadic_correct:
   shows "(uncurry limit_monadic, uncurry (RETURN oo limit))
@@ -226,24 +224,19 @@ proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps,
   fix bal :: "'a Preference_List"
   assume balrel: "(bal, bar) \<in> ballot_rel"
   assume fina: "finite A"
-  from balrel have wf: "well_formed_pl bal"
+  from balrel have wf: "well_formed_l bal"
    using in_br_conv  unfolding  ballot_rel_def
    by metis
   from balrel have abs: "bar = pl_\<alpha> bal" unfolding   ballot_rel_def in_br_conv by simp
   from fina have refp: "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))" 
       using limit_monadic_refine by blast
   from wf  have refb: "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
-    unfolding ballot_rel_def in_br_conv 
-  proof(safe)
-    fix a b :: 'a
-    note limit_l_eq
-    have "pl_\<alpha> (limit_l A bal) = limit A (pl_\<alpha> bal) "
-      using wf limit_l_eq
-  (*from this have balref: "(SPEC (\<lambda>x. x = limit_l A bal)) \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
+    unfolding ballot_rel_def in_br_conv using limit_l_sound limit_eq by blast 
+  from this have balref: "(SPEC (\<lambda>x. x = limit_l A bal)) \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
     by (metis (full_types) RETURN_SPEC_refine lhs_step_SPEC)
   show "limit_monadic A bal \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
-    using  order_trans[OF refp balref] .*)
-      oops
+    using  order_trans[OF refp balref] .
+qed
 
 subsection \<open>Separation Logic Assertions Relators for Eelectoral Module Data Type\<close>
 
@@ -263,8 +256,7 @@ sepref_definition limit_sep is "uncurry limit_monadic" ::
   "(hs.assn id_assn)\<^sup>k *\<^sub>a (ballot_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a (ballot_impl_assn id_assn)"
   unfolding limit_monadic_def[abs_def]
   apply (rewrite in "WHILET _ _ rewrite_HOLE" arl.fold_custom_empty)
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 end
 

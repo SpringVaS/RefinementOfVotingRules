@@ -43,7 +43,7 @@ subsection \<open>Correctness\<close>
 
 lemma blacks_sep_correct [sepref_fr_rules]:
   shows "(uncurry blacks_sep , uncurry (RETURN oo blacks_rule)) \<in> elec_mod_seprel nat_assn"
-  unfolding blacks_rule.simps seqcomp_alt_eq elector.simps[symmetric]
+  unfolding blacks_rule.simps seq_comp_alt_eq[symmetric] elector.simps[symmetric]
   using blacks_sep.refine 
     unfolding elector_opt_eq .
 
