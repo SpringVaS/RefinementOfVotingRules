@@ -109,7 +109,8 @@ next
     using profl  unfolding profile_l_def well_formed_pl_def losimp
     by (metis in_set_conv_decomp in_set_conv_nth)
   from this nempxa have innit: "xa ! 0 \<in> A" by auto
-  assume somev: "\<forall>a\<in>A. sigma a = Some (fold (\<lambda>x ac. if x \<noteq> [] \<and> x ! 0 = a then ac + 1 else ac) l1 0)"
+  assume somev: 
+    "\<forall>a\<in>A. sigma a = Some (fold (\<lambda>x ac. if x \<noteq> [] \<and> x ! 0 = a then ac + 1 else ac) l1 0)"
   assume "sigma (xa ! 0) = None"
   from this somev innit show False
     by simp
@@ -118,12 +119,14 @@ next
   assume "xa \<in> A"
   from this have nempa: "A \<noteq> {}" by auto
   fix sigma ::  "('a \<Rightarrow> nat option)"
-  assume valuemap: "\<forall>a\<in>A. sigma a = Some (fold (\<lambda>x ac. if x \<noteq> [] \<and> x ! 0 = a then ac + 1 else ac) pl 0)"
+  assume valuemap: 
+    "\<forall>a\<in>A. sigma a = Some (fold (\<lambda>x ac. if x \<noteq> [] \<and> x ! 0 = a then ac + 1 else ac) pl 0)"
   assume outnone: " \<forall>a. a \<notin> A \<longrightarrow> sigma a = None"
   from valuemap this have wclmap: "(sigma) = (\<lambda>a . Some (win_count_l pl a))|`A"
     unfolding restrict_map_def win_count_l.simps by auto
   from prel profl have "(pl, pr) \<in> profile_on_A_rel A"
-    by (simp add: in_br_conv list_rel_eq_listrel listrel_iff_nth profile_l_def relAPP_def relcomp.intros)
+    by (simp add: in_br_conv list_rel_eq_listrel listrel_iff_nth profile_l_def relAPP_def
+        relcomp.intros)
   from this wclmap have wcmap: "(sigma) = (\<lambda>a . Some (win_count pr a))|`A"
     using  win_count_l_correct[THEN fun_relD,THEN fun_relD, where x1 = pl and x'1 = pr and A2 = A]
     by fastforce    
@@ -185,12 +188,9 @@ sepref_definition plurality_elim_sep is
     short_circuit_conv hm.fold_custom_empty
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
-  apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN (_, rewrite_HOLE, _)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN (rewrite_HOLE, _, _)" hs.fold_custom_empty) 
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (rewrite_HOLE, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, rewrite_HOLE, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (rewrite_HOLE, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty)+
+  apply (rewrite in "RETURN (_, rewrite_HOLE, _)" hs.fold_custom_empty)+
+  apply (rewrite in "RETURN (rewrite_HOLE, _, _)" hs.fold_custom_empty)+ 
   apply sepref_dbg_keep
   done
 

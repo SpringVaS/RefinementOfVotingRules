@@ -93,7 +93,6 @@ definition eliminate:: "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarro
     }) ({}, {})
 }"
 
-
 definition elimination_module_ref :: 
 "'a Scores_Map  \<Rightarrow> Threshold_Value \<Rightarrow>
 Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref " 
@@ -107,10 +106,8 @@ Threshold_Relation \<Rightarrow> 'a Electoral_Module_Ref "
      RETURN ({},rej,def)
   }"
 
-
 definition scores_map :: "'a Evaluation_Function \<Rightarrow> 'a set \<Rightarrow> 'a Profile \<Rightarrow> 'a Scores_Map"  where
   "scores_map e Alts pro \<equiv> ((\<lambda>a. Some (e a Alts pro))|`Alts )"
-
 
 lemma eliminate_correct:
   fixes A :: "'a set"
@@ -126,7 +123,6 @@ lemma eliminate_correct:
   by (refine_vcg FOREACH_rule
       [where I = "\<lambda> it (rej, def). rej = ((elimination_set efn t r A p) - it)
                 \<and> def = (A - it) - (elimination_set efn t r A p)"],auto simp add: fina)
-
 
 lemma compute_scores_correct:
   fixes A :: "'a set"
@@ -180,7 +176,6 @@ lemma elimination_module_ref_correct:
   by (unfold elimination_module_ref_def, refine_vcg eliminate_correct,
     auto simp add: fina)
 
-
 theorem elimination_module_ref_correct_pc:
   fixes A :: "'a set"
   and efn :: "'a Evaluation_Function"
@@ -210,7 +205,6 @@ next
     by blast
 qed
 
-
 lemma scoremax_correct:
   fixes A :: "'a set"
   assumes fina: "finite A" and nempa: "A \<noteq> {}"
@@ -236,7 +230,6 @@ proof ((metis (mono_tags, lifting) order_antisym_conv))
   from eq this  show " Max {efn a A pr |a. a \<in> A} = 0"
     by simp
 qed
-
 
 lemma scoremin_correct:
   fixes A :: "'a set"
@@ -374,9 +367,5 @@ theorem max_eliminator_ref_correct_default:
             max_eliminator_ref score_map A pl}) \<le>
             SPEC (\<lambda> em. em = (max_eliminator efn A pr))"
   by (refine_vcg compute_scores_correct max_eliminator_ref_correct_pc assms)
-
-  
-
-
 
 end

@@ -134,7 +134,8 @@ proof (induction arbitrary: bar)
   then have "bar = {}"
     using lin_ord_not_empty by blast
   then show ?case
-    apply (rule_tac x = "[]" in exI)
+    apply (rule_tac x = "[]" in exI) unfolding ballot_rel_def well_formed_pl_def
+    in_br_conv pl_\<alpha>_def
     by simp
 next
   case ih: (insert x F)

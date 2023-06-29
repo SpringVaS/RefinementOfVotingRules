@@ -47,12 +47,14 @@ text \<open>We attempted to show a completeness lemma for our refinement of line
       to lists. We have not completed it. This lemma sketches, that the abstraction relation is
       not empty.\<close>
 
+declare member_def[simp]
+
 lemma simple_list_abstraction_sketch:
-  shows "([1::nat,2], {(2::nat,1::nat), (2::nat,2::nat), (1::nat,1::nat)}) \<in> ballot_rel"
-  unfolding in_br_conv well_formed_pl_def ballot_rel_def pl_\<alpha>_def 
-  is_less_preferred_than_l.simps by auto
-
-
+  shows "([1::nat,2], {(2::nat,1), (2::nat,2), (1::nat,1)}) \<in> ballot_rel"
+  unfolding in_br_conv well_formed_pl_def ballot_rel_def pl_\<alpha>_def
+  by (auto)
+  
+     
 abbreviation "ballot_on_A_rel A \<equiv> (br (\<lambda>x. x) (linear_order_on_l A)) O ballot_rel"
 
 lemma ballot_prop_rel:
@@ -77,11 +79,11 @@ lemma rankref:
   using rankeq
     by fastforce
 
-lemma is_less_preferred_than_ref:
+lemma is_less_preferred_than_ref:              
   shows "(is_less_preferred_than_l, is_less_preferred_than) 
     \<in> Id \<rightarrow> ballot_rel \<rightarrow> Id \<rightarrow> bool_rel"
   apply (refine_vcg)
-  by (auto simp only: refine_rel_defs is_less_preferred_than_eq)
+  by (auto simp only: refine_rel_defs less_preffered_l_rel_eq)
 
 subsection \<open>Refinement Relation for Profile\<close>
 
@@ -135,8 +137,8 @@ lemma profile_prop_list:
   assumes "(pl,pr) \<in> profile_on_A_rel A"
   shows "profile_l A pl"
   unfolding profile_l_def
-  using assms in_br_conv unfolding ballot_rel_def
-  by (metis (full_types) list_rel_imp_same_length pair_in_Id_conv param_nth relcompEpair)
+  using assms in_br_conv relcompEpair unfolding ballot_rel_def
+  by (metis (full_types) list_rel_imp_same_length pair_in_Id_conv param_nth )
 
 lemma profile_ref:
   fixes A :: "'a set"
@@ -231,12 +233,17 @@ proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps,
   from fina have refp: "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))" 
       using limit_monadic_refine by blast
   from wf  have refb: "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
-    unfolding ballot_rel_def in_br_conv  using limit_eq limit_l_sound by blast
-  from this have balref: "(SPEC (\<lambda>x. x = limit_l A bal)) \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
+    unfolding ballot_rel_def in_br_conv 
+  proof(safe)
+    fix a b :: 'a
+    note limit_l_eq
+    have "pl_\<alpha> (limit_l A bal) = limit A (pl_\<alpha> bal) "
+      using wf limit_l_eq
+  (*from this have balref: "(SPEC (\<lambda>x. x = limit_l A bal)) \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
     by (metis (full_types) RETURN_SPEC_refine lhs_step_SPEC)
   show "limit_monadic A bal \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
-    using  order_trans[OF refp balref] .
-qed
+    using  order_trans[OF refp balref] .*)
+      oops
 
 subsection \<open>Separation Logic Assertions Relators for Eelectoral Module Data Type\<close>
 
@@ -258,9 +265,6 @@ sepref_definition limit_sep is "uncurry limit_monadic" ::
   apply (rewrite in "WHILET _ _ rewrite_HOLE" arl.fold_custom_empty)
   apply sepref_dbg_keep
   done
-
-
-
 
 end
 

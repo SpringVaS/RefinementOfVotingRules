@@ -521,8 +521,8 @@ lemma wc_foreach_top_correct:
 definition wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" 
   where "wc_fold l a \<equiv> 
    nfoldli l (\<lambda>_. True) 
-    (\<lambda>x (ac). 
-     RETURN (if ((length x > 0) \<and> (x!0 = a))then (ac+1) else  (ac))
+    (\<lambda>x (ac). do {
+     RETURN (if (length x > 0 \<and> x!0 = a) then (ac+1) else  (ac))}
     ) 
     (0)"
 
@@ -741,6 +741,12 @@ sepref_definition prefer_count_sep is
   apply sepref_dbg_keep
   done
 
+sepref_definition top_count_imp is "uncurry wc_fold" ::
+  "((profile_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn )"
+  unfolding wc_fold_def short_circuit_conv
+  apply sepref_dbg_keep
+  done
+
 sepref_register prefer_count_monadic_imp
 
 declare prefer_count_sep.refine [sepref_fr_rules]
@@ -816,6 +822,9 @@ lemma wins_monadic_correct:
   apply (clarsimp simp del: prefer_count.simps)
   apply (refine_vcg prefer_count_monadic_imp_correct)
   by (auto)  
+
+
+
 
 sepref_definition wins_imp is "uncurry2 wins_monadic" ::
   "(nat_assn\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"

@@ -52,7 +52,7 @@ sepref_definition elect_module_sep is
   by sepref
 
 lemma elect_module_sep_correct:
-  shows "(uncurry elect_module_sep, uncurry (RETURN \<circ>\<circ> elect_module)) \<in>  [\<lambda>(a, b).
+  shows "(uncurry elect_module_sep, uncurry (RETURN \<circ>\<circ> elect_module)) \<in> [\<lambda>(a, b).
            finite
             a]\<^sub>a (alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a
                  (list_assn

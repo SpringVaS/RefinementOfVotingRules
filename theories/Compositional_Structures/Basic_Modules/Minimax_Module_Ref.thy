@@ -41,7 +41,7 @@ definition minimax_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" w
   }"
 
 sepref_definition minimax_score_sep is "uncurry2 minimax_score_ref"
-  :: "nat_assn\<^sup>k *\<^sub>a (hs.assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
+  :: "id_assn\<^sup>k *\<^sub>a (hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a id_assn"
   unfolding minimax_score_ref_def  pre_compute_scores_def scoremin_def
   hm.fold_custom_empty hs.fold_custom_empty  
   apply sepref_dbg_keep
@@ -50,8 +50,8 @@ sepref_definition minimax_score_sep is "uncurry2 minimax_score_ref"
 declare minimax_score_sep.refine[sepref_fr_rules]
 
 sepref_definition minimax_sep is "uncurry minimax_ref"
-  :: "(hs.assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k 
-   \<rightarrow>\<^sub>a (result_impl_assn nat_assn)"
+  :: "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k 
+   \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding minimax_ref_def  max_eliminator_ref_def 
     less_eliminator_ref_def  
     elimination_module_ref_def[abs_def] eliminate_def[abs_def]
