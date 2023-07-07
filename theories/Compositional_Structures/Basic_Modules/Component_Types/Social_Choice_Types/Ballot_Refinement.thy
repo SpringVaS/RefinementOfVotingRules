@@ -38,7 +38,7 @@ proof (refine_vcg, clarsimp_all)
   assume "(bal, bar) \<in> ballot_rel"
   from this show " linear_order_on_l alts bal = linear_order_on alts bar"
     unfolding ballot_rel_def in_br_conv
-    using lin_ord_eq  by blast    
+    using lin_ord_equiv  by blast    
 qed
 
 
@@ -68,21 +68,21 @@ lemma aboveref:
   shows "(above_l, above) \<in> ballot_rel \<rightarrow> Id \<rightarrow> \<langle>Id\<rangle>list_set_rel"
   apply (refine_vcg)                                    
   unfolding list_set_rel_def
-  apply (auto) using above_eq unfolding  in_br_conv above_l_def ballot_rel_def 
+  apply (auto) using above_equiv unfolding  in_br_conv above_l_def ballot_rel_def 
   by (metis distinct_take)
   
 lemma rankref: 
   shows "(rank_l, rank) \<in> ballot_rel \<rightarrow> Id \<rightarrow> nat_rel"
   apply (refine_vcg)
   apply (auto simp only: refine_rel_defs)
-  using rank_eq
+  using rank_equiv
     by fastforce
 
 lemma is_less_preferred_than_ref:              
   shows "(is_less_preferred_than_l, is_less_preferred_than) 
     \<in> Id \<rightarrow> ballot_rel \<rightarrow> Id \<rightarrow> bool_rel"
   apply (refine_vcg)                                     
-  by (auto simp only: refine_rel_defs less_preferred_l_rel_eq)
+  by (auto simp only: refine_rel_defs less_preferred_l_rel_equiv)
 
 subsection \<open>Refinement Relation for Profile\<close>
 
@@ -152,7 +152,7 @@ proof (-)
   from prel this show "profile_l A pl \<longleftrightarrow> profile A pr" 
     unfolding  ballot_rel_def
      profile_def profile_l_def in_br_conv            
-    by (metis lin_ord_eq lin_ord_eq list_rel_pres_length)
+    by (metis lin_ord_equiv lin_ord_equiv list_rel_pres_length)
 qed
 
 lemma profile_prop_rel:
@@ -166,7 +166,7 @@ proof (-)
     using profile_type_ref by metis
   from profl this show "profile A pr"
     using profile_ref  unfolding ballot_rel_def
-    by (simp add: in_br_conv lin_ord_eq list_rel_eq_listrel listrel_iff_nth 
+    by (simp add: in_br_conv lin_ord_equiv list_rel_eq_listrel listrel_iff_nth 
         profile_def profile_l_def relAPP_def)
 qed
 
@@ -231,7 +231,7 @@ proof (intro frefI fun_relI nres_relI, auto simp del: limit.simps,
   from fina have refp: "(limit_monadic A bal \<le> SPEC(\<lambda> lim. lim = (limit_l A bal)))" 
       using limit_monadic_refine by blast
   from wf  have refb: "(limit_l A bal, limit A bar) \<in> ballot_rel" unfolding abs
-    unfolding ballot_rel_def in_br_conv using limit_l_sound limit_eq by blast 
+    unfolding ballot_rel_def in_br_conv using limit_l_sound limit_equiv by blast 
   from this have balref: "(SPEC (\<lambda>x. x = limit_l A bal)) \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"
     by (metis (full_types) RETURN_SPEC_refine lhs_step_SPEC)
   show "limit_monadic A bal \<le> \<Down> ballot_rel (SPEC (\<lambda>x. x = limit A bar))"

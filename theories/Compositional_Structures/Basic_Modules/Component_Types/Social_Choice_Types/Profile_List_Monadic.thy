@@ -356,7 +356,7 @@ lemma top_above:
   assumes ne: "length pl > 0"
   shows "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
   unfolding above_l_def
-proof (simp add: rankdef, safe)
+proof (simp add: rank_l_equiv, safe)
   assume mem: "pl ! 0 \<in> set pl"
   assume "a = pl ! 0"
   have "List_Index.index pl (pl ! 0) = 0"
@@ -384,7 +384,7 @@ proof -
   from ne have listeq: "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
     by (simp add: top_above)
   from assms have above_abstract: "set (above_l pl a) = above (pl_\<alpha> pl) a" 
-    by (auto simp add: above_eq)
+    by (auto simp add: above_equiv)
   have list_set: "above_l pl a = [a] \<longleftrightarrow> set (above_l pl a) = {a}"
     by (metis above_l_def append_self_conv2 gr0I hd_take id_take_nth_drop insert_not_empty list.sel(1) list.set(1) list.set_sel(1) list.simps(15) listeq ne singleton_iff take_eq_Nil)
   from above_abstract listeq this show ?thesis
@@ -409,7 +409,7 @@ lemma innerf_eq:
   shows "f_inner_list a l n \<le> \<Down> nat_rel (f_inner_rel a r n)"
   unfolding f_inner_list_def f_inner_rel_def
   apply (refine_vcg)
-  using assms rank_eq unfolding ballot_rel_def
+  using assms rank_equiv unfolding ballot_rel_def
   by (metis in_br_conv)
 
 lemma foreachrel:
@@ -495,7 +495,7 @@ definition wc_foreach_top:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat 
 "wc_foreach_top p  a \<equiv> do {
   (xs::'a Profile_List,ac) \<leftarrow> WHILET (FOREACH_cond (\<lambda>_.True)) 
     (FOREACH_body (\<lambda>x (ac).
-     if ((length x > 0) \<and> (x!0 = a)) then RETURN (ac+1) else RETURN (ac)
+    RETURN (if ((length x > 0) \<and> (x!0 = a)) then  (ac+1) else  (ac))
     )) (p,0);
   RETURN ac
 }"
@@ -509,7 +509,7 @@ lemma wc_foreach_top_refine_os:
   apply (simp_all only: refine_rel_defs)
   apply refine_dref_type
   apply auto
-   apply (metis gr0I index_first)
+  apply (metis gr0I index_first)
   by (metis index_eq_iff length_pos_if_in_set)
 
 lemma wc_foreach_top_correct:
@@ -522,28 +522,54 @@ definition wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres"
   where "wc_fold l a \<equiv> 
    nfoldli l (\<lambda>_. True) 
     (\<lambda>x (ac). do {
-     RETURN (if (length x > 0 \<and> x!0 = a) then (ac+1) else  (ac))}
+     ASSERT (length x > 0);
+     RETURN (if (x!0 = a) then (ac+1) else (ac))}
     ) 
     (0)"
 
 lemma wc_fold_refine:
+  fixes A   :: "'a set" and
+        pl  :: "'a Profile_List"
+  assumes nemp_A: "A \<noteq> {}" and
+        prof: "profile_l A pl"
   shows "wc_fold pl a \<le> \<Down> Id (wc_foreach_top pl a)"
   unfolding wc_fold_def wc_foreach_top_def
-  by (simp add: nfoldli_mono(1) while_eq_nfoldli)
+      while_eq_nfoldli
+proof (refine_vcg, clarsimp_all)
+  from prof nemp_A have allb: "\<forall> i < length pl. (pl!i) \<noteq> []"
+    unfolding profile_l_def lin_order_equiv_list_of_alts
+    by force
+  thus "(pl, pl) \<in> \<langle>\<langle>Id\<rangle>list_rel O (build_rel (\<lambda>x. x) (\<lambda>x .x \<noteq> []))\<rangle>list_rel" unfolding
+     profile_l_def lin_order_equiv_list_of_alts  list_rel_id_simp
+    by (simp add: in_br_conv list_rel_eq_listrel listrel_iff_nth relAPP_def)
+next
+  fix l :: "'a list"
+  assume rel: "([], l) \<in> \<langle>Id\<rangle>list_rel O br (\<lambda>x. x) (\<lambda>x. x \<noteq> [])"
+  have not_rel: "([], l) \<notin> \<langle>Id\<rangle>list_rel O br (\<lambda>x. x) (\<lambda>x. x \<noteq> [])"
+    by (simp add: in_br_conv)
+  from rel not_rel show False by simp  
+next
+  fix l1 l2 :: "'a list"
+  assume "(l1, l2) \<in> \<langle>Id\<rangle>list_rel O br (\<lambda>x. x) (\<lambda>x. x \<noteq> [])"
+  then have ls_eq: "l1 = l2"
+    by (simp add: in_br_conv)
+  assume nemp_l: "l1 \<noteq> []"
+  from ls_eq nemp_l show 
+    "(l1 ! 0 = a \<longrightarrow> l2 \<noteq> [] \<and> l2 ! 0 = a) \<and> (l1 ! 0 \<noteq> a \<longrightarrow> l2 = [] \<or> l2 ! 0 \<noteq> a)"
+    by blast
+qed
+
 
 theorem wc_fold_correct:
-  assumes "(pl, pr) \<in> profile_rel" and "profile_l A pl"
+  fixes A   :: "'a set" and
+        pl  :: "'a Profile_List" and
+        pr  :: "'a Profile"
+  assumes nemp_A: "A \<noteq> {}" and
+          prof: "profile_l A pl" and
+          prel: "(pl, pr) \<in> profile_rel"
   shows "wc_fold pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using assms ref_two_step[OF wc_fold_refine wc_foreach_top_correct] refine_IdD 
   by (metis) 
-
-
-
-lemma nfwcc: "nofail (wc_fold p a)"
-  unfolding wc_fold_def 
-  apply (induction p rule: rev_induct, simp)
-   apply simp
-  by (simp add: pw_bind_nofail)
 
 lemma win_count_l_correct:
   shows "(win_count_l, win_count)
@@ -557,13 +583,13 @@ proof (standard, rename_tac a)
   assume prel: "(pl, pr) \<in> (profile_on_A_rel A)"
   from prel have profrel: "(pl, pr) \<in> profile_rel" using profile_type_ref by fastforce
   from prel have profprop: "profile_l A pl" using profile_prop_list by fastforce
-  have  "RETURN (win_count_l pl a) = (wc_fold pl a)"
-  unfolding  wc_fold_def win_count_l.simps
+  have  "RETURN (win_count_l pl a) = (wc_foreach_top pl a)"
+  unfolding  wc_foreach_top_def win_count_l.simps while_eq_nfoldli
   using fold_eq_nfoldli[where l = pl and f = "(\<lambda>x ac. if (0 < length x \<and> x ! 0 = a)
        then ac + 1 else ac)" and s = 0]
   by fastforce
   from this profrel profprop have meq: "RETURN (win_count_l pl a) = RETURN (win_count pr a)"
-  using wc_fold_correct[where pl=pl and pr = pr and A = A and a = a]
+  using wc_foreach_top_correct[where pl=pl and pr = pr and A = A and a = a]
     by (metis mem_Collect_eq nres_order_simps(21))
   from meq show "win_count_l pl a = win_count pr a"
     by simp
@@ -649,7 +675,7 @@ lemma pc_foldli_list_refine:
   apply (refine_vcg nfoldli_rule)
   apply (auto simp del : is_less_preferred_than_l.simps is_less_preferred_than.simps)
   apply (rename_tac l r)
-  apply (metis in_br_conv less_preferred_l_rel_eq)+
+  apply (metis in_br_conv less_preferred_l_rel_equiv)+
   done
 
 lemma pc_foldli_list_correct:
@@ -1094,8 +1120,7 @@ sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" ::
   "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn )\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn id_assn )"
   unfolding limit_profile_l_def 
   apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" HOL_list.fold_custom_empty)
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 sepref_register limit_profile_l
 
@@ -1119,10 +1144,10 @@ proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[sy
         nth_map prel  relAPP_def
     apply safe using list_rel_pres_length
     using prel list_rel_imp_same_length prel  apply blast
-    using limit_eq
+    using limit_equiv
       apply (metis ballot_rel_def list_rel_imp_same_length map_in_list_rel_conv nth_map 
           nth_mem prel  profile_rel_imp_map_ballots)
-     using limit_eq
+     using limit_equiv
       apply (metis ballot_rel_def list_rel_imp_same_length map_in_list_rel_conv nth_map 
           nth_mem prel  profile_rel_imp_map_ballots)
      using prel limit_l_sound   

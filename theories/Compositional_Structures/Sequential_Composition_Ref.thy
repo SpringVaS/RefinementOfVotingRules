@@ -38,7 +38,7 @@ shows "(uncurry (seq_opt m n), uncurry (RETURN oo (sequential_composition' m n))
 locale Seqcomp_Impl =
   fixes m n :: "'a :: {default, heap, hashable} Electoral_Module"
   fixes m_sep n_sep :: "'a :: {default, heap, hashable} Electoral_Module_Sep"
-assumes em_m: "electoral_module m" and
+  assumes em_m: "electoral_module m" and
   em_n: "electoral_module n"
   assumes m_sep_correct: "(uncurry m_sep, uncurry (RETURN oo m)) \<in> elec_mod_seprel id_assn"
   assumes n_sep_correct: "(uncurry n_sep, uncurry (RETURN oo n)) \<in> elec_mod_seprel id_assn"
@@ -80,29 +80,6 @@ theorem seqcomp_sep_correct:
 end
 
 abbreviation comp4 (infixl "oooo" 55) where "f oooo g \<equiv> \<lambda>x. f ooo (g x)"
-
-(*theorem seqcomp_sep_correct [sepref_fr_rules]:
-  shows "(uncurry3 (seqcomp_sep), uncurry3 (RETURN oooo sequential_composition))
-   \<in> [\<lambda> (((m,n),a),b). electoral_module m \<and>
-  electoral_module n \<and> finite_profile a b]\<^sub>a (elec_mod_assn_atom nat_assn)\<^sup>k *\<^sub>a 
-    (elec_mod_assn_atom nat_assn)\<^sup>k  
-    *\<^sub>a (alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (list_assn (ballot_assn nat_assn))\<^sup>k 
-        \<rightarrow> (result_impl_assn nat_assn)"
-  apply (intro hfrefI)
-  using Seqcomp_Impl.seqcomp_sep_correct
-  unfolding Seqcomp_Impl_def
-  unfolding hn_refine_def  hfref_def elec_mod_assn_atom_def hfref_def
-  apply (sep_auto simp del: sequential_composition.simps) done
-
-sepref_register "sequential_composition"
-
-declare seqcomp_sep_correct [sepref_fr_rules]
-
-sepref_decl_op seqi: "(uncurry3 sequential_composition)" :: 
-  "\<langle>elec_mod_rel_orig R, \<langle>elec_mod_rel_orig R, elec_mod_rel_orig R\<rangle>fun_rel\<rangle>fun_rel" where 
-  "R = (Id)" apply standard apply (rule nres_relI) unfolding elec_mod_rel_orig_def apply auto
-  done*)
-
 
 abbreviation sequence_opt
      (infix "\<triangleright>sep" 50) where

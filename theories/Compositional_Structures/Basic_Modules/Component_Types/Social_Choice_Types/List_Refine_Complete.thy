@@ -31,7 +31,7 @@ lemma ref_imp_ranksame:
   assumes lol: "linear_order_on_l A l"
   assumes ref: "r = pl_\<alpha> l"
   shows "\<forall> a \<in> A. rank_l l a = rank r a" 
-using assms rankeq
+using assms rank_equiv
   by metis 
 
 lemma rankeq_imp_ref:

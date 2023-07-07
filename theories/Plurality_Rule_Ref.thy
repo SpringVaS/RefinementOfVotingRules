@@ -18,11 +18,10 @@ text \<open>The basic module for plurality has been refined. We use the simplifi
       elect composition to define a sythesizable definition of the plurality rule inline
       and use the sepref-tool to synthesize the implementation\<close>
 
-sepref_definition plurality_rule_direct_sep is "uncurry (elector_opt (plurality_mod))"
+sepref_definition plurality_rule_direct_sep is "uncurry (elector_opt (plurality))"
   :: "elec_mod_seprel nat_assn"
   unfolding elector_opt_def hs.fold_custom_empty
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 text \<open>Using the correctness of the elector and the refinement theorem provided by sepref we provide
       a simplified refinement relation of the plurality implementation and the abstract

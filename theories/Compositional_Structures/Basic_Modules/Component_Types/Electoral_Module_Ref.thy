@@ -79,7 +79,8 @@ subsection \<open>Experimental defintion for Separation Logic Assertion\<close>
 
 definition elec_mod_assn_atom:: 
   "('a  \<Rightarrow> 'a  \<Rightarrow> assn)
-     \<Rightarrow> 'a::{default, hashable, heap} Electoral_Module \<Rightarrow> 'a::{default, hashable, heap}  Electoral_Module_Sep \<Rightarrow> assn" where
+     \<Rightarrow> 'a::{default, hashable, heap} Electoral_Module \<Rightarrow>
+ 'a::{default, hashable, heap}  Electoral_Module_Sep \<Rightarrow> assn" where
   "elec_mod_assn_atom R em em_sep \<equiv> emp * \<up>((uncurry em_sep, uncurry (RETURN oo em))
   \<in> elec_mod_seprel R)"
   

@@ -93,7 +93,7 @@ proof (unfold  borda_score_opt_mon_def, safe)
     (x = borda_score_l a A p1)"])
     subgoal by auto
     unfolding  rank_l.simps profile_l_def 
-      lin_order_equiv_A  apply (auto simp del: borda_score_l.simps) 
+      lin_order_equiv_list_of_alts  apply (auto simp del: borda_score_l.simps) 
   proof -
     fix x :: "'a Preference_List"
     fix l1 l2 :: "'a Profile_List"
@@ -101,7 +101,7 @@ proof (unfold  borda_score_opt_mon_def, safe)
     from xpl have idxx: "\<exists> i < length pl. x = pl!i"
       apply (rule_tac x="length l1" in exI) by auto
     from idxx have lox: "set x = A"
-      using profl unfolding profile_l_def lin_order_equiv_A by auto
+      using profl unfolding profile_l_def lin_order_equiv_list_of_alts by auto
     from idxx have disx: "distinct x"
       using profl unfolding profile_l_def by auto
     from lox disx fina have lengtheq: "length x = card A"

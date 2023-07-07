@@ -46,7 +46,7 @@ theorem minimax_rule_imp_condorcet:
   apply (erule cons_rule[rotated -1])
   apply (sep_auto simp add : hn_ctxt_def pure_def simp del : condorcet_winner.simps minimax_rule.simps)
   apply (sep_auto simp add: hn_ctxt_def simp del : condorcet_winner.simps minimax_rule.simps)
-  using minimax_condorcet condorcet_consistency3
+  using minimax_condorcet condorcet_consistency_3
   by (metis)
 
 export_code clist convert_list_to_hash_set minimax_rule_imp in Scala_imp
