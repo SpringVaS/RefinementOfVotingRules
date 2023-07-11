@@ -40,7 +40,7 @@ definition borda_score_opt_mon :: "'a::{default, heap, hashable} Evaluation_Func
   "borda_score_opt_mon a A p =
      nfoldli p (\<lambda>_.True) (\<lambda> x ac. 
         do {
-         ra \<leftarrow> index_mon x a;
+         let ra = index  x a;
          let bordac = length x - ra;
          RETURN  (ac + bordac) 
     }) (0::nat)"
@@ -86,8 +86,8 @@ lemma borda_score_opt_refine:
 proof (unfold  borda_score_opt_mon_def, safe)
   fix a :: 'a 
   assume aA: "a \<in> A"
-  show "nfoldli pl (\<lambda>_. True)
-          (\<lambda>x ac. index_mon x a \<bind> (\<lambda>ra. let bordac = length x - ra in RETURN (ac + bordac))) 0
+  show " nfoldli pl (\<lambda>_. True)
+          (\<lambda>x ac. let ra = index x a; bordac = length x - ra in RETURN (ac + bordac)) 0
          \<le> SPEC (\<lambda>sc. sc = borda_score_l a A pl)"
     apply (refine_vcg index_mon_correct nfoldli_rule[where I = "\<lambda> p1 p2 x. 
     (x = borda_score_l a A p1)"])
