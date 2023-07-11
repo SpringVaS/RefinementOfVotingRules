@@ -26,64 +26,56 @@ sepref_decl_op set_diff: "(-) ::_ set \<Rightarrow> _" :: "\<langle>A\<rangle>se
 sepref_decl_op set_subseteq: "(\<subseteq>)" :: "\<langle>A\<rangle>set_rel \<rightarrow> \<langle>A\<rangle>set_rel \<rightarrow> bool_rel" where "IS_LEFT_UNIQUE A"  "IS_RIGHT_UNIQUE A" .
 sepref_decl_op set_subset: "(\<subset>)" :: "\<langle>A\<rangle>set_rel \<rightarrow> \<langle>A\<rangle>set_rel \<rightarrow> bool_rel" where "IS_LEFT_UNIQUE A" "IS_RIGHT_UNIQUE A" .
 sepref_decl_op set_size: "(card)" :: "\<langle>A\<rangle>set_rel \<rightarrow> nat_rel"  where "IS_LEFT_UNIQUE A" "IS_RIGHT_UNIQUE A" 
-proof standard 
-  fix x :: "'a set"
-  fix  y :: "'b set"
-  assume xyrel: "(x, y) \<in> \<langle>A\<rangle>set_rel"
+proof (standard, rename_tac X Y)
+  fix X :: "'a set"
+  fix Y :: "'b set"
+  assume xy_rel: "(X, Y) \<in> \<langle>A\<rangle>set_rel"
   assume luA: "IS_LEFT_UNIQUE A"
   assume svA: "single_valued A"
-  show "((RETURN \<circ> card) x, (RETURN \<circ> card) y) \<in> \<langle>nat_rel\<rangle>nres_rel"
-    apply refine_vcg
-    apply auto
-  proof (cases "finite x")
+  show "((RETURN \<circ> card) X, (RETURN \<circ> card) Y) \<in> \<langle>nat_rel\<rangle>nres_rel"
+  proof (refine_vcg, clarsimp_all, cases "finite X")
     case cc: True
-    from cc have finx: "finite x" by simp
-    from cc svA luA xyrel have finy: "finite y"
+    from cc have finx: "finite X" by simp
+    from cc svA luA xy_rel have finy: "finite Y"
     using finite_set_rel_transfer by blast 
-    from finx xyrel show "card x = card y"
-    proof (induction arbitrary: y rule: finite_psubset_induct)
-      case cps: (psubset xa)
+    from finx xy_rel show "card X = card Y"
+    proof (induction arbitrary: Y rule: finite_psubset_induct)
+      case cps: (psubset Aa)
       then show ?case
-      proof (cases "xa \<noteq> {}")
-        assume xarel: "(xa, y) \<in> \<langle>A\<rangle>set_rel"
-        case nempxa: True
-         from this obtain elemx where xmemb: "elemx \<in> xa" by auto
-      from this obtain subx where stepx: "subx = xa - {elemx}" by auto
-      from this xmemb have subp: "subx \<subset> xa" by blast 
-      from cps(3) nempxa have nempy : "y \<noteq> {}" by force
-      from nempy xarel obtain elemy where ymemb: "elemy \<in> y \<and> (elemx, elemy) \<in> A"
-        using xmemb set_relD1 by force
-      from this have inrelA: "(elemx, elemy) \<in> A" by simp
-      from ymemb obtain suby where stepy: "suby = y - {elemy}"
-        by auto
-      from this ymemb have "suby \<subset> y" by force
-      from stepx stepy xmemb xarel inrelA ymemb   luA svA  have subrel: "(subx, suby) \<in> \<langle>A\<rangle>set_rel"
-        unfolding set_rel_def apply simp
-        by (metis Diff_iff converseI insert_Diff insert_iff single_valued_def)
-      from stepx stepy  have cardincx: "card xa = card subx + 1"
-        by (metis One_nat_def add.right_neutral add_Suc_right card_Suc_Diff1 cps.hyps xmemb)
-      from stepy svA xarel ymemb have cardincy: "card y = card suby + 1"
-        by (metis Suc_eq_plus1 card.remove cps.hyps finite_set_rel_transfer)
-      from subp subrel cps(1) cps(2)[where B = subx and y = suby] cps(3) cardincx cardincy
-        show "card xa = card y" by fastforce
+      proof (cases "Aa \<noteq> {}")
+        case nempAa: True
+        assume xarel: "(Aa, Y) \<in> \<langle>A\<rangle>set_rel"
+        from nempAa obtain elemx where xmemb: "elemx \<in> Aa" by auto
+        from this obtain subx where stepx: "subx = Aa - {elemx}" by auto
+        from this xmemb have subp: "subx \<subset> Aa" by blast 
+        from cps.prems nempAa have nempy : "Y \<noteq> {}" by force
+        from nempy xarel obtain elemy where ymemb: "elemy \<in> Y \<and> (elemx, elemy) \<in> A"
+          using xmemb set_relD1 by force
+        from ymemb obtain suby where stepy: "suby = Y - {elemy}"
+          by auto
+        from stepx stepy  xarel ymemb luA svA  have subrel: "(subx, suby) \<in> \<langle>A\<rangle>set_rel"
+          unfolding set_rel_def apply simp
+          by (metis Diff_iff converseI insert_Diff insert_iff single_valued_def)
+        from stepx stepy  have cardincx: "card Aa = card subx + 1"
+          by (metis One_nat_def add.right_neutral add_Suc_right card_Suc_Diff1 cps.hyps xmemb)
+        from stepy svA xarel ymemb have cardincy: "card Y = card suby + 1"
+          by (metis Suc_eq_plus1 card.remove cps.hyps finite_set_rel_transfer)
+          show "card Aa = card Y"
+            using cardincx cardincy cps.IH subp subrel by presburger 
       next
-        assume xarel: "(xa, y) \<in> \<langle>A\<rangle>set_rel"
+        assume xarel: "(Aa, Y) \<in> \<langle>A\<rangle>set_rel"
         case False
-        from this have xaemp: "xa = {}" by simp
-        from this xarel have yemp: "y = {}"
-          by simp
-        from xaemp have "card xa = 0" by simp
-        from yemp have "card y = 0" by simp  
-        from xaemp yemp show ?thesis by simp
+        thus ?thesis
+          using cps.prems by fastforce 
       qed
     qed
   next
-    case infx:  False
-    from this have cardx0: "card x = 0" by simp
-    from xyrel luA svA infx have "infinite y" unfolding set_rel_def  
-      by (auto, metis finite_set_rel_transfer_back xyrel)
-    from this have cardy0: "card y = 0" by simp
-    from cardx0 cardy0 show "card x = card y" by simp 
+    case infx: False
+    from this have cardx0: "card X = 0" by simp
+    from xy_rel luA svA infx have "infinite Y" unfolding set_rel_def  
+      by (auto, metis finite_set_rel_transfer_back xy_rel)
+    from this have cardy0: "card Y = 0" by simp
+    from cardx0 cardy0 show "card X = card Y" by simp 
   qed
 qed   
     
