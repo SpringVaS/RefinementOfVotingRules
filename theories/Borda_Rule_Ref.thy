@@ -3,11 +3,15 @@
 *)
 \<^marker>\<open>creator "Valentin Springsklee, Karlsruhe Institute of Technology (KIT)"\<close>
 
+section \<open>Refined Plurality Rule\<close>
+
 theory Borda_Rule_Ref
   imports "Verified_Voting_Rule_Construction.Borda_Rule"
           "Compositional_Structures/Basic_Modules/Borda_Module_Ref"  
           "Compositional_Structures/Elect_Composition_Ref"              
 begin
+
+subsection \<open>Refinement to Imperative/HOL\<close>
 
 sepref_definition borda_rule_sep_direct is "uncurry (elector_opt borda)"
   :: "elec_mod_seprel nat_assn"                                   

@@ -31,7 +31,7 @@ lemma ref_imp_ranksame:
   assumes lol: "linear_order_on_l A l"
   assumes ref: "r = pl_\<alpha> l"
   shows "\<forall> a \<in> A. rank_l l a = rank r a" 
-using assms rankeq
+using assms rank_equiv
   by metis 
 
 lemma rankeq_imp_ref:
@@ -50,7 +50,7 @@ proof (unfold pl_\<alpha>_def, safe, clarsimp_all, safe)
   from tupler lor have aA: "a \<in> A"
     unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
     by blast
-  from lol have "set l = A" unfolding losimp by simp
+  from lol have "set l = A" unfolding lin_order_equiv_A by simp
   from aA this show "a \<in> set l" by simp
 next
   fix a b :: 'a
@@ -58,12 +58,12 @@ next
   from tupler lor have aA: "b \<in> A"
     unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
     by blast
-  from lol have "set l = A" unfolding losimp by simp
+  from lol have "set l = A" unfolding lin_order_equiv_A by simp
   from aA this show "b \<in> set l" by simp
 next
   fix a b :: 'a
   assume tupler: "(a, b) \<in> r"
-  from lol have Al: "set l = A" unfolding losimp by simp
+  from lol have Al: "set l = A" unfolding lin_order_equiv_A by simp
   from tupler lor have aA: "a \<in> A"
     unfolding linear_order_on_def partial_order_on_def preorder_on_def refl_on_def
     by blast
@@ -95,7 +95,7 @@ next
   assume al: "a \<in> set l"
   assume bl: "b \<in> set l"
   assume icmp: "index l b \<le> index l a"
-  from lol have Al: "set l = A" unfolding losimp by simp
+  from lol have Al: "set l = A" unfolding lin_order_equiv_A by simp
   from al bl have eitheror: "(a,b) \<in> r \<or> (b,a) \<in> r"
     using lor
     unfolding Al linear_order_on_def total_on_def
@@ -134,7 +134,8 @@ proof (induction arbitrary: bar)
   then have "bar = {}"
     using lin_ord_not_empty by blast
   then show ?case
-    apply (rule_tac x = "[]" in exI)
+    apply (rule_tac x = "[]" in exI) unfolding ballot_rel_def well_formed_pl_def
+    in_br_conv pl_\<alpha>_def
     by simp
 next
   case ih: (insert x F)
@@ -152,7 +153,7 @@ next
   from lobaro have lobalo: "linear_order_on_l F balo"
     using balrel linearorder_ref[THEN fun_relD, THEN fun_relD]
     by auto
-  then have seteqo: "set balo = F" unfolding losimp by simp
+  then have seteqo: "set balo = F" unfolding lin_order_equiv_A by simp
   from ih(1) have finxF: "finite (insert x F)"
     by simp
   from ih.prems have nempcons: "{b. (x, b) \<in> bar} \<noteq> {}"
@@ -205,7 +206,7 @@ next
     unfolding limit_l.simps defnb fdx append_take_drop_id
     by simp
   have lonb: "linear_order_on (insert x F) (pl_\<alpha> newbal)"
-    using seteqnb[symmetric] unfolding losimp[symmetric] 
+    using seteqnb[symmetric] unfolding lin_order_equiv_A[symmetric] 
    linord_eq . 
   have barolim: "baro = limit F (pl_\<alpha> newbal)"
     using limit_eq[where bal=newbal and A = F] disnb
@@ -245,14 +246,16 @@ next
   unfolding rank.simps above_def pl_\<alpha>_def
   using finitecons unfolding is_less_preferred_than.simps
   linear_order_on_def partial_order_on_def preorder_on_def refl_on_def antisym_def trans_def
-total_on_def is_less_preferred_than_l.simps seteqnb insert_def apply safe
-  apply blast
-  apply blast
-   unfolding  limit.simps defnb 
+total_on_def seteqnb insert_def defnb is_less_preferred_than_l.simps limit.simps index_def
+    apply safe subgoal
+    by (metis SigmaE2 barbound defnb in_mono seteqnb)subgoal
+    by (metis SigmaE2 barbound defnb seteqnb subset_iff) unfolding card_def 
+  
+   unfolding  limit.simps defnb
     sorry
   from this show ?case
     apply (rule_tac x = newbal in exI)
-    unfolding pl_\<alpha>_def using disnb by auto
+    unfolding ballot_rel_def well_formed_pl_def in_br_conv using disnb by auto
 qed
 
 end

@@ -143,7 +143,7 @@ proof -
   have winner: "condorcet_winner A pr w"
     by (metis pair_in_Id_conv set_rel_id)
   from f_prof winner rating linA loser have lt: "efn l A pr < Max {efn a A pr | a. a \<in> A}"
-    using non_cond_winner_not_max_eval[where A= A and l = l and e = efn and w = w and p = pr]
+    using non_cond_winner_not_max_eval[where A= A and b = l and e = efn and a = w and p = pr]
     by simp
   from  fina linA efref  show ?thesis unfolding SPEC_eq_is_RETURN(2)[symmetric]
     using specify_left[where m = "eref l A pl" and \<Phi> = "(\<lambda>score. score = efn l A pr)"

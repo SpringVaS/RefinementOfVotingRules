@@ -17,8 +17,7 @@ subsection \<open>Refinement to Imperative/HOL\<close>
 sepref_definition pairwise_majority_rule_direct_imp is 
   "uncurry (elector_opt ((condorcet)))" :: "elec_mod_seprel nat_assn"
   unfolding elector_opt_def hs.fold_custom_empty
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 subsection \<open>Correctness\<close>
 
@@ -46,7 +45,7 @@ theorem pmc_impl_condorcet:
   apply (erule cons_rule[rotated -1])
   apply (sep_auto simp add : hn_ctxt_def pure_def simp del : condorcet_winner.simps pairwise_majority_rule.simps)
   apply (sep_auto simp add: hn_ctxt_def simp del : condorcet_winner.simps pairwise_majority_rule.simps)
-  using condorcet_condorcet condorcet_consistency3
+  using condorcet_condorcet condorcet_consistency_3
   by (metis)
 
 export_code clist convert_list_to_hash_set pairwise_majority_rule_direct_imp in Scala_imp

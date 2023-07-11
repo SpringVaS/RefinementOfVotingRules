@@ -39,15 +39,15 @@ definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
 (*  \<and> (\<not>found \<longrightarrow> (i \<le> List_Index.index ballot a)))"*)
 
 (* low level optimization for pref count *)
-definition index_mon :: "'a::{default, heap, hashable} Preference_List 
-  \<Rightarrow> 'a::{default, heap, hashable}
+definition index_mon :: "'a Preference_List 
+  \<Rightarrow> 'a
    \<Rightarrow> nat nres" where
   "index_mon ballot a \<equiv> do {
     (i, found) \<leftarrow> WHILET  
   (\<lambda>(i, found). (i < (length ballot) \<and> \<not>found)) 
       (\<lambda>(i,_). do {
       ASSERT (i < (length ballot));
-      let (c::'a::{default, heap, hashable}) = (ballot ! i);
+      let (c) = (ballot ! i);
       if (a = c) then
         RETURN (i,True)
       else
@@ -56,35 +56,20 @@ definition index_mon :: "'a::{default, heap, hashable} Preference_List
     RETURN (i)
   }"          
 
-sepref_definition index_sep is "uncurry index_mon" :: 
-  "(arl_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
-  unfolding index_mon_def 
-  apply sepref_dbg_keep
-  done
-                      
-sepref_register index_mon
-
-declare index_sep.refine[sepref_fr_rules]
-
-
-lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))"
-  by simp
-
-lemma index_sound:
-  fixes a:: 'a and l :: "'a list" and i::nat
-  assumes  "i \<le> List_Index.index l a"
-  shows "(a = l!i) \<longrightarrow> (i = List_Index.index l a)"
-  by (metis assms(1) index_first le_eq_less_or_eq)
 
 lemma index_mon_correct:
   shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = index ballot a)"
   unfolding index_mon_def 
-  apply (intro WHILET_rule[where I= "index_mon_inv ballot a" and R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
-proof (unfold index_mon_inv_def, simp+, safe, auto)
+  apply (refine_vcg WHILET_rule[where I= "index_mon_inv ballot a" 
+        and R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"])
+         apply (unfold index_mon_inv_def, safe, clarsimp_all)
+  apply (auto) 
+proof (-)
   fix aa::nat
   assume bound: "aa \<le> List_Index.index ballot (ballot ! aa)"
   (*assume range : "aa < length ballot"*)
-  thus "aa = List_Index.index ballot (ballot ! aa)" by (simp add: index_sound)
+  thus "aa = List_Index.index ballot (ballot ! aa)"
+    by (metis index_first nless_le) 
 next
   fix i
   assume notnow: "a \<noteq> ballot ! i"
@@ -108,14 +93,27 @@ next
     by (metis antisym index_le_size le_neq_implies_less order_trans)
 qed
 
-(* TODO: move to IICF Array List *)
-
 lemma index_mon_impl: 
   shows "(index_mon, mop_list_index) \<in> \<langle>Id\<rangle>list_rel \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   apply (intro fun_relI nres_relI)
   apply clarsimp
   apply (refine_vcg index_mon_correct) by simp
 
+
+sepref_definition index_sep is "uncurry index_mon" :: 
+  "(arl_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
+  unfolding index_mon_def 
+  apply sepref_dbg_keep
+  done
+
+(* Bind the linear search index implementation to Array Lists *)
+context 
+  notes [fcomp_norm_unfold] = arl_assn_def[symmetric] arl_assn_comp'
+  notes [intro!] = hfrefI hn_refineI[THEN hn_refine_preI]
+  notes [simp] = pure_def hn_ctxt_def invalid_assn_def
+begin  
+sepref_decl_impl (ismop) arl_index: index_sep.refine[FCOMP index_mon_impl] .
+end
 
 lemma arl_index_nc_correct: "(uncurry index_sep, uncurry mop_list_index)
     \<in> (arl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn"
@@ -128,28 +126,14 @@ list_rel_id hr_comp_Id2
 definition rank_mon :: "'a::{default, heap, hashable} Preference_List 
   \<Rightarrow> 'a::{default, heap, hashable} \<Rightarrow> nat nres" where
   "rank_mon ballot a \<equiv> do {
-    i \<leftarrow> (index_mon ballot a);
+    let i = (index ballot a);
     if (i = length ballot) then RETURN 0 else RETURN (i + 1)
   }"       
 
 
 lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l ballot a)"
   unfolding rank_mon_def
-proof (refine_vcg, auto)
-  assume mem: "a \<in> set ballot"
-  from this have "List_Index.index ballot a \<noteq> length ballot"
-    by (simp add: in_set_member index_size_conv)
-  from this show "index_mon ballot a \<le> SPEC (\<lambda>i. i = List_Index.index ballot a \<and> i \<noteq> length ballot)"
-    using index_mon_correct
-    by (metis (mono_tags, lifting) SPEC_cons_rule)
-next
-  assume nmem: "\<not>a \<in> set ballot"
-  from this have "List_Index.index ballot a = length ballot"
-    by (simp add: in_set_member)
-  from this show "index_mon ballot a \<le> RES {length ballot}"
-    using index_mon_correct
-    by (metis singleton_conv)
-qed
+  by (refine_vcg, auto)
 
 
 lemma rank_mon_refine:
@@ -157,15 +141,13 @@ lemma rank_mon_refine:
   by (refine_vcg rank_mon_correct, simp)
 
 
-
-
 definition is_less_preferred_than_ref ::
-  "'a::{default, heap, hashable} \<Rightarrow> 'a Preference_List 
+  "'a::{default, heap, hashable} \<Rightarrow> 'a::{default, heap, hashable} Preference_List 
   \<Rightarrow> 'a
    \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
     "x p\<lesssim>\<^sub>l y \<equiv>  do { 
-        idxx \<leftarrow> index_mon l x;
-        idxy \<leftarrow> index_mon l y;
+        idxx \<leftarrow> mop_list_index l x;
+        idxy \<leftarrow> mop_list_index l y;
         RETURN (idxx \<noteq> length l \<and> idxy \<noteq> length l \<and>  idxx \<ge> idxy)}"
 
 lemma is_less_preferred_than_ref_refine:
@@ -177,10 +159,9 @@ lemma is_less_preferred_than_ref_refine:
 
 sepref_definition is_less_preferred_than_sep
   is "uncurry2 is_less_preferred_than_ref" :: 
-    "(id_assn\<^sup>k *\<^sub>a (ballot_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+    "(id_assn\<^sup>k *\<^sub>a (arl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
   unfolding is_less_preferred_than_ref_def[abs_def] 
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 sepref_register is_less_preferred_than_ref
 
@@ -356,7 +337,7 @@ lemma top_above:
   assumes ne: "length pl > 0"
   shows "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
   unfolding above_l_def
-proof (simp add: rankdef, safe)
+proof (simp add: rank_l_equiv, safe)
   assume mem: "pl ! 0 \<in> set pl"
   assume "a = pl ! 0"
   have "List_Index.index pl (pl ! 0) = 0"
@@ -384,7 +365,7 @@ proof -
   from ne have listeq: "pl!0 = a \<longleftrightarrow> above_l pl a = [a]"
     by (simp add: top_above)
   from assms have above_abstract: "set (above_l pl a) = above (pl_\<alpha> pl) a" 
-    by (auto simp add: aboveeq)
+    by (auto simp add: above_equiv)
   have list_set: "above_l pl a = [a] \<longleftrightarrow> set (above_l pl a) = {a}"
     by (metis above_l_def append_self_conv2 gr0I hd_take id_take_nth_drop insert_not_empty list.sel(1) list.set(1) list.set_sel(1) list.simps(15) listeq ne singleton_iff take_eq_Nil)
   from above_abstract listeq this show ?thesis
@@ -409,7 +390,7 @@ lemma innerf_eq:
   shows "f_inner_list a l n \<le> \<Down> nat_rel (f_inner_rel a r n)"
   unfolding f_inner_list_def f_inner_rel_def
   apply (refine_vcg)
-  using assms rankeq unfolding ballot_rel_def
+  using assms rank_equiv unfolding ballot_rel_def
   by (metis in_br_conv)
 
 lemma foreachrel:
@@ -459,7 +440,7 @@ lemma win_count_list_r_refine_os:
   unfolding wc_foreach_list_rank_def wc_foreach_rank_def 
   FOREACH_cond_def FOREACH_body_def
   using assms apply (refine_vcg wc_foreach_list_rank_refine initrel)
-  apply (simp_all only: refine_rel_defs pl_to_pr_\<alpha>_def)
+  apply (simp_all only: refine_rel_defs)
   apply refine_dref_type
      apply (clarsimp_all, safe)
   using innerf_eq unfolding ballot_rel_def 
@@ -495,7 +476,7 @@ definition wc_foreach_top:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat 
 "wc_foreach_top p  a \<equiv> do {
   (xs::'a Profile_List,ac) \<leftarrow> WHILET (FOREACH_cond (\<lambda>_.True)) 
     (FOREACH_body (\<lambda>x (ac).
-     if ((length x > 0) \<and> (x!0 = a)) then RETURN (ac+1) else RETURN (ac)
+    RETURN (if ((length x > 0) \<and> (x!0 = a)) then  (ac+1) else  (ac))
     )) (p,0);
   RETURN ac
 }"
@@ -506,10 +487,10 @@ lemma wc_foreach_top_refine_os:
   unfolding wc_foreach_list_rank_def f_inner_list_def wc_foreach_top_def 
   FOREACH_cond_def FOREACH_body_def
   apply (refine_vcg wc_foreach_list_rank_refine initrel)
-  apply (simp_all only: refine_rel_defs pl_to_pr_\<alpha>_def)
+  apply (simp_all only: refine_rel_defs)
   apply refine_dref_type
   apply auto
-   apply (metis gr0I index_first)
+  apply (metis gr0I index_first)
   by (metis index_eq_iff length_pos_if_in_set)
 
 lemma wc_foreach_top_correct:
@@ -521,29 +502,55 @@ lemma wc_foreach_top_correct:
 definition wc_fold:: "'a Profile_List \<Rightarrow> 'a \<Rightarrow> nat nres" 
   where "wc_fold l a \<equiv> 
    nfoldli l (\<lambda>_. True) 
-    (\<lambda>x (ac). 
-     RETURN (if ((length x > 0) \<and> (x!0 = a))then (ac+1) else  (ac))
+    (\<lambda>x (ac). do {
+     ASSERT (length x > 0);
+     RETURN (if (x!0 = a) then (ac+1) else (ac))}
     ) 
     (0)"
 
 lemma wc_fold_refine:
+  fixes A   :: "'a set" and
+        pl  :: "'a Profile_List"
+  assumes nemp_A: "A \<noteq> {}" and
+        prof: "profile_l A pl"
   shows "wc_fold pl a \<le> \<Down> Id (wc_foreach_top pl a)"
   unfolding wc_fold_def wc_foreach_top_def
-  by (simp add: nfoldli_mono(1) while_eq_nfoldli)
+      while_eq_nfoldli
+proof (refine_vcg, clarsimp_all)
+  from prof nemp_A have allb: "\<forall> i < length pl. (pl!i) \<noteq> []"
+    unfolding profile_l_def lin_order_equiv_list_of_alts
+    by force
+  thus "(pl, pl) \<in> \<langle>\<langle>Id\<rangle>list_rel O (build_rel (\<lambda>x. x) (\<lambda>x .x \<noteq> []))\<rangle>list_rel" unfolding
+     profile_l_def lin_order_equiv_list_of_alts  list_rel_id_simp
+    by (simp add: in_br_conv list_rel_eq_listrel listrel_iff_nth relAPP_def)
+next
+  fix l :: "'a list"
+  assume rel: "([], l) \<in> \<langle>Id\<rangle>list_rel O br (\<lambda>x. x) (\<lambda>x. x \<noteq> [])"
+  have not_rel: "([], l) \<notin> \<langle>Id\<rangle>list_rel O br (\<lambda>x. x) (\<lambda>x. x \<noteq> [])"
+    by (simp add: in_br_conv)
+  from rel not_rel show False by simp  
+next
+  fix l1 l2 :: "'a list"
+  assume "(l1, l2) \<in> \<langle>Id\<rangle>list_rel O br (\<lambda>x. x) (\<lambda>x. x \<noteq> [])"
+  then have ls_eq: "l1 = l2"
+    by (simp add: in_br_conv)
+  assume nemp_l: "l1 \<noteq> []"
+  from ls_eq nemp_l show 
+    "(l1 ! 0 = a \<longrightarrow> l2 \<noteq> [] \<and> l2 ! 0 = a) \<and> (l1 ! 0 \<noteq> a \<longrightarrow> l2 = [] \<or> l2 ! 0 \<noteq> a)"
+    by blast
+qed
+
 
 theorem wc_fold_correct:
-  assumes "(pl, pr) \<in> profile_rel" and "profile_l A pl"
+  fixes A   :: "'a set" and
+        pl  :: "'a Profile_List" and
+        pr  :: "'a Profile"
+  assumes nemp_A: "A \<noteq> {}" and
+          prof: "profile_l A pl" and
+          prel: "(pl, pr) \<in> profile_rel"
   shows "wc_fold pl a \<le> SPEC (\<lambda> wc. wc = win_count pr a)"
   using assms ref_two_step[OF wc_fold_refine wc_foreach_top_correct] refine_IdD 
   by (metis) 
-
-
-
-lemma nfwcc: "nofail (wc_fold p a)"
-  unfolding wc_fold_def 
-  apply (induction p rule: rev_induct, simp)
-   apply simp
-  by (simp add: pw_bind_nofail)
 
 lemma win_count_l_correct:
   shows "(win_count_l, win_count)
@@ -557,13 +564,13 @@ proof (standard, rename_tac a)
   assume prel: "(pl, pr) \<in> (profile_on_A_rel A)"
   from prel have profrel: "(pl, pr) \<in> profile_rel" using profile_type_ref by fastforce
   from prel have profprop: "profile_l A pl" using profile_prop_list by fastforce
-  have  "RETURN (win_count_l pl a) = (wc_fold pl a)"
-  unfolding  wc_fold_def win_count_l.simps
+  have  "RETURN (win_count_l pl a) = (wc_foreach_top pl a)"
+  unfolding  wc_foreach_top_def win_count_l.simps while_eq_nfoldli
   using fold_eq_nfoldli[where l = pl and f = "(\<lambda>x ac. if (0 < length x \<and> x ! 0 = a)
        then ac + 1 else ac)" and s = 0]
   by fastforce
   from this profrel profprop have meq: "RETURN (win_count_l pl a) = RETURN (win_count pr a)"
-  using wc_fold_correct[where pl=pl and pr = pr and A = A and a = a]
+  using wc_foreach_top_correct[where pl=pl and pr = pr and A = A and a = a]
     by (metis mem_Collect_eq nres_order_simps(21))
   from meq show "win_count_l pl a = win_count pr a"
     by simp
@@ -649,7 +656,7 @@ lemma pc_foldli_list_refine:
   apply (refine_vcg nfoldli_rule)
   apply (auto simp del : is_less_preferred_than_l.simps is_less_preferred_than.simps)
   apply (rename_tac l r)
-  apply (metis in_br_conv is_less_preferred_than_eq)+
+  apply (metis in_br_conv less_preferred_l_rel_equiv)+
   done
 
 lemma pc_foldli_list_correct:
@@ -741,6 +748,12 @@ sepref_definition prefer_count_sep is
   apply sepref_dbg_keep
   done
 
+sepref_definition top_count_imp is "uncurry wc_fold" ::
+  "((profile_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn )"
+  unfolding wc_fold_def short_circuit_conv
+  apply sepref_dbg_keep
+  done
+
 sepref_register prefer_count_monadic_imp
 
 declare prefer_count_sep.refine [sepref_fr_rules]
@@ -816,6 +829,9 @@ lemma wins_monadic_correct:
   apply (clarsimp simp del: prefer_count.simps)
   apply (refine_vcg prefer_count_monadic_imp_correct)
   by (auto)  
+
+
+
 
 sepref_definition wins_imp is "uncurry2 wins_monadic" ::
   "(nat_assn\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
@@ -992,7 +1008,7 @@ lemma cond_winner_l_unique:
   shows "w = c"
   using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD, THEN fun_relD,
       where x2 = A and x'2 = A and x1 = pl and x'1 = pr] set_rel_id_simp
-    cond_winner_unique[where A = A and p = pr and c = c and w = w]
+    cond_winner_unique[where A = A and p = pr and a = c and b = w]
   assms by blast
 
 lemma cond_winner_l_unique2:
@@ -1007,7 +1023,7 @@ lemma cond_winner_l_unique2:
   shows "\<not> condorcet_winner_l A pl x"
   using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
       where x2 = A and x'2 = A and x1 = pl and x'1 = pr]  set_rel_id_simp
-    cond_winner_unique2[where A = A and p = pr and x = x and w = w]
+    cond_winner_unique_2[where A = A and p = pr and a = x and b = w]
   assms by blast
 
 lemma cond_winner_unique3_l:
@@ -1021,7 +1037,7 @@ lemma cond_winner_unique3_l:
   shows "{a \<in> A. condorcet_winner_l A pl a} = {w}"
   using condorcet_winner_l_correct[THEN fun_relD,THEN fun_relD,THEN fun_relD,
       where x2 = A and x'2 = A and x1 = pl and x'1 = pr]  set_rel_id_simp
-    cond_winner_unique3[where A = A and p = pr and w = w]
+    cond_winner_unique_3[where A = A and p = pr and a = w]
   assms by blast
 
 subsubsection \<open>Convert HOL types to heap data structures\<close>
@@ -1085,8 +1101,7 @@ sepref_definition limit_profile_sep is "uncurry (limit_profile_l)" ::
   "(hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn )\<^sup>k \<rightarrow>\<^sub>a (profile_impl_assn id_assn )"
   unfolding limit_profile_l_def 
   apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" HOL_list.fold_custom_empty)
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 sepref_register limit_profile_l
 
@@ -1105,20 +1120,20 @@ proof(intro frefI, unfold limit_profile_l_def comp_apply SPEC_eq_is_RETURN(2)[sy
     apply (refine_vcg limit_monadic_refine  nfoldli_rule[where I = "(\<lambda> proc rem r. 
               r = map (limit_l A) proc)"] )
         apply (auto simp add: fina)  
-    unfolding  ballot_rel_def well_formed_pl_def  relAPP_def in_br_conv
+    unfolding  ballot_rel_def  relAPP_def in_br_conv
      in_br_conv  length_map limit_l_sound list_rel_eq_listrel listrel_iff_nth 
         nth_map prel  relAPP_def
-    apply safe using length_preserving
+    apply safe using list_rel_pres_length
     using prel list_rel_imp_same_length prel  apply blast
-    using limit_eq
+    using limit_equiv
       apply (metis ballot_rel_def list_rel_imp_same_length map_in_list_rel_conv nth_map 
           nth_mem prel  profile_rel_imp_map_ballots)
-     using limit_eq
+     using limit_equiv
       apply (metis ballot_rel_def list_rel_imp_same_length map_in_list_rel_conv nth_map 
           nth_mem prel  profile_rel_imp_map_ballots)
      using prel limit_l_sound   
      by (metis ballot_rel_def  map_in_list_rel_conv nth_map nth_mem 
-         profile_rel_imp_map_ballots well_formed_pl_def)
+         profile_rel_imp_map_ballots)
   
 qed
 
@@ -1159,7 +1174,7 @@ proof (clarsimp)
         ( \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
              list_assn (ballot_assn nat_assn) res x * true *
              \<up> (finite_profile s res))" 
-    using limit_profile_sound[where S = A and p = p and A = s] 
+    using limit_profile_sound[where B= A and p = p and A = s] 
     apply sep_auto
     using fins apply blast
     by (simp add: fina prof sA)

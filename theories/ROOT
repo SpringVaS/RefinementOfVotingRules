@@ -1,6 +1,6 @@
 (*
 * build document using 
-* isabelle build -o quick_and_dirty -D . -d ../../verifiedVotingRuleConstruction/theories/ *)
+* isabelle build -D . -d ../../verifiedVotingRuleConstruction/theories/ *)
 
 chapter browser_info
 

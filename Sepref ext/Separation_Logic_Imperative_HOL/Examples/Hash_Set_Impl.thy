@@ -147,77 +147,9 @@ interpretation hs: imp_set_iterate
 
 
 
-partial_function (heap) hs_un_it
-  where [code]: "hs_un_it 
-    it_has_next it_next set_ins it a = do {
-      co \<leftarrow> it_has_next it;
-      if co then do {
-        (x,it') \<leftarrow> it_next it;
-        insx <- set_ins x a;
-        hs_un_it it_has_next it_next set_ins it' (insx) 
-      } else return a
-    }"
-
-
-
-lemma hs_un_it_rule:
-    assumes "imp_set_iterate is_set is_it it_init it_has_next it_next"
-    assumes "imp_set_ins is_set set_ins"
-    assumes FIN: "finite it"
-    shows "
-    < is_it b q it iti * is_set a p> 
-      hs_un_it it_has_next it_next set_ins iti p 
-    < \<lambda>r. \<exists>\<^sub>As'. is_set s' r * true * \<up> (s' = a \<union> it) >"
-  proof -
-    interpret imp_set_iterate is_set is_it it_init it_has_next it_next
-        + imp_set_ins is_set set_ins
-      by fact+
-
-    from FIN show ?thesis
-    proof (induction  arbitrary: a p iti rule: finite_psubset_induct)
-      case (psubset it)
-      show ?case
-        apply (subst hs_un_it.simps)
-        by (sep_auto heap: psubset.IH)
-    qed
-  qed
-
-
- 
-
-definition union_loop_ins  where 
-"union_loop_ins it_init it_has_next it_next set_ins a b \<equiv> do { 
-    it <- (it_init b);
-    hs_un_it it_has_next it_next set_ins it a
-    }"
-
-
-
-lemma set_union_rule:
-    assumes IT: "imp_set_iterate is_set is_it it_init it_has_next it_next"
-    assumes INS: "imp_set_ins is_set set_ins"
-    assumes finb: "finite b"
-    shows "
-    <is_set a p * is_set b q>
-   union_loop_ins it_init  it_has_next it_next set_ins p q
-    <\<lambda>r.  \<exists>\<^sub>As'. is_set s' r * true * \<up> (s' = a \<union> b)>"
-  proof -
-    interpret 
-      imp_set_iterate is_set is_it it_init it_has_next it_next
-        + imp_set_ins is_set set_ins
-      by fact+
-
-    note it_aux[sep_heap_rules] = hs_un_it_rule[OF IT INS finb]
-    show ?thesis
-      unfolding union_loop_ins_def
-       apply (sep_auto)
-      done
-  qed
 
  definition "hs_union 
     \<equiv> union_loop_ins hs_it_init hs_it_has_next hs_it_next hs_ins"
-
-
 
 lemmas hs_union_rule[sep_heap_rules] =
     set_union_rule[OF hs_iterate_impl hs_ins_impl,

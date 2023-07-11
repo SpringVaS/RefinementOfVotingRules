@@ -73,7 +73,7 @@ lemma borda_score_correct:
   shows "\<forall> a \<in> A. borda_score_mon a A pl \<le> SPEC (\<lambda> sc. sc = (borda_score a A pr))"
   unfolding borda_score_mon_def borda_score.simps
   apply safe
-  apply (refine_vcg sum_impl_correct fina prefer_count_monadic_imp_correct profrel)
+  apply (refine_vcg sum_impl_correct prefer_count_monadic_imp_correct assms)
   done
 
 lemma borda_score_opt_refine:
@@ -93,7 +93,7 @@ proof (unfold  borda_score_opt_mon_def, safe)
     (x = borda_score_l a A p1)"])
     subgoal by auto
     unfolding  rank_l.simps profile_l_def 
-      well_formed_pl_def losimp  apply (auto simp del: borda_score_l.simps) 
+      lin_order_equiv_list_of_alts  apply (auto simp del: borda_score_l.simps) 
   proof -
     fix x :: "'a Preference_List"
     fix l1 l2 :: "'a Profile_List"
@@ -101,9 +101,9 @@ proof (unfold  borda_score_opt_mon_def, safe)
     from xpl have idxx: "\<exists> i < length pl. x = pl!i"
       apply (rule_tac x="length l1" in exI) by auto
     from idxx have lox: "set x = A"
-      using profl unfolding profile_l_def well_formed_pl_def losimp by auto
+      using profl unfolding profile_l_def lin_order_equiv_list_of_alts by auto
     from idxx have disx: "distinct x"
-      using profl unfolding profile_l_def well_formed_pl_def by auto
+      using profl unfolding profile_l_def by auto
     from lox disx fina have lengtheq: "length x = card A"
       using distinct_card by fastforce
     have validc: "(length x - index x a) = borda_score_l a A ([x])"
@@ -169,19 +169,33 @@ proof (intro frefI nres_relI, clarsimp simp del: max_eliminator.simps, rename_ta
     by (refine_vcg borda_score_correct max_eliminator_ref_correct_default fina prel)
 qed
 
-definition pre_compute_borda_scores :: "'a set
+definition pre_compute_borda_scores :: "'a::{default, heap, hashable} set
    \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
   where "pre_compute_borda_scores A pl \<equiv> 
   if (op_set_is_empty A) then RETURN Map.empty else
   do {
    zeromap:: 'a Scores_Map  \<leftarrow> init_map A;
   nfoldli pl (\<lambda>_. True) 
-    (\<lambda>ballot map. 
-       nfoldli ballot (\<lambda>_. True) 
-        (\<lambda>a map. do { ASSERT (op_map_contains_key a map);
-      let scx = the (op_map_lookup a map);
-        RETURN (op_map_update a (scx + (length ballot - index ballot a)) map)}) map)
+    (\<lambda>ballot map. do{
+      (i,mapi) <- WHILET  
+      (\<lambda>(i,mapi). (i < (length ballot))) 
+      (\<lambda>(i,mapi). do {
+      ASSERT (i < (length ballot));
+      let (c::'a) = (ballot ! i);
+      ASSERT (c \<in> dom mapi);
+      let scx = the (mapi c);
+      RETURN (i+1,op_map_update c (scx + length ballot - i) mapi)
+    })(0::nat,map);
+       RETURN mapi})
      (zeromap)}"
+
+
+sepref_definition plurmap_sep is "uncurry pre_compute_borda_scores" ::
+  "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (hm.assn nat_assn nat_assn)"
+  unfolding pre_compute_borda_scores_def init_map_def op_set_is_empty_def[symmetric] 
+     hm.fold_custom_empty
+  apply sepref_dbg_keep
+  done
 
 lemma borda_ref_opt_correct:          
   shows "(uncurry borda_ref_opt, uncurry (RETURN oo borda)) \<in> 
@@ -206,16 +220,13 @@ sepref_definition borda_elim_sep_opt is
    \<rightarrow>\<^sub>a (result_impl_assn id_assn)"
   unfolding borda_ref_opt_def  max_eliminator_ref_def borda_score_opt_mon_def sum_impl_def
     less_eliminator_ref_def  elimination_module_ref_def[abs_def] eliminate_def[abs_def]
-    pre_compute_scores_def[abs_def] scoremax_def[abs_def] 
+    pre_compute_scores_def[abs_def] scoremax_def[abs_def] op_set_is_empty_def[symmetric]
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hm.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
   apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
-  apply (rewrite in "RETURN ({}, {}, rewrite_HOLE)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ({}, rewrite_HOLE, _)" hs.fold_custom_empty) 
-  apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty) 
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (rewrite_HOLE, _, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, rewrite_HOLE, rej) else RETURN ({}, rej, def))" hs.fold_custom_empty)
-  apply (rewrite in "_ \<bind> (\<lambda>(rej, def). if def = {} then RETURN (_, _, rej) else RETURN (rewrite_HOLE, rej, def))" hs.fold_custom_empty)
+  apply (rewrite in "RETURN (_,_, rewrite_HOLE)" hs.fold_custom_empty)+
+  apply (rewrite in "RETURN (_, rewrite_HOLE, _)" hs.fold_custom_empty)+
+  apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty)+
   apply sepref_dbg_keep
   done
 

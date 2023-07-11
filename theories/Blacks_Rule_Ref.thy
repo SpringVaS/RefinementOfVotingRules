@@ -16,11 +16,13 @@ begin
 
 subsection \<open>Definition\<close>
 
-definition "seqcomp_cb \<equiv> (condorcet \<triangleright> borda)"
-definition "seqcomp_cb_sep \<equiv> (condorcet_elim_sep \<triangleright>sep borda_elim_sep_opt)"
+definition seqcomp_cb :: "'a::{default, heap, hashable} Electoral_Module" where 
+  "seqcomp_cb \<equiv> (condorcet \<triangleright> borda)"                
+definition seqcomp_cb_sep :: "'a :: {default, heap, hashable} Electoral_Module_Sep" where 
+  "seqcomp_cb_sep \<equiv> (condorcet_elim_sep \<triangleright>sep borda_elim_sep_opt)"
 
 interpretation seq_cb: Seqcomp_Impl condorcet borda condorcet_elim_sep borda_elim_sep_opt
-  using condorcet_sound borda_sound  condorcet_elim_sep_correct borda_elim_sep_opt_correct
+  using condorcet_sound borda_sound condorcet_elim_sep_correct borda_elim_sep_opt_correct
   by unfold_locales
 
 lemma seqcomp_cb_sep_correct :
@@ -34,27 +36,37 @@ declare seqcomp_cb_sep_correct[sepref_fr_rules]
 
 subsection \<open>Refinement to Imperative/HOL\<close>
 
-sepref_definition blacks_sep is "uncurry (elector_opt ((condorcet \<triangleright> borda)))"
-  :: "elec_mod_seprel nat_assn"
-  unfolding seqcomp_cb_def[symmetric] elector_opt_def hs.fold_custom_empty 
-  by sepref_dbg_keep
+definition blackmod :: "'a :: {default, heap, hashable} set \<Rightarrow> ('a \<times> 'a) set list 
+  \<Rightarrow> ('a set \<times> 'a set \<times> 'a set) nres" where 
+  "blackmod \<equiv> elector_opt (black)"
+
+text \<open>\<close>
+
+sepref_definition blacks_sep is "uncurry (blackmod)"
+  :: "elec_mod_seprel id_assn"
+  unfolding black.simps blackmod_def elector_opt_def 
+    seqcomp_cb_def[symmetric] hs.fold_custom_empty 
+  by sepref
 
 subsection \<open>Correctness\<close>
 
 lemma blacks_sep_correct [sepref_fr_rules]:
-  shows "(uncurry blacks_sep , uncurry (RETURN oo blacks_rule)) \<in> elec_mod_seprel nat_assn"
-  unfolding blacks_rule.simps seqcomp_alt_eq elector.simps[symmetric]
+  shows "(uncurry blacks_sep , uncurry (RETURN oo blacks_rule)) \<in> elec_mod_seprel id_assn"
+  unfolding blacks_rule.simps elector.simps[symmetric] 
+    seqcomp_cb_sep_def[symmetric] 
   using blacks_sep.refine 
-    unfolding elector_opt_eq .
+    unfolding blackmod_def elector_opt_eq .
 
 subsection \<open>Properties in Separation Logic\<close>
 
-
 theorem black_rule_impl_condorcet:
+  fixes A :: "'a::{default, heap, hashable} set" and
+        p :: "'a Profile" and
+        w :: 'a
   shows "finite_profile A p \<and> condorcet_winner A p w \<Longrightarrow>
-  <(alts_set_impl_assn nat_assn) A hs *
-            (list_assn (ballot_assn nat_assn)) p hp> blacks_sep hs hp 
-  < \<lambda>r. \<exists>\<^sub>Ares. (result_impl_assn (nat_assn)) res r * 
+  <(alts_set_impl_assn id_assn) A hs *
+            (list_assn (ballot_assn id_assn)) p hp> blacks_sep hs hp 
+  < \<lambda>r. \<exists>\<^sub>Ares. (result_impl_assn (id_assn)) res r * 
     \<up> (res = ({w}, A - {w}, {})) >\<^sub>t"
   using blacks_sep_correct[THEN hfrefD, THEN hn_refineD, of "(A, p)" "(hs, hp)"]
   apply (clarsimp simp del: condorcet_winner.simps blacks_rule.simps)
@@ -62,9 +74,13 @@ theorem black_rule_impl_condorcet:
   apply (sep_auto simp add : hn_ctxt_def pure_def simp del : condorcet_winner.simps 
         pairwise_majority_rule.simps)
   apply (sep_auto simp add: hn_ctxt_def simp del : condorcet_winner.simps blacks_rule.simps)
-  using black_condorcet condorcet_consistency3
-   by (metis)
-
+  proof (-)
+  assume w_cond_winner: "condorcet_winner A p w"
+  show "blacks_rule A p = ({w}, A - {w}, {})"
+    using  w_cond_winner black_condorcet 
+    unfolding condorcet_consistency_3
+    by metis
+qed
 
 export_code convert_list_to_hash_set clist blacks_sep in Scala_imp
 
