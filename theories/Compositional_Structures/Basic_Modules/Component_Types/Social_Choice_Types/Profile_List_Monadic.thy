@@ -39,15 +39,15 @@ definition "index_mon_inv ballot a \<equiv> (\<lambda> (i, found).
 (*  \<and> (\<not>found \<longrightarrow> (i \<le> List_Index.index ballot a)))"*)
 
 (* low level optimization for pref count *)
-definition index_mon :: "'a::{default, heap, hashable} Preference_List 
-  \<Rightarrow> 'a::{default, heap, hashable}
+definition index_mon :: "'a Preference_List 
+  \<Rightarrow> 'a
    \<Rightarrow> nat nres" where
   "index_mon ballot a \<equiv> do {
     (i, found) \<leftarrow> WHILET  
   (\<lambda>(i, found). (i < (length ballot) \<and> \<not>found)) 
       (\<lambda>(i,_). do {
       ASSERT (i < (length ballot));
-      let (c::'a::{default, heap, hashable}) = (ballot ! i);
+      let (c) = (ballot ! i);
       if (a = c) then
         RETURN (i,True)
       else
@@ -56,35 +56,20 @@ definition index_mon :: "'a::{default, heap, hashable} Preference_List
     RETURN (i)
   }"          
 
-sepref_definition index_sep is "uncurry index_mon" :: 
-  "(arl_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
-  unfolding index_mon_def 
-  apply sepref_dbg_keep
-  done
-                      
-sepref_register index_mon
-
-declare index_sep.refine[sepref_fr_rules]
-
-
-lemma isl1_measure: "wf (measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0)))"
-  by simp
-
-lemma index_sound:
-  fixes a:: 'a and l :: "'a list" and i::nat
-  assumes  "i \<le> List_Index.index l a"
-  shows "(a = l!i) \<longrightarrow> (i = List_Index.index l a)"
-  by (metis assms(1) index_first le_eq_less_or_eq)
 
 lemma index_mon_correct:
   shows "index_mon ballot a \<le> SPEC (\<lambda> r. r = index ballot a)"
   unfolding index_mon_def 
-  apply (intro WHILET_rule[where I= "index_mon_inv ballot a" and R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"] refine_vcg)
-proof (unfold index_mon_inv_def, simp+, safe, auto)
+  apply (refine_vcg WHILET_rule[where I= "index_mon_inv ballot a" 
+        and R="measure (\<lambda>(i, found). length ballot - i - (if found then 1 else 0))"])
+         apply (unfold index_mon_inv_def, safe, clarsimp_all)
+  apply (auto) 
+proof (-)
   fix aa::nat
   assume bound: "aa \<le> List_Index.index ballot (ballot ! aa)"
   (*assume range : "aa < length ballot"*)
-  thus "aa = List_Index.index ballot (ballot ! aa)" by (simp add: index_sound)
+  thus "aa = List_Index.index ballot (ballot ! aa)"
+    by (metis index_first nless_le) 
 next
   fix i
   assume notnow: "a \<noteq> ballot ! i"
@@ -108,14 +93,27 @@ next
     by (metis antisym index_le_size le_neq_implies_less order_trans)
 qed
 
-(* TODO: move to IICF Array List *)
-
 lemma index_mon_impl: 
   shows "(index_mon, mop_list_index) \<in> \<langle>Id\<rangle>list_rel \<rightarrow> Id \<rightarrow> \<langle>nat_rel\<rangle>nres_rel"
   apply (intro fun_relI nres_relI)
   apply clarsimp
   apply (refine_vcg index_mon_correct) by simp
 
+
+sepref_definition index_sep is "uncurry index_mon" :: 
+  "(arl_assn id_assn)\<^sup>k *\<^sub>a (id_assn)\<^sup>k \<rightarrow>\<^sub>a nat_assn"
+  unfolding index_mon_def 
+  apply sepref_dbg_keep
+  done
+
+(* Bind the linear search index implementation to Array Lists *)
+context 
+  notes [fcomp_norm_unfold] = arl_assn_def[symmetric] arl_assn_comp'
+  notes [intro!] = hfrefI hn_refineI[THEN hn_refine_preI]
+  notes [simp] = pure_def hn_ctxt_def invalid_assn_def
+begin  
+sepref_decl_impl (ismop) arl_index: index_sep.refine[FCOMP index_mon_impl] .
+end
 
 lemma arl_index_nc_correct: "(uncurry index_sep, uncurry mop_list_index)
     \<in> (arl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a nat_assn"
@@ -128,28 +126,14 @@ list_rel_id hr_comp_Id2
 definition rank_mon :: "'a::{default, heap, hashable} Preference_List 
   \<Rightarrow> 'a::{default, heap, hashable} \<Rightarrow> nat nres" where
   "rank_mon ballot a \<equiv> do {
-    i \<leftarrow> (index_mon ballot a);
+    let i = (index ballot a);
     if (i = length ballot) then RETURN 0 else RETURN (i + 1)
   }"       
 
 
 lemma rank_mon_correct: "rank_mon ballot a \<le> SPEC (\<lambda> r. r = rank_l ballot a)"
   unfolding rank_mon_def
-proof (refine_vcg, auto)
-  assume mem: "a \<in> set ballot"
-  from this have "List_Index.index ballot a \<noteq> length ballot"
-    by simp
-  from this show "index_mon ballot a \<le> SPEC (\<lambda>i. i = List_Index.index ballot a \<and> i \<noteq> length ballot)"
-    using index_mon_correct
-    by (metis (mono_tags, lifting) SPEC_cons_rule)
-next
-  assume nmem: "\<not>a \<in> set ballot"
-  from this have "List_Index.index ballot a = length ballot"
-    by (simp)
-  from this show "index_mon ballot a \<le> RES {length ballot}"
-    using index_mon_correct
-    by (metis singleton_conv)
-qed
+  by (refine_vcg, auto)
 
 
 lemma rank_mon_refine:
@@ -157,15 +141,13 @@ lemma rank_mon_refine:
   by (refine_vcg rank_mon_correct, simp)
 
 
-
-
 definition is_less_preferred_than_ref ::
-  "'a::{default, heap, hashable} \<Rightarrow> 'a Preference_List 
+  "'a::{default, heap, hashable} \<Rightarrow> 'a::{default, heap, hashable} Preference_List 
   \<Rightarrow> 'a
    \<Rightarrow> bool nres" ("_ p\<lesssim>\<^sub>_ _" [50, 1000, 51] 50) where
     "x p\<lesssim>\<^sub>l y \<equiv>  do { 
-        idxx \<leftarrow> index_mon l x;
-        idxy \<leftarrow> index_mon l y;
+        idxx \<leftarrow> mop_list_index l x;
+        idxy \<leftarrow> mop_list_index l y;
         RETURN (idxx \<noteq> length l \<and> idxy \<noteq> length l \<and>  idxx \<ge> idxy)}"
 
 lemma is_less_preferred_than_ref_refine:
@@ -177,10 +159,9 @@ lemma is_less_preferred_than_ref_refine:
 
 sepref_definition is_less_preferred_than_sep
   is "uncurry2 is_less_preferred_than_ref" :: 
-    "(id_assn\<^sup>k *\<^sub>a (ballot_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
+    "(id_assn\<^sup>k *\<^sub>a (arl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn)"
   unfolding is_less_preferred_than_ref_def[abs_def] 
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 sepref_register is_less_preferred_than_ref
 
