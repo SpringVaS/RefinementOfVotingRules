@@ -484,7 +484,8 @@ end
     assumes is_set_finite: "h \<Turnstile> is_set S x \<Longrightarrow> finite S"
   begin
     context begin
-      private lemma is_imp_set_iterate: "imp_set_iterate is_set is_it it_init it_has_next it_next" by unfold_locales
+      private lemma is_imp_set_iterate: "imp_set_iterate
+       is_set is_it it_init it_has_next it_next" by unfold_locales
       
       private lemma is_imp_list_empty: "imp_list_empty (list_assn id_assn) (return [])"
         apply unfold_locales
@@ -529,15 +530,18 @@ end
 locale bind_set_union = imp_set_union +  bind_set +
 assumes is_prime_set_finite: "h \<Turnstile> is_set S x \<Longrightarrow> finite S"
   begin
-  lemma hnr_union_aux: "(uncurry union, uncurry (RETURN oo op_set_union)) \<in> is_set\<^sup>d *\<^sub>a is_set\<^sup>d \<rightarrow>\<^sub>a is_set"
-    apply (sep_auto intro!: is_prime_set_finite)
-    unfolding invalid_assn_def pure_def pure_assn_def hfref_def
-    apply (solve_sepl_binding) unfolding entails_def apply safe
-    using is_prime_set_finite  pure_def mod_star_conv pure_true mod_starD  pure_assn_def
-     apply auto[1] 
-    using  pure_def mod_star_conv pure_true mod_starD  pure_assn_def
+lemma hnr_union_aux: "(uncurry union, uncurry (RETURN oo op_set_union)) 
+              \<in> is_set\<^sup>d *\<^sub>a is_set\<^sup>k \<rightarrow>\<^sub>a is_set"
+    apply (sep_auto intro!: is_prime_set_finite )
+    unfolding invalid_assn_def pure_def pure_assn_def hfref_def 
+    apply (solve_sepl_binding) unfolding entails_def
+    using is_prime_set_finite subgoal
+      using mod_starD by blast  
     apply sep_auto
-    using mod_dist(1) by auto
+    using is_prime_set_finite mod_starD  
+    unfolding hoare_triple_def ex_assn_def   apply sep_auto
+    using  mod_starD union_rule
+    by (metis assn_times_comm mult_1 pure_assn_def pure_true)
 
   interpretation bind_set_setup by standard  
     lemmas hnr_op_union[sepref_fr_rules] = hnr_union_aux[FCOMP op_set_union.fref[where A="the_pure A"]] 
@@ -775,11 +779,10 @@ end
     by unfold_locales simp
 setup Locale_Code.close_block  
 
-  setup Locale_Code.open_block 
+
 interpretation hs: bind_set_union is_hashset hs_is_it hs_it_init hs_it_has_next hs_it_next hs_union 
   for A
     by unfold_locales simp
-setup Locale_Code.close_block  
 
 
   subsection \<open>Open Singly Linked List (osll)\<close>  
