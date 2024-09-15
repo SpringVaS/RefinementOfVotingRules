@@ -35,14 +35,11 @@ lemma aux_set_copy_correct:
   shows "(aux_set_copy, (RETURN o op_set_copy)) 
     \<in> [\<lambda> s. finite s]\<^sub>f \<langle>Id\<rangle>set_rel \<rightarrow> \<langle>\<langle>Id\<rangle>set_rel\<rangle>nres_rel"  
   unfolding aux_set_copy_def comp_apply
-  apply (intro frefI nres_relI, clarsimp)
-proof (rename_tac A)
+proof (intro frefI nres_relI, clarsimp, rename_tac A)
   fix A :: "'a set"
   assume fina: "finite A"
   show "FOREACH A (\<lambda>x cp. RETURN (insert x cp)) {} \<le> RETURN A"
-    apply (refine_vcg FOREACH_rule[where I = "\<lambda> it x. 
-      x = A -it"])
-    by (auto simp add: fina)
+    by (refine_vcg FOREACH_rule[where I = "\<lambda> it x. x = A -it"] fina, auto)
 qed
 
 sepref_definition hs_copy_sep is "aux_set_copy" :: 

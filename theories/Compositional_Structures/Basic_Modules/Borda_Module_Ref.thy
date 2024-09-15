@@ -143,8 +143,8 @@ proof (unfold  borda_score_opt_mon_def, safe)
 qed
 
 lemma borda_score_opt_correct:
-    fixes A:: "'a::{default, heap, hashable} set"
- fixes pl:: "'a Profile_List" and pr:: "'a Profile"
+  fixes A:: "'a::{default, heap, hashable} set" and
+        pl:: "'a Profile_List" and pr:: "'a Profile"
   assumes 
     fina: "finite A"
     and profrel: "(pl, pr) \<in> profile_rel"
@@ -184,13 +184,13 @@ definition pre_compute_borda_scores :: "'a::{default, heap, hashable} set
       let (c::'a) = (ballot ! i);
       ASSERT (c \<in> dom mapi);
       let scx = the (mapi c);
-      RETURN (i+1,op_map_update c (scx + length ballot - i) mapi)
+      RETURN (i+1, op_map_update c (scx + length ballot - i) mapi)
     })(0::nat,map);
        RETURN mapi})
      (zeromap)}"
 
 
-sepref_definition plurmap_sep is "uncurry pre_compute_borda_scores" ::
+sepref_definition bordamap_sep is "uncurry pre_compute_borda_scores" ::
   "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (hm.assn nat_assn nat_assn)"
   unfolding pre_compute_borda_scores_def init_map_def op_set_is_empty_def[symmetric] 
      hm.fold_custom_empty
