@@ -22,11 +22,10 @@ sepref_definition minimax_rule_imp is
 
 subsection \<open>Correctness\<close>
 
-
 lemma minimax_rule_imp_correct:
   shows "(uncurry minimax_rule_imp, uncurry (RETURN 
     oo (minimax_rule:: (nat Electoral_Module))))
-  \<in> elec_mod_seprel id_assn"
+  \<in> elec_mod_seprel nat_assn"
   using minimax_rule_imp.refine
   unfolding minimax_rule.simps elector_opt_eq
   .
