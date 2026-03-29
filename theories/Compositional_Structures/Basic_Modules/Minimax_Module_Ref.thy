@@ -44,8 +44,7 @@ sepref_definition minimax_score_sep is "uncurry2 minimax_score_ref"
   :: "id_assn\<^sup>k *\<^sub>a (hs.assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a id_assn"
   unfolding minimax_score_ref_def pre_compute_scores_def scoremin_def
   hm.fold_custom_empty hs.fold_custom_empty  
-  apply sepref_dbg_keep
-  done
+  by sepref
 
 sepref_register minimax_score_ref
 declare minimax_score_sep.refine[sepref_fr_rules]
@@ -57,19 +56,15 @@ sepref_definition minimax_sep is "uncurry minimax_ref"
  less_eliminator_ref_def pre_compute_scores_def
   elimination_module_ref_def[abs_def] eliminate_def[abs_def] 
    scoremax_def[abs_def]
-    init_map_def hm.fold_custom_empty 
-  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
-  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)
+    hm.fold_custom_empty 
+  apply (rewrite in "FOREACH _ _ rewrite_HOLE" hs.fold_custom_empty)+
   apply (rewrite in "RETURN (_, _, rewrite_HOLE)" hs.fold_custom_empty)+
   apply (rewrite in "RETURN (_, rewrite_HOLE, _)" hs.fold_custom_empty)+
-  apply (rewrite in "RETURN ( rewrite_HOLE, _, _)" hs.fold_custom_empty)+
-  apply sepref_dbg_keep
-  done
-
+  apply (rewrite in "RETURN (rewrite_HOLE, _, _)" hs.fold_custom_empty)+
+  by sepref
 
 
 export_code clist convert_list_to_hash_set minimax_sep in Scala_imp
-
 
 lemma minimax_score_ref_correct:
   fixes A:: "'a::{default, heap, hashable} set"
