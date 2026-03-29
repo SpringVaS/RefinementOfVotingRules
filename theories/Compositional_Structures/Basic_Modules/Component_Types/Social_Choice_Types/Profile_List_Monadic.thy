@@ -834,7 +834,7 @@ lemma wins_monadic_correct:
 
 
 sepref_definition wins_imp is "uncurry2 wins_monadic" ::
-  "(nat_assn\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k *\<^sub>a nat_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
+  "(id_assn\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k *\<^sub>a id_assn\<^sup>k \<rightarrow>\<^sub>a bool_assn )"
   unfolding wins_monadic_def
   apply sepref_dbg_keep
   done
@@ -1049,7 +1049,7 @@ definition convert_list :: "'a::{default, heap} list \<Rightarrow> 'a list nres"
     RETURN (nl @ [x])) []"
 
 sepref_definition clist is "convert_list" :: "(list_assn id_assn)\<^sup>d
- \<rightarrow>\<^sub>a (arl_assn nat_assn)"
+ \<rightarrow>\<^sub>a (arl_assn id_assn)"
   unfolding convert_list_def 
   apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" arl.fold_custom_empty)
   by sepref
@@ -1062,7 +1062,7 @@ definition convert_list_to_set :: "'a::{default, heap} list \<Rightarrow> 'a set
 
 
 sepref_definition convert_list_to_hash_set is "convert_list_to_set" :: "(list_assn id_assn)\<^sup>d
- \<rightarrow>\<^sub>a (hs.assn nat_assn)"
+ \<rightarrow>\<^sub>a (hs.assn id_assn)"
   unfolding convert_list_to_set_def 
   apply (rewrite in "nfoldli _ _ _ rewrite_HOLE" hs.fold_custom_empty)
   by sepref
@@ -1156,51 +1156,51 @@ declare limit_profile_sep_correct [sepref_fr_rules]
 
 
 lemma limit_profile_sound_sep:
-  shows "s \<subseteq> A \<and> finite_profile A p \<Longrightarrow> <(alts_set_impl_assn nat_assn) s hs *
-            (list_assn (ballot_assn nat_assn)) p hp> limit_profile_sep hs hp 
-  < \<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp * 
-                (list_assn (ballot_assn nat_assn)) res r * \<up> (finite_profile s res) >\<^sub>t"
+  shows "s \<subseteq> A \<and> finite_profile A p \<Longrightarrow> <(alts_set_impl_assn id_assn) s hs *
+            (list_assn (ballot_assn id_assn)) p hp> limit_profile_sep hs hp 
+  < \<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn id_assn) p hp * 
+                (list_assn (ballot_assn id_assn)) res r * \<up> (finite_profile s res) >\<^sub>t"
 proof (clarsimp)
   assume sA: "s \<subseteq> A"
   assume fina: "finite A"
   assume prof: "profile A p"
   from sA fina have fins: "finite s"
     using rev_finite_subset by blast
-  have postapp: "\<And>x. (\<exists>\<^sub>Axa. alts_set_impl_assn nat_assn s hs *
-                list_assn (ballot_assn nat_assn) p hp *
-                list_assn (ballot_assn nat_assn) xa x *
+  have postapp: "\<And>x. (\<exists>\<^sub>Axa. alts_set_impl_assn id_assn s hs *
+                list_assn (ballot_assn id_assn) p hp *
+                list_assn (ballot_assn id_assn) xa x *
                 true *
                 \<up> (xa = map (limit s) p)) \<Longrightarrow>\<^sub>A 
-        ( \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
-             list_assn (ballot_assn nat_assn) res x * true *
+        ( \<exists>\<^sub>Ares.  list_assn (ballot_assn id_assn) p hp *
+             list_assn (ballot_assn id_assn) res x * true *
              \<up> (finite_profile s res))" 
     using limit_profile_sound[where B= A and p = p and A = s] 
     apply sep_auto
     using fins apply blast
     by (simp add: fina prof sA)
-  from this fins show "<alts_set_impl_assn nat_assn s hs *
-     list_assn (ballot_assn nat_assn) p hp>
+  from this fins show "<alts_set_impl_assn id_assn s hs *
+     list_assn (ballot_assn id_assn) p hp>
     limit_profile_sep hs hp
-    <\<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
-             list_assn (ballot_assn nat_assn) res r * true *
+    <\<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn id_assn) p hp *
+             list_assn (ballot_assn id_assn) res r * true *
              \<up> (finite_profile s res)>" 
     using limit_profile_sep_correct[THEN hfrefD, THEN hn_refineD, of "(s, p)" "(hs, hp)", simplified]
-          cons_rule[where P = "(alts_set_impl_assn nat_assn) s hs *
-            (list_assn (ballot_assn nat_assn)) p hp"
-          and P' = "(alts_set_impl_assn nat_assn) s hs *
+          cons_rule[where P = "(alts_set_impl_assn id_assn) s hs *
+            (list_assn (ballot_assn id_assn)) p hp"
+          and P' = "(alts_set_impl_assn id_assn) s hs *
             (list_assn
-                   (hr_comp (ballot_impl_assn nat_assn)
-                     ballot_rel)) p hp" and Q = "(\<lambda> r. \<exists>\<^sub>Ax. alts_set_impl_assn nat_assn s hs *
-                list_assn (ballot_assn nat_assn) p hp *
-                list_assn (ballot_assn nat_assn) x r *
+                   (hr_comp (ballot_impl_assn id_assn)
+                     ballot_rel)) p hp" and Q = "(\<lambda> r. \<exists>\<^sub>Ax. alts_set_impl_assn id_assn s hs *
+                list_assn (ballot_assn id_assn) p hp *
+                list_assn (ballot_assn id_assn) x r *
                 true *
                 \<up> (x = map (limit s) p))"
-           and Q' = "\<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn nat_assn) p hp *
-             list_assn (ballot_assn nat_assn) res r * true *
+           and Q' = "\<lambda>r. \<exists>\<^sub>Ares.  list_assn (ballot_assn id_assn) p hp *
+             list_assn (ballot_assn id_assn) res r * true *
              \<up> (finite_profile s res)"
             and c = "limit_profile_sep hs hp"]
       using ent_refl
-      by (simp add: ballot_assn_def) 
+      by (simp add: ballot_assn_def)
     
 qed
 

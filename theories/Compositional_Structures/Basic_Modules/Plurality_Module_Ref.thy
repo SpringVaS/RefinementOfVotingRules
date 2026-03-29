@@ -13,7 +13,7 @@ section \<open>Refined Plurality Module\<close>
 
 subsection \<open>Definition\<close>
 
-definition plurality_score_ref :: "'a Evaluation_Function_Ref" where
+definition plurality_score_ref :: "'a::{default, heap, hashable} Evaluation_Function_Ref" where
   "plurality_score_ref x A p = (wc_fold p x)"
 
 definition plurality_ref :: "'a::{default, heap, hashable} Electoral_Module_Ref" where
@@ -41,7 +41,7 @@ qed
 
 text \<open>Optimized Map Compuation\<close>
 
-definition pre_compute_plurality_scores :: "'a set
+definition pre_compute_plurality_scores :: "'a :: {default, heap, hashable} set
    \<Rightarrow> 'a Profile_List \<Rightarrow> 'a Scores_Map nres" 
   where "pre_compute_plurality_scores A pl \<equiv> 
   if (A = {}) then RETURN Map.empty else
@@ -59,7 +59,7 @@ definition pre_compute_plurality_scores :: "'a set
 
 
 sepref_definition plurmap_sep is "uncurry pre_compute_plurality_scores" ::
-  "(alts_set_impl_assn nat_assn)\<^sup>k *\<^sub>a (profile_impl_assn nat_assn)\<^sup>k \<rightarrow>\<^sub>a (hm.assn nat_assn nat_assn)"
+  "(alts_set_impl_assn id_assn)\<^sup>k *\<^sub>a (profile_impl_assn id_assn)\<^sup>k \<rightarrow>\<^sub>a (hm.assn id_assn id_assn)"
   unfolding pre_compute_plurality_scores_def init_map_def op_set_is_empty_def[symmetric] 
      hm.fold_custom_empty
   by sepref
@@ -77,7 +77,7 @@ subsection \<open>Refinement Lemmas\<close>
 
 
 lemma plurality_map_correct:
-  fixes A :: "'a set" and
+  fixes A :: "'a :: {default, heap, hashable} set" and
         pr :: "'a Profile" and
         pl :: "'a Profile_List"
   assumes fina: "finite A" and

@@ -46,8 +46,6 @@ text \<open>We attempted to show a completeness lemma for our refinement of line
       to lists. We have not completed it. This lemma sketches, that the abstraction relation is
       not empty.\<close>
 
-declare member_def[simp]
-
 lemma simple_list_abstraction_sketch:
   shows "([1::nat,2], {(2::nat,1), (2::nat,2), (1::nat,1)}) \<in> ballot_rel"
   unfolding in_br_conv ballot_rel_def pl_\<alpha>_def 

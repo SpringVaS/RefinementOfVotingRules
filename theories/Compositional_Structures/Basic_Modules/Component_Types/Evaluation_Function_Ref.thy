@@ -80,7 +80,7 @@ text \<open>
 \<close>
 
 
-(*theorem cond_winner_imp_max_eval_val_ref:
+theorem cond_winner_imp_max_eval_val_ref:
   fixes A :: "'a set"
   fixes eref :: "'a Evaluation_Function_Ref"
   and efn :: "'a Evaluation_Function"
@@ -94,7 +94,6 @@ text \<open>
     winnerl: "condorcet_winner_l A pl w"
   shows "eref w A pl \<le> RETURN (Max {efn a A pr | a. a \<in> A})"
 proof -
-  from win
   from fina profl profrel have f_prof: "finite_profile A pr" 
     using profile_ref
     by fastforce
@@ -106,8 +105,8 @@ proof -
   have "efn w A pr = Max {efn a A pr |a. a \<in> A}" using cond_winner_imp_max_eval_val
     by (metis (mono_tags, lifting))
   from efref this show ?thesis
-    by auto      
-qed*)
+    by (simp add: RETURN_SPEC_conv)
+qed
 
 text \<open>
   If e is Condorcet-rating, the following holds:
@@ -116,7 +115,6 @@ text \<open>
   evaluation value.
 \<close>
 
-find_theorems "Max"
 
 theorem non_cond_winner_not_max_eval_ref:
   fixes A :: "'a set"
@@ -148,7 +146,7 @@ proof -
   from  fina linA efref  show ?thesis unfolding SPEC_eq_is_RETURN(2)[symmetric]
     using specify_left[where m = "eref l A pl" and \<Phi> = "(\<lambda>score. score = efn l A pr)"
           and f = "(\<lambda>sl. SPEC (\<lambda>x. x = (sl < Max {efn a A pr |a. a \<in> A})))"
-          and M= "SPEC (\<lambda>x. x = True)"]
+          and M = "SPEC (\<lambda>x. x = True)"]
     using lt by fastforce  
 
 qed
